@@ -7,7 +7,7 @@
 // ==========================================
 // GLOBAL HARDWARE OBJECTS
 // ==========================================
-HCSR04_Sonar frontSonar(PIN_SONAR_TRIG, PIN_SONAR_ECHO);
+HCSR04_Sonar frontSonar(HardwarePins::PIN_SONAR_TRIG, HardwarePins::PIN_SONAR_ECHO);
 XY160D_MotorDriver motors;
 PIDController headingHoldPID = PIDPurposeProfileFactory::createHeadingHoldPID();
 
