@@ -1,5 +1,4 @@
 #include "hal/XY160D_MotorDriver.h"
-#include "config/PinConfig.h"
 #include "config/MotorPWMConfig.h"
 
 // The Core 2.x API requires routing pins through specific hardware channels
@@ -7,20 +6,28 @@
 
 #include <Arduino.h>
 
-// --- ESP32 Hardware PWM Channels ---
-// The Core 2.x API requires routing pins through specific hardware channels
+// 1. Store the incoming pins into the object's private memory
+XY160D_MotorDriver::XY160D_MotorDriver(int leftFwd, int leftRev, int rightFwd, int rightRev) {
+    leftFwdPin = leftFwd;
+    leftRevPin = leftRev;
+    rightFwdPin = rightFwd;
+    rightRevPin = rightRev;
+}
 
 void XY160D_MotorDriver::init() {
     // 1. Configure the 4 hardware channels with your frequency and resolution
+    // (These CH_ variables are still fine, they come from ChannelRegistry.h)
     ledcSetup(CH_MOTOR_LEFT_FWD, PWM_FREQ, PWM_RESOLUTION);
     ledcSetup(CH_MOTOR_LEFT_REV, PWM_FREQ, PWM_RESOLUTION);
     ledcSetup(CH_MOTOR_RIGHT_FWD, PWM_FREQ, PWM_RESOLUTION);
     ledcSetup(CH_MOTOR_RIGHT_REV, PWM_FREQ, PWM_RESOLUTION);
 
-    ledcAttachPin(PIN_MOTOR_LEFT_FWD, CH_MOTOR_LEFT_FWD);
-    ledcAttachPin(PIN_MOTOR_LEFT_REV, CH_MOTOR_LEFT_REV);
-    ledcAttachPin(PIN_MOTOR_RIGHT_FWD, CH_MOTOR_RIGHT_FWD);
-    ledcAttachPin(PIN_MOTOR_RIGHT_REV, CH_MOTOR_RIGHT_REV);
+    // 2. Attach the internally stored pins to the channels
+    // DO NOT use PIN_MOTOR_..., use the private variables!
+    ledcAttachPin(leftFwdPin, CH_MOTOR_LEFT_FWD);
+    ledcAttachPin(leftRevPin, CH_MOTOR_LEFT_REV);
+    ledcAttachPin(rightFwdPin, CH_MOTOR_RIGHT_FWD);
+    ledcAttachPin(rightRevPin, CH_MOTOR_RIGHT_REV);
     
     // Ensure motors are dead silent and locked on boot
     stop(); 

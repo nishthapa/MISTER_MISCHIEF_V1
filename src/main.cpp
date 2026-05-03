@@ -8,7 +8,15 @@
 // GLOBAL HARDWARE OBJECTS
 // ==========================================
 HCSR04_Sonar frontSonar(HardwarePins::PIN_SONAR_TRIG, HardwarePins::PIN_SONAR_ECHO);
-XY160D_MotorDriver motors;
+
+// The newly refactored, fully injected Motor Driver Factory
+XY160D_MotorDriver motors(
+    HardwarePins::PIN_MOTOR_LEFT_FWD,
+    HardwarePins::PIN_MOTOR_LEFT_REV,
+    HardwarePins::PIN_MOTOR_RIGHT_FWD,
+    HardwarePins::PIN_MOTOR_RIGHT_REV
+);
+
 PIDController headingHoldPID = PIDPurposeProfileFactory::createHeadingHoldPID();
 
 // ==========================================

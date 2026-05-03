@@ -1,7 +1,17 @@
 #pragma once
 
 class XY160D_MotorDriver {
+    private:
+    // Internal memory to hold the pin assignments
+    int leftFwdPin;
+    int leftRevPin;
+    int rightFwdPin;
+    int rightRevPin;
+
 public:
+    // The new parameterized constructor
+    XY160D_MotorDriver(int leftFwd, int leftRev, int rightFwd, int rightRev);
+
     // Configures the ESP32 PWM timers and attaches the pins
     void init();
 
