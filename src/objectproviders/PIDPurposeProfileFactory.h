@@ -1,8 +1,8 @@
 #pragma once
 
 #include "core/PIDController.h"
-#include "config/pidtuning/PIDTune_HeadingHold.h"
-// #include "config/pidtuning/PIDTune_BalancePlatform.h" // Add this later!
+#include "config/pidtuning/PIDTune_HeadingHold.h" // For Heading hold during normal driving
+#include "config/pidtuning/PIDTune_BalancePlatform.h" // For Heading Hold on a rotating platform
 
 class PIDPurposeProfileFactory {
 public:
@@ -18,10 +18,15 @@ public:
         );
     }
 
-    // Later, you just add another button to the vending machine:
-    /*
-    static PIDController createPartyTrickPID() {
-        return PIDController(TuningTrick::KP, ...);
+    // A static "vending machine" function to dispense a pre-tuned Balance Platform PID
+    static PIDController createBalancePlatformPID() {
+        return PIDController(
+            TuningBalancePlatform::KP, 
+            TuningBalancePlatform::KI, 
+            TuningBalancePlatform::KD, 
+            TuningBalancePlatform::MAX_INTEGRAL,
+            TuningBalancePlatform::MAX_OUTPUT,
+            TuningBalancePlatform::D_FILTER_CUTOFF_HZ
+        );
     }
-    */
 };

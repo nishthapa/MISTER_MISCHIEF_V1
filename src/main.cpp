@@ -3,6 +3,8 @@
 #include "hal/HCSR04_Sonar.h"         // The Sonar Factory
 #include "hal/XY160D_MotorDriver.h"   // The Motor Factory
 #include "objectproviders/PIDPurposeProfileFactory.h" // The PID Factory
+#include "behaviours/Mode_BalancePlatform.h"
+#include "behaviours/RobotMood.h"
 
 // ==========================================
 // GLOBAL HARDWARE OBJECTS
@@ -17,7 +19,32 @@ XY160D_MotorDriver motors(
     HardwarePins::PIN_MOTOR_RIGHT_REV
 );
 
+// Instantiate the IMU (The Inner Ear)
+MPU6050_IMU imu(
+    HardwarePins::PIN_I2C_SDA, 
+    HardwarePins::PIN_I2C_SCL, 
+    HardwarePins::PIN_IMU_INT, 
+    0x68
+);
+
+// The PID Profiles
 PIDController headingHoldPID = PIDPurposeProfileFactory::createHeadingHoldPID();
+PIDController balancePID = PIDPurposeProfileFactory::createBalancePlatformPID();
+
+// --- Instantiate Balancing on a Platform Mode ---
+Mode_BalancePlatform balanceMode(&imu, &motors, &balancePID);
+
+// --- The Current State Pointers ---
+IRobotMode* activeMode = &balanceMode;
+RobotMood activeMood = Moods::HAPPY;
+
+void ControlLoopTask(void *pvParameters) {
+    for (;;) {
+        // Run the mode with the current mood!
+        activeMode->update(activeMood);
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
 
 // ==========================================
 // INTER-CORE COMMUNICATION (THE BRIDGE)
@@ -81,6 +108,7 @@ void setup() {
   // 1. WAKE UP THE HARDWARE BEFORE STARTING CORES
   frontSonar.init();
   motors.init();
+  imu.init();
   
   Serial.println("Mister Mischief V1 Booting...");
   delay(1000); // Give yourself a second to open the Serial Monitor
