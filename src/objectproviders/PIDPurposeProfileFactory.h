@@ -2,7 +2,8 @@
 
 #include "core/PIDController.h"
 #include "config/pidtuning/PIDTune_HeadingHold.h" // For Heading hold during normal driving
-#include "config/pidtuning/PIDTune_BalancePlatform.h" // For Heading Hold on a rotating platform
+#include "config/pidtuning/PIDTune_CompassLock.h" // For Heading Hold on a rotating platform and act like a compass
+#include "config/pidtuning/PIDTune_DistanceHold.h" // For holding distance from an object (like hand)
 
 class PIDPurposeProfileFactory {
 public:
@@ -18,15 +19,27 @@ public:
         );
     }
 
-    // A static "vending machine" function to dispense a pre-tuned Balance Platform PID
-    static PIDController createBalancePlatformPID() {
+    // A static "vending machine" function to dispense a pre-tuned Compass Lock PID
+    static PIDController createCompassLockPID() {
         return PIDController(
-            TuningBalancePlatform::KP, 
-            TuningBalancePlatform::KI, 
-            TuningBalancePlatform::KD, 
-            TuningBalancePlatform::MAX_INTEGRAL,
-            TuningBalancePlatform::MAX_OUTPUT,
-            TuningBalancePlatform::D_FILTER_CUTOFF_HZ
+            TuningCompassLock::KP, 
+            TuningCompassLock::KI, 
+            TuningCompassLock::KD, 
+            TuningCompassLock::MAX_INTEGRAL,
+            TuningCompassLock::MAX_OUTPUT,
+            TuningCompassLock::D_FILTER_CUTOFF_HZ
+        );
+    }
+
+    // A static "vending machine" function to dispense a pre-tuned Distance Hold PID
+    static PIDController createDistanceHoldPID() {
+        return PIDController(
+            TuningDistanceHold::KP, 
+            TuningDistanceHold::KI, 
+            TuningDistanceHold::KD, 
+            TuningDistanceHold::MAX_INTEGRAL,
+            TuningDistanceHold::MAX_OUTPUT,
+            TuningDistanceHold::D_FILTER_CUTOFF_HZ
         );
     }
 };
