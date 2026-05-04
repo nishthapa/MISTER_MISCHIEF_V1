@@ -6,6 +6,11 @@
 #include "behaviours/Mode_BalancePlatform.h"
 #include "behaviours/RobotMood.h"
 
+// Global variables to track the boot state
+RobotMood activeMood;
+unsigned long coldBootTime = 0;
+bool isGroggyPhase = false;
+
 // ==========================================
 // GLOBAL HARDWARE OBJECTS
 // ==========================================
@@ -56,7 +61,7 @@ volatile float global_frontDistanceCM = -1.0;
 // TASK HANDLES
 // ==========================================
 TaskHandle_t SensorTaskHandle;
-TaskHandle_t MotorTaskHandle;
+TaskHandle_t ControlLoopTaskHandle;
 
 // ==========================================
 // CORE 0: THE SENSOR WATCHDOG
@@ -77,26 +82,34 @@ void SensorTask(void *pvParameters) {
 // ==========================================
 // CORE 1: THE MOTOR CONTROLLER
 // ==========================================
-void MotorTask(void *pvParameters) {
-  for (;;) {
-    // 1. Check global safety variables
-    // If distance is greater than 0 (valid reading) AND less than 20cm (too close!)
-    if (global_frontDistanceCM > 0 && global_frontDistanceCM < 20.0) {
+void ControlLoopTask(void *pvParameters) {
+    for (;;) {
+        // 1. Handle the Groggy Timer (ONLY if we are in a cold boot groggy phase)
+        if (isGroggyPhase) {
+            // Pull the configuration directly from your centralized Moods namespace
+            if (millis() - coldBootTime > Moods::GROGGY_DURATION_MS) {
+                Serial.println("Groggy phase over. Shaking it off!");
+                activeMood = Moods::HAPPY;
+                isGroggyPhase = false; // Lock this out so it doesn't trigger again
+            }
+        } 
+        else {
+            // 2. Normal Dynamic Mood Mixing (Sensor-driven)
+            // If we aren't groggy, allow the Sonar to change our mood
+            if (global_frontDistanceCM > 0 && global_frontDistanceCM < 15.0) {
+                activeMood = Moods::ANGRY; 
+            } else if (global_frontDistanceCM > 50.0) {
+                // activeMood = Moods::SLEEPY;
+            } else {
+                activeMood = Moods::HAPPY;
+            }
+        }
+
+        // 3. Apply the chosen mood to the active mode
+        activeMode->update(activeMood);
         
-        // UNSAFE -> Cut PWM immediately
-        motors.stop();
-        Serial.println("OBSTACLE DETECTED! Emergency Stop.");
-        
-    } else {
-        
-        // SAFE -> Apply PWM to tracks (50% speed forward)
-        motors.drive(50, 50);
-        
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
-    
-    // Run this motor check every 20ms
-    vTaskDelay(pdMS_TO_TICKS(20));
-  }
 }
 
 // ==========================================
@@ -109,6 +122,21 @@ void setup() {
   frontSonar.init();
   motors.init();
   imu.init();
+
+  // Ask the hardware: "Why did we turn on?"
+    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+    if (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED) {
+        // This means someone physically flipped the power switch (Cold Boot)
+        Serial.println("Cold Boot Detected. Waking up groggy...");
+        activeMood = Moods::GROGGY;
+        isGroggyPhase = true;
+        coldBootTime = millis();
+    } else {
+        // This means we woke up from Deep Sleep (e.g., IMU interrupt or BLE)
+        Serial.println("Woke from Deep Sleep! Ready to greet!");
+        activeMood = Moods::HAPPY; 
+        isGroggyPhase = false; // Skip the groggy phase entirely
+    }
   
   Serial.println("Mister Mischief V1 Booting...");
   delay(1000); // Give yourself a second to open the Serial Monitor
@@ -125,12 +153,12 @@ void setup() {
   );
 
   xTaskCreatePinnedToCore(
-    MotorTask,
-    "MotorTask",
+    ControlLoopTask,
+    "ControlLoopTask",
     4096,
     NULL,
     1,
-    &MotorTaskHandle,
+    &ControlLoopTaskHandle,
     1                   // Pin task to Core 1
   );
 }

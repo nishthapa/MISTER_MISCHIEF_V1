@@ -10,6 +10,16 @@ struct RobotMood {
 
 // --- Pre-defined Personalities ---
 namespace Moods {
+
+    constexpr unsigned long GROGGY_DURATION_MS = 10000; // 10 seconds
+
+    // 3. The Pre-defined Profiles
+    constexpr RobotMood GROGGY = {
+        .speedMultiplier = 0.3f,    // Very slow
+        .pidAggression = 0.4f,      // Sluggish balancing
+        .allowJerkyMovements = false
+    };
+    
     constexpr RobotMood HAPPY = {
         .speedMultiplier = 1.0f,
         .pidAggression = 1.0f,
