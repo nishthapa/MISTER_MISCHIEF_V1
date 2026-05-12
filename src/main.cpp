@@ -20,7 +20,6 @@ unsigned long coldBootTime = 0;
 bool isGroggyPhase = false;
 float frustrationLevel = 0.0f;
 
-Mode_ObstacleAvoidance obstacleMode(&motors, &frontSonar, &imu, &compassPID);
 // ...
 float lastDistance = -1.0f; // Track distance for delta calculations
 
@@ -46,11 +45,14 @@ MPU6050_IMU imu(
 );
 
 // The PID Profiles
+
 PIDController headingHoldPID = PIDPurposeProfileFactory::createHeadingHoldPID();
 PIDController compassPID = PIDPurposeProfileFactory::createCompassLockPID();
 PIDController distancePID = PIDPurposeProfileFactory::createDistanceHoldPID();
+PIDController obstacleAvoidancePID = PIDPurposeProfileFactory::createObstacleAvoidancePID(); // Using a dedicated PID for obstacle avoidance
 
 // --- Instantiate Balancing on a Platform Mode ---
+Mode_ObstacleAvoidance obstacleMode(&motors, &frontSonar, &imu, &obstacleAvoidancePID);
 Mode_NormalDriving normalMode(&motors); // The new default mode
 Mode_CompassLock compassMode(&imu, &motors, &compassPID);
 Mode_MaintainDistance distanceMode(&frontSonar, &motors, &distancePID);
@@ -59,7 +61,7 @@ Mode_DeepSleep sleepMode(&motors);
 
 // --- The Current State Pointers ---
 IRobotMode* activeMode = &compassMode;
-RobotMood activeMood = Moods::HAPPY;
+//activeMood = Moods::HAPPY;
 
 // State tracking
 unsigned long dizzyStartTime = 0;
