@@ -15,6 +15,8 @@ private:
     int intPin;         // Changed from enPin to intPin
     uint8_t deviceAddr; // Now populated dynamically
 
+    FusedAngles lastKnownAngles = {0, 0, 0}; // Memory for the last valid reading
+
 public:
     // Dependency Injection: Pass the blueprint pins through the constructor
     // Constructor now takes the EN pin and the registered I2C Address

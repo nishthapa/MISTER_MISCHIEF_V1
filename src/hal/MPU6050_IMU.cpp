@@ -5,7 +5,7 @@
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 
-constexpr uint32_t I2C_COMM_FREQUENCY = 400000; // 400kHz I2C for fast DMP packet transfers
+constexpr uint32_t I2C_COMM_FREQUENCY = 100000; // 100kHz I2C for fast DMP packet transfers and perfboard stability
 
 // These are baseline offsets. We will calibrate these specifically for our chip later (16-bit signed integers)
 constexpr int16_t DEFAULT_XGYRO_OFFSET = 0;
@@ -81,21 +81,21 @@ bool MPU6050_IMU::isDataReady() {
 }
 
 FusedAngles MPU6050_IMU::getAngles() {
-    FusedAngles angles = {0, 0, 0};
-
-    // Safely pull the latest pre-calculated packet from the DMP's FIFO buffer
+    // REMOVE the isDataReady() check completely!
+    // Let the library directly manage and flush the FIFO buffer.
+    
     if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
         
-        // Let the 3rd-party library do the intense 3D quaternion math
         mpu.dmpGetQuaternion(&q, fifoBuffer);
         mpu.dmpGetGravity(&gravity, &q);
         mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 
-        // Convert the output from Radians to Degrees for easy human reading / PID tuning
-        angles.yaw   = ypr[ATTITUDE_YAW_INDEX] * 180 / M_PI;
-        angles.pitch = ypr[ATTITUDE_PITCH_INDEX] * 180 / M_PI;
-        angles.roll  = ypr[ATTITUDE_ROLL_INDEX] * 180 / M_PI;
+        // Update our internal memory
+        lastKnownAngles.yaw   = ypr[ATTITUDE_YAW_INDEX] * 180 / M_PI;
+        lastKnownAngles.pitch = ypr[ATTITUDE_PITCH_INDEX] * 180 / M_PI;
+        lastKnownAngles.roll  = ypr[ATTITUDE_ROLL_INDEX] * 180 / M_PI;
     }
     
-    return angles;
+    // Return the freshest memory
+    return lastKnownAngles;
 }
