@@ -11,7 +11,7 @@ void Mode_CompassLock::onEnter() {
     // 1. Take the Snapshot! 
     // The exact moment you pick him up, remember where he is looking.
     targetYaw = imu->getAngles().yaw;
-    Serial.printf("Compass Lock engaged! Locking heading to: %.1f degrees\n", targetYaw);
+    logger.printf("Compass Lock engaged! Locking heading to: %.1f degrees\n", targetYaw);
     logger.printf("Compass Lock engaged! Locking heading to: %.1f degrees\n", targetYaw);
 }
 
@@ -38,7 +38,7 @@ void Mode_CompassLock::update(const RobotMood& currentMood) {
 }
 
 void Mode_CompassLock::onExit() {
-    Serial.println("Compass Lock disengaged. Returning to normal.");
+    logger.println("Compass Lock disengaged. Returning to normal.");
     logger.println("Compass Lock disengaged. Returning to normal.");
     motors->stop();
 }

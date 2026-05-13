@@ -201,7 +201,6 @@ void ControlLoopTask(void *pvParameters) {
         // 3B. The Physical Override (Grogginess masks the underlying emotion)
         if (isGroggyPhase) {
             if (millis() - coldBootTime > Moods::GROGGY_DURATION_MS) {
-                Serial.println("Groggy phase over. Mask dropped!");
                 logger.println("Groggy phase over. Mask dropped!");
                 isGroggyPhase = false; // Lock this out
                 // Notice we DON'T force activeMood = HAPPY here anymore!
@@ -270,7 +269,7 @@ void SensorTask(void *pvParameters) {
     global_frontDistanceCM = frontSonar.getDistanceCM();
     
     // Print the distance to the Serial Monitor so you can verify it
-    // Serial.printf("Sonar Distance: %.1f cm\n", global_frontDistanceCM);
+    // logger.printf("Sonar Distance: %.1f cm\n", global_frontDistanceCM);
     // logger.printf("Sonar Distance: %.1f cm\n", global_frontDistanceCM);
 
     // 2. TRANSMIT TELEMETRY
@@ -290,43 +289,44 @@ void SensorTask(void *pvParameters) {
 // SETUP: INITIALIZE HARDWARE & SCHEDULER
 // ==========================================
 void setup() {
-  // USB HARDWARE POWER CONTROL
-  // We check the bitmask directly. If USB is needed, turn the hardware on first!
-  if (DebugConfig::ACTIVE_DEBUG_MODE & DebugConfig::DEBUG_USB) {
-      Serial.begin(115200);
-      delay(3000); // Wait 3 seconds for PC to connect
-  }
+  // 1. BOOT THE LOGGER CORE (Starts Serial if requested)
+  logger.beginSerial();
 
-  // Initialize radios (wifi/bluetooth) based on config file
+  // 2. BOOT RADIOS 
   RadioManager::initRadios();
   
-  // Start the logging (Attach the Telemetry)
-  logger.init();
+  // 3. BIND TELEMETRY (Opens Telnet/BLE)
+  logger.bindRadios();
+
+  // === THE FIX: HARDWARE WAKE-UP DELAY ===
+  // Give the Mini560 power bus and the MPU6050 silicon half a second to fully stabilize 
+  // before we start interrogating them over I2C.
+  delay(500);
   
-  // 1. WAKE UP THE HARDWARE BEFORE STARTING CORES
+  // 4. WAKE UP THE HARDWARE
   frontSonar.init();
   motors.init();
-  imu.init(); // commented out for testing without the IMU, but remember to re-enable for the full experience!
+  imu.init();
 
   // Ask the hardware: "Why did we turn on?"
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     if (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED) {
         // This means someone physically flipped the power switch (Cold Boot)
-        Serial.println("Cold Boot Detected. Waking up groggy...");
         logger.println("Cold Boot Detected. Waking up groggy...");
+        //logger.println("Cold Boot Detected. Waking up groggy...");
         activeMood = Moods::GROGGY;
         isGroggyPhase = true;
         coldBootTime = millis();
     } else {
         // This means we woke up from Deep Sleep (e.g., IMU interrupt or BLE)
-        Serial.println("Woke from Deep Sleep! Ready to greet!");
         logger.println("Woke from Deep Sleep! Ready to greet!");
+        //logger.println("Woke from Deep Sleep! Ready to greet!");
         activeMood = Moods::HAPPY; 
         isGroggyPhase = false; // Skip the groggy phase entirely
     }
   
-  Serial.println("Mister Mischief V1 Booting...");
   logger.println("Mister Mischief V1 Booting...");
+  //logger.println("Mister Mischief V1 Booting...");
   delay(1000); // Give yourself a second to open the Serial Monitor
 
   // 2. Pin Tasks to Cores

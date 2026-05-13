@@ -1,14 +1,22 @@
 #include "utils/RemoteLogger.h"
 #include "config/DebugConfig.h"
-#include "utils/RadioManager.h" // <-- The Logger now talks to the Radio Manager
+#include "utils/RadioManager.h" 
 
 RemoteLogger::RemoteLogger(int port) : telnetServer(port), currentMode(0), isBluetoothConnected(false) {}
 
-void RemoteLogger::init() { // <-- Notice we don't need to pass SSID/Password anymore!
+void RemoteLogger::beginSerial() {
+    // Grab the intended mode instantly on boot
     currentMode = DebugConfig::ACTIVE_DEBUG_MODE;
 
+    // Boot USB instantly so other classes can use logger.print during setup!
+    if (currentMode & DebugConfig::DEBUG_USB) {
+        Serial.begin(115200);
+        delay(3000); // Give VS Code / Native USB time to connect
+    }
+}
+
+void RemoteLogger::bindRadios() { 
     // 1. SILENT FALLBACK EVALUATION
-    // The logger asks the RadioManager if the physical pipes are actually open
     if ((currentMode & DebugConfig::DEBUG_WIFI) && !RadioManager::isWiFiReady()) {
         currentMode &= ~DebugConfig::DEBUG_WIFI;
         currentMode |= DebugConfig::DEBUG_USB;   
@@ -18,11 +26,8 @@ void RemoteLogger::init() { // <-- Notice we don't need to pass SSID/Password an
         currentMode |= DebugConfig::DEBUG_USB;   
     }
 
-    // 2. BOOT USB (If requested or fallback triggered)
+    // 2. PRINT BOOT BANNER 
     if (currentMode & DebugConfig::DEBUG_USB) {
-        // Serial.begin(115200);
-        // now handled in main.cpp setup() to ensure it's ready for the boot report
-        // delay(500);
         Serial.println("=== TELEMETRY ROUTER ONLINE ===");
         Serial.println("[USB] ONLINE");
         
@@ -39,29 +44,30 @@ void RemoteLogger::init() { // <-- Notice we don't need to pass SSID/Password an
 
     if (currentMode == DebugConfig::DEBUG_OFF) return;
 
-    // 3. ATTACH TO RADIOS (We don't boot them, we just attach our sockets to them!)
+    // 3. ATTACH TO RADIOS
     if (currentMode & DebugConfig::DEBUG_WIFI) {
         telnetServer.begin();
         if (currentMode & DebugConfig::DEBUG_USB) {
             Serial.println("WIFI: Telnet Socket Open (Port 23)");
         }
     }
-
-    if (currentMode & DebugConfig::DEBUG_BLUETOOTH) {
-        // bleTxCharacteristic = ... attach to existing BLE server ...
-    }
 }
 
 void RemoteLogger::handleClient() {
-    // Master Kill Switch
     if (currentMode == DebugConfig::DEBUG_OFF) return;
 
-    // Handle WiFi Client Connections
     if (currentMode & DebugConfig::DEBUG_WIFI) {
         if (telnetServer.hasClient()) {
             if (!activeClient || !activeClient.connected()) {
                 if (activeClient) activeClient.stop();
+                
                 activeClient = telnetServer.available();
+                
+                // === THE ZERO-LAG FIX ===
+                // This disables Nagle's Algorithm, forcing the router to transmit
+                // telemetry instantly instead of buffering it into chunks.
+                activeClient.setNoDelay(true); 
+
                 if (currentMode & DebugConfig::DEBUG_USB) {
                     Serial.println("\n[SYSTEM] WiFi Client Connected!\n");
                 }
@@ -70,39 +76,39 @@ void RemoteLogger::handleClient() {
             }
         }
     }
-
-    // Handle Bluetooth Client Connections (Pseudo-code update based on BLE callbacks)
-    // if (currentMode & DebugConfig::DEBUG_BLUETOOTH) {
-    //     isBluetoothConnected = BLEServer->getConnectedCount() > 0;
-    // }
 }
 
 // ========================================================
-// THE NEW MIDDLEWARE SANITIZER
+// THE NEW MIDDLEWARE SANITIZER (Network Optimized)
 // ========================================================
 void sendSanitizedToTelnet(WiFiClient& client, const char* text) {
+    String sanitized = "";
+    sanitized.reserve(128); // Pre-allocate RAM to prevent fragmentation
     char lastChar = '\0';
+    
+    // Build the packet entirely in fast memory
     while (*text) {
-        // If we hit a newline, and the character before it WAS NOT a carriage return...
-        if (*text == '\n' && lastChar != '\r') {
-            client.print('\r'); // Inject the missing Carriage Return!
-        }
-        client.print(*text);
+        if (*text == '\n' && lastChar != '\r') sanitized += '\r';
+        sanitized += *text;
         lastChar = *text;
         text++;
     }
+    
+    // Blast the entire string across the network in ONE packet
+    client.print(sanitized); 
+    client.flush(); // Force immediate network transmission
 }
 // ========================================================
 
 void RemoteLogger::print(const char* message) {
     if (currentMode == DebugConfig::DEBUG_OFF) return;
 
-    if (currentMode & DebugConfig::DEBUG_USB) {
+    // THE FIX: Only print to USB if a cable is plugged in AND a terminal is listening
+    if ((currentMode & DebugConfig::DEBUG_USB) && Serial) {
         Serial.print(message);
     }
     
     if ((currentMode & DebugConfig::DEBUG_WIFI) && activeClient && activeClient.connected()) {
-        // Route through our new sanitizer!
         sendSanitizedToTelnet(activeClient, message);
     }
 
@@ -115,13 +121,12 @@ void RemoteLogger::print(const char* message) {
 void RemoteLogger::println(const char* message) {
     if (currentMode == DebugConfig::DEBUG_OFF) return;
 
-    if (currentMode & DebugConfig::DEBUG_USB) {
+    // THE FIX: Check the physical connection first
+    if ((currentMode & DebugConfig::DEBUG_USB) && Serial) {
         Serial.println(message);
     }
     
     if ((currentMode & DebugConfig::DEBUG_WIFI) && activeClient && activeClient.connected()) {
-        // Fun Fact: println() naturally sends \r\n under the hood, 
-        // so we don't need to sanitize this one!
         activeClient.println(message);
     }
 
@@ -142,12 +147,12 @@ void RemoteLogger::printf(const char* format, ...) {
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    if (currentMode & DebugConfig::DEBUG_USB) {
+    // THE FIX: Check the physical connection first
+    if ((currentMode & DebugConfig::DEBUG_USB) && Serial) {
         Serial.print(buffer);
     }
     
     if ((currentMode & DebugConfig::DEBUG_WIFI) && activeClient && activeClient.connected()) {
-        // Route the formatted buffer through our sanitizer!
         sendSanitizedToTelnet(activeClient, buffer);
     }
 

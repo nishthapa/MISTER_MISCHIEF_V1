@@ -17,8 +17,11 @@ private:
 public:
     RemoteLogger(int port);
     
-    // Connects to the requested infrastructure and prints the boot report
-    void init();
+    // Stage 1: Boots the physical USB serial port instantly
+    void beginSerial();
+    
+    // Stage 2: Connects to the requested infrastructure and prints the boot report
+    void bindRadios();
     
     // Checks for new incoming PC/Phone connections
     void handleClient();
