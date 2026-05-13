@@ -4,6 +4,7 @@
 #include "config/pidtuning/PIDTune_HeadingHold.h" // For Heading hold during normal driving
 #include "config/pidtuning/PIDTune_CompassLock.h" // For Heading Hold on a rotating platform and act like a compass
 #include "config/pidtuning/PIDTune_DistanceHold.h" // For holding distance from an object (like hand)
+#include "config/pidtuning/PIDTune_ObstacleAvoidanceNewPathScanSweep.h" // For the radial pathfinding scan after an obstacle is detected
 
 class PIDPurposeProfileFactory {
 public:
@@ -40,6 +41,18 @@ public:
             TuningDistanceHold::MAX_INTEGRAL,
             TuningDistanceHold::MAX_OUTPUT,
             TuningDistanceHold::D_FILTER_CUTOFF_HZ
+        );
+    }
+
+    // A static "vending machine" function to dispense a pre-tuned Obstacle Avoidance New Path Scan Sweep PID
+    static PIDController createObstacleAvoidanceNewPathScanSweepPID() {
+        return PIDController(
+            TuningObstacleAvoidanceNewPathScanSweep::KP, 
+            TuningObstacleAvoidanceNewPathScanSweep::KI, 
+            TuningObstacleAvoidanceNewPathScanSweep::KD, 
+            TuningObstacleAvoidanceNewPathScanSweep::MAX_INTEGRAL,
+            TuningObstacleAvoidanceNewPathScanSweep::MAX_OUTPUT,
+            TuningObstacleAvoidanceNewPathScanSweep::D_FILTER_CUTOFF_HZ
         );
     }
 };

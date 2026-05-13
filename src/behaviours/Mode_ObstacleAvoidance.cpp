@@ -1,5 +1,6 @@
 #include "behaviours/Mode_ObstacleAvoidance.h"
 #include <Arduino.h>
+#include "utils/RemoteLogger.h" // For logging the radar sweep results and chosen escape path
 
 Mode_ObstacleAvoidance::Mode_ObstacleAvoidance(XY160D_MotorDriver* m, HCSR04_Sonar* s, MPU6050_IMU* i, PIDController* p) {
     motors = m; sonar = s; imu = i; alignPID = p;
@@ -20,6 +21,7 @@ float Mode_ObstacleAvoidance::getShortestAngle(float target, float current) {
 
 void Mode_ObstacleAvoidance::onEnter() {
     Serial.println("Obstacle! Initiating Radial Sweep...");
+    logger.println("Obstacle! Initiating Radial Sweep...");
     pingCount = 0;
     lastPingTime = millis();
     entryHeading = imu->getAngles().yaw; // Take a snapshot of the direction we were travelling
@@ -64,14 +66,17 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
                     if (pointCloud[i].distance <= 0.0f) continue;
 
                     // 3. THE PENALTY MATH (Ping-Pong Prevention)
-                    // How far backward is this angle? (0 = straight ahead, 180 = directly behind)
+                    // Calculate how far off-center this angle is (0 to 180 degrees)
                     float deviation = abs(getShortestAngle(pointCloud[i].heading, entryHeading));
                     
-                    // We severely penalize going backward. 
-                    // Formula: $Score = Distance \times (1 - \frac{Deviation}{360})$
-                    // A path 180 degrees behind him gets its perceived distance cut in half!
-                    float penalty = 1.0f - (deviation / 360.0f); 
-                    float score = pointCloud[i].distance * penalty;
+                    // The Aggressive Base Penalty (0° = 1.0, 90° = 0.5, 180° = 0.0)
+                    float basePenalty = 1.0f - (deviation / 180.0f); 
+
+                    // Square it to brutally punish backward angles!
+                    // (e.g., a 150° turn gets its distance multiplied by a tiny 0.027)
+                    float aggressivePenalty = basePenalty * basePenalty; 
+
+                    float score = pointCloud[i].distance * aggressivePenalty;
 
                     if (score > bestScore) {
                         bestScore = score;
@@ -79,6 +84,7 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
                     }
                 }
                 Serial.printf("Best path found at %.1f degrees. Aligning...\n", bestEscapeHeading);
+                logger.printf("Best path found at %.1f degrees. Aligning...\n", bestEscapeHeading);
                 changeState(ALIGNING);
             }
             break;

@@ -1,6 +1,7 @@
 #include "behaviours/Mode_DeepSleep.h"
 #include "config/PinConfig.h" // Needed to know which pin the IMU uses
 #include <Arduino.h>
+#include "utils/RemoteLogger.h" // <-- ADD THIS INCLUDE
 #include <esp_sleep.h> // For the ESP sleep commands
 
 Mode_DeepSleep::Mode_DeepSleep(XY160D_MotorDriver* m) {
@@ -9,6 +10,7 @@ Mode_DeepSleep::Mode_DeepSleep(XY160D_MotorDriver* m) {
 
 void Mode_DeepSleep::onEnter() {
     Serial.println("Entering Ultra Low Power Mode...");
+    logger.println("Entering Ultra Low Power Mode...");
     motors->stop();
 
     // 1. Tell the ESP32 to wake up if the IMU INT pin goes HIGH (someone tapped the robot)

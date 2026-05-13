@@ -14,14 +14,29 @@
 #include "behaviours/Mode_DeepSleep.h"
 #include "behaviours/RobotMood.h"
 
+#include "config/WiFiConfig.h"
+#include "utils/RadioManager.h"
+#include "utils/RemoteLogger.h"
+#include "config/DebugConfig.h" // only to check if USB debugging is enabled for the boot report
+
+RemoteLogger logger(NetworkConfig::TELNET_PORT); // For remote telemetry / serial monitor over WiFi (Telnet)
+
 // Global variables to track the boot state
 RobotMood activeMood;
 unsigned long coldBootTime = 0;
 bool isGroggyPhase = false;
 float frustrationLevel = 0.0f;
 
-// ...
 float lastDistance = -1.0f; // Track distance for delta calculations
+
+// ==========================================
+// INTER-CORE COMMUNICATION (THE BRIDGE)
+// ==========================================
+// "volatile" warns the compiler that Core 0 and Core 1 are both touching this.
+volatile float global_frontDistanceCM = -1.0;
+volatile float global_yaw = 0.0;
+volatile float global_pitch = 0.0;
+volatile float global_roll = 0.0;
 
 // ==========================================
 // GLOBAL HARDWARE OBJECTS
@@ -49,12 +64,11 @@ MPU6050_IMU imu(
 PIDController headingHoldPID = PIDPurposeProfileFactory::createHeadingHoldPID();
 PIDController compassPID = PIDPurposeProfileFactory::createCompassLockPID();
 PIDController distancePID = PIDPurposeProfileFactory::createDistanceHoldPID();
-PIDController obstacleAvoidancePID = PIDPurposeProfileFactory::createObstacleAvoidancePID(); // Using a dedicated PID for obstacle avoidance
+PIDController obstacleAvoidancePID = PIDPurposeProfileFactory::createObstacleAvoidanceNewPathScanSweepPID(); // Using a dedicated PID for obstacle avoidance
 
-// --- Instantiate Balancing on a Platform Mode ---
 Mode_ObstacleAvoidance obstacleMode(&motors, &frontSonar, &imu, &obstacleAvoidancePID);
 Mode_NormalDriving normalMode(&motors); // The new default mode
-Mode_CompassLock compassMode(&imu, &motors, &compassPID);
+Mode_CompassLock compassMode(&imu, &motors, &compassPID); // --- Instantiate Balancing on a Platform Mode ---
 Mode_MaintainDistance distanceMode(&frontSonar, &motors, &distancePID);
 Mode_Dizzy dizzyMode(&motors);
 Mode_DeepSleep sleepMode(&motors);
@@ -68,14 +82,20 @@ unsigned long dizzyStartTime = 0;
 bool isDizzy = false;
 FusedAngles lastAngles = {0, 0, 0};
 
-
 // ==========================================
 // CORE 1: THE MAIN CONTROL LOOP
 // ==========================================
 void ControlLoopTask(void *pvParameters) { 
     IRobotMode* previousMode = nullptr; // To track mode changes for onEnter/onExit
     for (;;) {
-        FusedAngles currentAngles = imu.getAngles();
+        FusedAngles currentAngles = imu.getAngles(); // Commented out for testing without the IMU, but remember to re-enable for the full experience!
+        // FusedAngles currentAngles = {0, 0, 0}; // Dummy angles for testing without the IMU
+        
+        // UPDATE THE BRIDGE FOR TELEMETRY
+        global_yaw = currentAngles.yaw;
+        global_pitch = currentAngles.pitch;
+        global_roll = currentAngles.roll;
+
         float distance = frontSonar.getDistanceCM();
 
         // ==========================================
@@ -182,6 +202,7 @@ void ControlLoopTask(void *pvParameters) {
         if (isGroggyPhase) {
             if (millis() - coldBootTime > Moods::GROGGY_DURATION_MS) {
                 Serial.println("Groggy phase over. Mask dropped!");
+                logger.println("Groggy phase over. Mask dropped!");
                 isGroggyPhase = false; // Lock this out
                 // Notice we DON'T force activeMood = HAPPY here anymore!
                 // If you teased him while he was waking up, his base emotion is already ANGRY!
@@ -232,12 +253,6 @@ void ControlLoopTask(void *pvParameters) {
 }
 
 // ==========================================
-// INTER-CORE COMMUNICATION (THE BRIDGE)
-// ==========================================
-// "volatile" warns the compiler that Core 0 and Core 1 are both touching this.
-volatile float global_frontDistanceCM = -1.0;
-
-// ==========================================
 // TASK HANDLES
 // ==========================================
 TaskHandle_t SensorTaskHandle;
@@ -248,11 +263,23 @@ TaskHandle_t ControlLoopTaskHandle;
 // ==========================================
 void SensorTask(void *pvParameters) {
   for (;;) {
+    // Keep the TCP socket alive and check for PC connections
+    logger.handleClient();
+
     // 1. Ping the HC-SR04
     global_frontDistanceCM = frontSonar.getDistanceCM();
     
     // Print the distance to the Serial Monitor so you can verify it
-    Serial.printf("Sonar Distance: %.1f cm\n", global_frontDistanceCM);
+    // Serial.printf("Sonar Distance: %.1f cm\n", global_frontDistanceCM);
+    // logger.printf("Sonar Distance: %.1f cm\n", global_frontDistanceCM);
+
+    // 2. TRANSMIT TELEMETRY
+    // Print the Distance AND the IMU Angles!
+    logger.printf("Sonar: %.1f cm | Y: %5.1f | P: %5.1f | R: %5.1f\n", 
+                  global_frontDistanceCM, 
+                  global_yaw, 
+                  global_pitch, 
+                  global_roll);
     
     // FreeRTOS delay: Wait 50ms before pinging again to prevent acoustic echoes from overlapping
     vTaskDelay(pdMS_TO_TICKS(50)); 
@@ -263,29 +290,43 @@ void SensorTask(void *pvParameters) {
 // SETUP: INITIALIZE HARDWARE & SCHEDULER
 // ==========================================
 void setup() {
-  Serial.begin(115200);
+  // USB HARDWARE POWER CONTROL
+  // We check the bitmask directly. If USB is needed, turn the hardware on first!
+  if (DebugConfig::ACTIVE_DEBUG_MODE & DebugConfig::DEBUG_USB) {
+      Serial.begin(115200);
+      delay(3000); // Wait 3 seconds for PC to connect
+  }
+
+  // Initialize radios (wifi/bluetooth) based on config file
+  RadioManager::initRadios();
+  
+  // Start the logging (Attach the Telemetry)
+  logger.init();
   
   // 1. WAKE UP THE HARDWARE BEFORE STARTING CORES
   frontSonar.init();
   motors.init();
-  imu.init();
+  imu.init(); // commented out for testing without the IMU, but remember to re-enable for the full experience!
 
   // Ask the hardware: "Why did we turn on?"
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     if (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED) {
         // This means someone physically flipped the power switch (Cold Boot)
         Serial.println("Cold Boot Detected. Waking up groggy...");
+        logger.println("Cold Boot Detected. Waking up groggy...");
         activeMood = Moods::GROGGY;
         isGroggyPhase = true;
         coldBootTime = millis();
     } else {
         // This means we woke up from Deep Sleep (e.g., IMU interrupt or BLE)
         Serial.println("Woke from Deep Sleep! Ready to greet!");
+        logger.println("Woke from Deep Sleep! Ready to greet!");
         activeMood = Moods::HAPPY; 
         isGroggyPhase = false; // Skip the groggy phase entirely
     }
   
   Serial.println("Mister Mischief V1 Booting...");
+  logger.println("Mister Mischief V1 Booting...");
   delay(1000); // Give yourself a second to open the Serial Monitor
 
   // 2. Pin Tasks to Cores

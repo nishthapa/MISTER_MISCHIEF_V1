@@ -1,5 +1,6 @@
 #include "behaviours/Mode_NormalDriving.h"
 #include "config/PersonalityConfig.h" // For the default cruising speed constant
+#include "utils/RemoteLogger.h" // For logging when we enter normal driving mode
 #include <Arduino.h>
 
 Mode_NormalDriving::Mode_NormalDriving(XY160D_MotorDriver* m) {
@@ -8,6 +9,7 @@ Mode_NormalDriving::Mode_NormalDriving(XY160D_MotorDriver* m) {
 
 void Mode_NormalDriving::onEnter() {
     Serial.println("Cruising in Normal Driving Mode...");
+    logger.println("Cruising in Normal Driving Mode...");
 }
 
 void Mode_NormalDriving::update(const RobotMood& currentMood) {
