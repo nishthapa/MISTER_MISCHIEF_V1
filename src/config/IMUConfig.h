@@ -9,7 +9,7 @@ namespace IMUConfig {
         IMU_MPU9250 // For later! // Has Compass
     };
 
-    // 1. SELECT YOUR HARDWARE
+    // 1. SELECT YOUR IMU HARDWARE
     constexpr IMUModel SELECTED_IMU = IMU_MPU6050;
 
     // ==========================================
@@ -31,5 +31,5 @@ namespace IMUConfig {
     // 0.98 means: Trust the Gyroscope 98% of the time (smooth but drifts),
     // and trust the Accelerometer 2% of the time (noisy but knows exactly where gravity is).
     //constexpr float COMP_FILTER_ALPHA = 0.98f;
-    constexpr float MADGWICK_BETA = 0.04f; // Lowered to kill the twitching!
+    constexpr float MADGWICK_BETA = 0.04f; // governs how much to trust the accelerometer // Lowered to kill the twitching!
 }

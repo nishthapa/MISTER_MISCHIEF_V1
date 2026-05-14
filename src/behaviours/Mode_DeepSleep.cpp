@@ -9,7 +9,6 @@ Mode_DeepSleep::Mode_DeepSleep(XY160D_MotorDriver* m) {
 }
 
 void Mode_DeepSleep::onEnter() {
-    Serial.println("Entering Ultra Low Power Mode...");
     logger.println("Entering Ultra Low Power Mode...");
     motors->stop();
 

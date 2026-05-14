@@ -8,8 +8,7 @@ Mode_NormalDriving::Mode_NormalDriving(XY160D_MotorDriver* m) {
 }
 
 void Mode_NormalDriving::onEnter() {
-    Serial.println("Cruising in Normal Driving Mode...");
-    logger.println("Cruising in Normal Driving Mode...");
+    logger.println("Mister Mischief is cruising in Normal Driving Mode...");
 }
 
 void Mode_NormalDriving::update(const RobotMood& currentMood) {

@@ -20,8 +20,7 @@ float Mode_ObstacleAvoidance::getShortestAngle(float target, float current) {
 }
 
 void Mode_ObstacleAvoidance::onEnter() {
-    Serial.println("Obstacle! Initiating Radial Sweep...");
-    logger.println("Obstacle! Initiating Radial Sweep...");
+    logger.println("Mister Mischief has encountered an obstacle! Initiating Radial Sweep...");
     pingCount = 0;
     lastPingTime = millis();
     entryHeading = imu->getAngles().yaw; // Take a snapshot of the direction we were travelling
@@ -83,7 +82,6 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
                         bestEscapeHeading = pointCloud[i].heading;
                     }
                 }
-                Serial.printf("Best path found at %.1f degrees. Aligning...\n", bestEscapeHeading);
                 logger.printf("Best path found at %.1f degrees. Aligning...\n", bestEscapeHeading);
                 changeState(ALIGNING);
             }

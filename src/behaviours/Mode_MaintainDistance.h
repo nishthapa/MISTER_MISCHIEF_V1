@@ -17,7 +17,7 @@ public:
     Mode_MaintainDistance(HCSR04_Sonar* s, XY160D_MotorDriver* m, PIDController* p);
 
     // The Contract
-    void onEnter() override {} // Nothing special needed on boot
+    void onEnter() override; // Nothing special needed on boot
     void update(const RobotMood& currentMood) override;
     void onExit() override { motors->stop(); } // Safety stop when leaving this mode
 };

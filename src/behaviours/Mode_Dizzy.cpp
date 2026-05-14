@@ -1,8 +1,13 @@
 #include "behaviours/Mode_Dizzy.h"
 #include <Arduino.h>
+#include "utils/RemoteLogger.h"
 
 Mode_Dizzy::Mode_Dizzy(XY160D_MotorDriver* m) {
     motors = m;
+}
+
+void Mode_Dizzy::onEnter() {
+    logger.println("Mister Mischief is dizzy!");
 }
 
 void Mode_Dizzy::update(const RobotMood& currentMood) {

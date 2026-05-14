@@ -13,7 +13,7 @@ public:
     Mode_Dizzy(XY160D_MotorDriver* m);
 
     // The Contract
-    void onEnter() override {} 
+    void onEnter() override;
     void update(const RobotMood& currentMood) override;
     void onExit() override { motors->stop(); } // Safety stop when he shakes the dizziness off
 };

@@ -18,6 +18,28 @@ constexpr uint8_t ATTITUDE_YAW_INDEX = 0;
 constexpr uint8_t ATTITUDE_PITCH_INDEX = 1;
 constexpr uint8_t ATTITUDE_ROLL_INDEX = 2;
 
+/* <pre>
+ *          |   ACCELEROMETER    |           GYROSCOPE
+ * DLPF_CFG | Bandwidth | Delay  | Bandwidth | Delay  | Sample Rate
+ * ---------+-----------+--------+-----------+--------+-------------
+ * 0        | 260Hz     | 0ms    | 256Hz     | 0.98ms | 8kHz
+ * 1        | 184Hz     | 2.0ms  | 188Hz     | 1.9ms  | 1kHz
+ * 2        | 94Hz      | 3.0ms  | 98Hz      | 2.8ms  | 1kHz
+ * 3        | 44Hz      | 4.9ms  | 42Hz      | 4.8ms  | 1kHz
+ * 4        | 21Hz      | 8.5ms  | 20Hz      | 8.3ms  | 1kHz
+ * 5        | 10Hz      | 13.8ms | 10Hz      | 13.4ms | 1kHz
+ * 6        | 5Hz       | 19.0ms | 5Hz       | 18.6ms | 1kHz
+ * 7        |   -- Reserved --   |   -- Reserved --   | Reserved
+ * </pre>
+ */
+// Gyro LPF settings (Mechanical Vibration Filter)
+// 0 = 260Hz (Jittery), 3 = 42Hz (Smooth), 4 = 20Hz (Buttery
+constexpr uint8_t IMU_GYRO_LOW_PASS_FILTER_260HZ = 0;
+constexpr uint8_t IMU_GYRO_LOW_PASS_FILTER_188HZ = 1;
+constexpr uint8_t IMU_GYRO_LOW_PASS_FILTER_98HZ = 2;
+constexpr uint8_t IMU_GYRO_LOW_PASS_FILTER_42HZ = 3;
+constexpr uint8_t IMU_GYRO_LOW_PASS_FILTER_20HZ = 4;
+
 MPU6050 mpu;
 
 // DMP memory
@@ -101,7 +123,8 @@ bool MPU6050_IMU::init() {
         // The DMP used to do this automatically. We must manually tell the MPU6050
         // to filter out high-frequency mechanical chassis vibrations.
         // 0 = 260Hz (Jittery), 3 = 42Hz (Smooth), 4 = 20Hz (Buttery)
-        mpu.setDLPFMode(4);
+        // mpu.setDLPFMode(4);
+        mpu.setDLPFMode(IMU_GYRO_LOW_PASS_FILTER_20HZ);
 
         // NOTE: Manual offset clears removed here to preserve the MPU6050's hardware factory trim!
 

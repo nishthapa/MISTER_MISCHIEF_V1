@@ -1,8 +1,13 @@
 #include "behaviours/Mode_MaintainDistance.h"
-
+#include "utils/RemoteLogger.h"
 Mode_MaintainDistance::Mode_MaintainDistance(HCSR04_Sonar* s, XY160D_MotorDriver* m, PIDController* p) {
     sonar = s; motors = m; pid = p;
 }
+
+void Mode_MaintainDistance::onEnter() {
+    logger.println("Mister Mischief is maintaining distance!");
+}
+
 
 void Mode_MaintainDistance::update(const RobotMood& currentMood) {
     float currentDistance = sonar->getDistanceCM();
