@@ -16,6 +16,11 @@ class I_IMU {
 public:
     virtual bool init() = 0;
     virtual FusedAngles getAngles() = 0;
+
+    // === THE CLI CALIBRATION API ===
+    virtual void calibrateGyro() = 0;
+    virtual void calibrateAccel() = 0;
+    virtual void calibrateMag() = 0; // Magnetometer (Compass)
     
     // Virtual destructor for safe cleanup
     virtual ~I_IMU() {} 

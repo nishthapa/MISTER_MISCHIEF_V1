@@ -18,6 +18,7 @@ constexpr uint8_t ATTITUDE_YAW_INDEX = 0;
 constexpr uint8_t ATTITUDE_PITCH_INDEX = 1;
 constexpr uint8_t ATTITUDE_ROLL_INDEX = 2;
 
+// extern MPU6050 mpu;
 MPU6050 mpu;
 
 // DMP memory
@@ -29,9 +30,11 @@ float ypr[3];
 MPU6050_IMU::MPU6050_IMU(int sda, int scl, int interruptPin, uint8_t address) {
     sdaPin = sda; sclPin = scl; intPin = interruptPin; deviceAddr = address;
     
-    // Initialize our placeholder compass data
-    lastKnownAngles.hasCompass = false;
+    // Initialize our compass data
+    lastKnownAngles.hasCompass = IMUConfig::HAS_COMPASS;
     lastKnownAngles.compassHeading = 0.0f;
+
+    filter = new MadgwickFilter(IMUConfig::MADGWICK_BETA);
 }
 
 bool MPU6050_IMU::init() {
@@ -104,48 +107,67 @@ bool MPU6050_IMU::init() {
     }
 }
 
+// ==========================================
+// CLI EXECUTION
+// ==========================================
+void MPU6050_IMU::calibrateGyro() {
+    logger.println("\n[IMU] Gyroscope Calibration Started! Keep robot still for 5 seconds...");
+    calibratingGyro = true;
+    calibrationSamples = 0;
+    sumX = 0; sumY = 0; sumZ = 0;
+}
+
+void MPU6050_IMU::calibrateAccel() {
+    logger.println("\n[IMU] Accel calibration acknowledged (Math module pending).");
+}
+
+void MPU6050_IMU::calibrateMag() {
+    logger.println("\n[IMU WARNING] The MPU6050 does not have a compass! Command ignored.");
+}
+
+// ==========================================
+// THE PHYSICS ENGINE
+// ==========================================
 FusedAngles MPU6050_IMU::getAngles() {
-    if (IMUConfig::MPU6050_USE_HARDWARE_DMP) {
-        if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            mpu.dmpGetGravity(&gravity, &q);
-            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+    int16_t ax, ay, az, gx, gy, gz;
+    mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-            lastKnownAngles.yaw   = ypr[ATTITUDE_YAW_INDEX] * 180 / M_PI;
-            lastKnownAngles.pitch = ypr[ATTITUDE_PITCH_INDEX] * 180 / M_PI;
-            lastKnownAngles.roll  = ypr[ATTITUDE_ROLL_INDEX] * 180 / M_PI;
+    // BACKGROUND STATE MACHINE: Intercept the data for calibration if requested
+    if (calibratingGyro) {
+        sumX += gx; sumY += gy; sumZ += gz;
+        calibrationSamples++;
+        
+        if (calibrationSamples >= 500) {
+            gyroBiasX = (float)sumX / 500.0f;
+            gyroBiasY = (float)sumY / 500.0f;
+            gyroBiasZ = (float)sumZ / 500.0f;
+            calibratingGyro = false;
+            logger.printf("[IMU] Gyro Calibrated! Biases: X:%.1f Y:%.1f Z:%.1f\n", gyroBiasX, gyroBiasY, gyroBiasZ);
         }
-    } 
-    else {
-        int16_t ax, ay, az, gx, gy, gz;
-        mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-
-        unsigned long currentTime = micros();
-        float dt = (currentTime - lastUpdateTime) / 1000000.0f;
-        lastUpdateTime = currentTime;
-
-        // Convert Gyro to Degrees Per Second 
-        float gyroRollRate  = gx / 131.0f;
-        float gyroPitchRate = gy / 131.0f;
-        float gyroYawRate   = gz / 131.0f;
-
-        // Calculate Absolute Angles from Accelerometer
-        float accelRoll  = atan2(ay, az) * 180.0f / M_PI;
-        float accelPitch = atan2(-ax, sqrt(ay * ay + az * az)) * 180.0f / M_PI;
-
-        // FUSION ALGORITHM
-        compRoll  = IMUConfig::COMP_FILTER_ALPHA * (compRoll + gyroRollRate * dt) + (1.0f - IMUConfig::COMP_FILTER_ALPHA) * accelRoll;
-        compPitch = IMUConfig::COMP_FILTER_ALPHA * (compPitch + gyroPitchRate * dt) + (1.0f - IMUConfig::COMP_FILTER_ALPHA) * accelPitch;
-        compYaw  += gyroYawRate * dt; 
-
-        lastKnownAngles.roll  = compRoll;
-        lastKnownAngles.pitch = compPitch;
-        lastKnownAngles.yaw   = compYaw;
+        return lastKnownAngles; // Freeze physics while calibrating
     }
-    
-    // Explicitly enforce that we do not have a compass on this hardware
-    lastKnownAngles.hasCompass = false;
-    lastKnownAngles.compassHeading = 0.0f;
+
+    // 1. Calculate DT
+    unsigned long currentTime = micros();
+    float dt = (currentTime - lastUpdateTime) / 1000000.0f;
+    lastUpdateTime = currentTime;
+
+    // 2. Subtract Bias & Convert Gyro to Radians/sec
+    float gx_rad = ((float)gx - gyroBiasX) * (M_PI / (180.0f * 131.0f));
+    float gy_rad = ((float)gy - gyroBiasY) * (M_PI / (180.0f * 131.0f));
+    float gz_rad = ((float)gz - gyroBiasZ) * (M_PI / (180.0f * 131.0f));
+
+    // 3. The Deadband Trick
+    if (abs(gz_rad) < 0.005f) gz_rad = 0.0f; 
+
+    // 4. Feed the Unified Math Engine! 
+    // We pass 0.0f for mx/my/mz, and the HAS_COMPASS flag automatically tells the math engine what to do!
+    filter->compute(gx_rad, gy_rad, gz_rad, (float)ax, (float)ay, (float)az, 0.0f, 0.0f, 0.0f, dt, IMUConfig::HAS_COMPASS);
+
+    // 5. Update Memory
+    lastKnownAngles.roll  = filter->getRoll();
+    lastKnownAngles.pitch = filter->getPitch();
+    lastKnownAngles.yaw   = filter->getYaw();
     
     return lastKnownAngles;
 }

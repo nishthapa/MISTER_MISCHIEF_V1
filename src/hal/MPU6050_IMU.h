@@ -1,30 +1,32 @@
 #pragma once
 #include <Arduino.h>
-#include "hal/I_IMU.h" // <-- Include the master interface
+#include "hal/I_IMU.h" 
+#include "core/MadgwickFilter.h" 
 
-// Notice we inherit from I_IMU here!
 class MPU6050_IMU : public I_IMU {
 private:
-    int sdaPin;
-    int sclPin;
-    int intPin;         
+    int sdaPin, sclPin, intPin;         
     uint8_t deviceAddr; 
 
     FusedAngles lastKnownAngles; 
+    MadgwickFilter* filter; 
 
-    // === ESP32 SOFTWARE FILTER MEMORY ===
     unsigned long lastUpdateTime;
-    float compPitch = 0.0f;
-    float compRoll  = 0.0f;
-    float compYaw   = 0.0f;
+
+    // === BACKGROUND CALIBRATION MEMORY ===
+    bool calibratingGyro = false;
+    int calibrationSamples = 0;
+    long sumX = 0, sumY = 0, sumZ = 0;
+    float gyroBiasX = 0.0f, gyroBiasY = 0.0f, gyroBiasZ = 0.0f;
 
 public:
     MPU6050_IMU(int sda, int scl, int interruptPin, uint8_t address);
 
-    // Fulfilling the I_IMU Contract
     bool init() override;
     FusedAngles getAngles() override;
-
-    // MPU6050 specific functions
-    bool isDataReady();
+    
+    // Satisfy the interface
+    void calibrateGyro() override;
+    void calibrateAccel() override;
+    void calibrateMag() override;
 };

@@ -19,6 +19,7 @@
 #include "utils/RadioManager.h"
 #include "utils/RemoteLogger.h"
 #include "config/DebugConfig.h" // only to check if USB debugging is enabled for the boot report
+#include "config/CommandRegistry.h" // to run our terminal commands
 
 RemoteLogger logger(NetworkConfig::TELNET_PORT); // For remote telemetry / serial monitor over WiFi (Telnet)
 
@@ -249,6 +250,32 @@ void ControlLoopTask(void *pvParameters) {
 }
 
 // ==========================================
+// THE COMMAND LINE INTERFACE (CLI) ENGINE
+// ==========================================
+void executeCLICommand(String cmd) {
+    CLI::CommandCode code = CLI::parseCommand(cmd);
+
+    switch (code) {
+        case CLI::CommandCode::CALIB_GYRO:
+            imu->calibrateGyro();
+            break;
+        case CLI::CommandCode::CALIB_ACCEL:
+            imu->calibrateAccel();
+            break;
+        case CLI::CommandCode::CALIB_MAG:
+            imu->calibrateMag();
+            break;
+        case CLI::CommandCode::CALIB_SONAR:
+            logger.println("[CLI] Sonar calibration not yet implemented.");
+            break;
+        case CLI::CommandCode::UNKNOWN:
+        default:
+            CLI::printHelpMenu(logger);
+            break;
+    }
+}
+
+// ==========================================
 // TASK HANDLES
 // ==========================================
 TaskHandle_t SensorTaskHandle;
@@ -258,19 +285,30 @@ TaskHandle_t ControlLoopTaskHandle;
 // CORE 0: THE SENSOR WATCHDOG
 // ==========================================
 void SensorTask(void *pvParameters) {
+  static String cliBuffer = ""; // Memory to hold the word as you type it
+
   for (;;) {
-    // Keep the TCP socket alive and check for PC connections
     logger.handleClient();
+
+    // === THE CLI LISTENER ===
+    while (Serial.available()) {
+        char incomingChar = Serial.read();
+
+        // If the user presses 'Enter'
+        if (incomingChar == '\n' || incomingChar == '\r') {
+            if (cliBuffer.length() > 0) {
+                executeCLICommand(cliBuffer); 
+                cliBuffer = ""; // Clear memory for next command
+            }
+        } else {
+            cliBuffer += incomingChar; 
+        }
+    }
 
     // 1. Ping the HC-SR04
     global_frontDistanceCM = frontSonar.getDistanceCM();
-    
-    // Print the distance to the Serial Monitor so you can verify it
-    // logger.printf("Sonar Distance: %.1f cm\n", global_frontDistanceCM);
-    // logger.printf("Sonar Distance: %.1f cm\n", global_frontDistanceCM);
 
     // 2. TRANSMIT TELEMETRY
-    // Print the Distance AND the IMU Angles!
     if (global_imuAlive) {
         logger.printf("Sonar: %.1f cm | Y: %5.1f | P: %5.1f | R: %5.1f\n", 
                       global_frontDistanceCM, global_yaw, global_pitch, global_roll);
@@ -278,8 +316,7 @@ void SensorTask(void *pvParameters) {
         logger.printf("Sonar: %.1f cm | IMU: DEAD (ZOMBIE STATE)\n", 
                       global_frontDistanceCM);
     }
-    
-    // FreeRTOS delay: Wait 50ms before pinging again to prevent acoustic echoes from overlapping
+
     vTaskDelay(pdMS_TO_TICKS(50)); 
   }
 }
