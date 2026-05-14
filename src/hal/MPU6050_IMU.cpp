@@ -6,7 +6,7 @@
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 
-constexpr uint32_t I2C_COMM_FREQUENCY = 100000; // 100kHz I2C for fast DMP packet transfers and perfboard stability
+constexpr uint32_t I2C_COMM_FREQUENCY = 400000; // 400kHz I2C for fast DMP packet transfers and perfboard stability
 
 // These are baseline offsets. We will calibrate these specifically for our chip later (16-bit signed integers)
 constexpr int16_t DEFAULT_XGYRO_OFFSET = 0;
@@ -101,8 +101,8 @@ bool MPU6050_IMU::init() {
     // 1. Boot the wire ONCE
     Wire.begin(sdaPin, sclPin);
     
-    // THE FIX: Shift into Fast Mode (400kHz) to beat the I2Cdev Timeout!
-    Wire.setClock(400000); 
+    // THE FIX: Shift into Safe speed (400kHz) for DMP Firmware Upload to the MPU6050!
+    // Wire.setClock(400000); 
 
     // ==========================================
     // THE I2C RADAR SWEEP
@@ -122,7 +122,16 @@ bool MPU6050_IMU::init() {
     logger.println("-----------------------");
     // ==========================================
 
+    // === CLEAR THE CMOS LATCH-UP ===
+    //logger.println("Resetting MPU6050 Internal Registers...");
+    //mpu.reset();
+    //delay(200); // Let the internal charge pump and PLL clock stabilize
+    // ===============================
+
+    logger.println("INITIALIZING MPU6050...");
     mpu.initialize();
+
+    delay(10000); // Let the MPU6050 silicon fully wake up and stabilize before we start talking to it. 
     
     if (!mpu.testConnection()) {
         logger.println("CRITICAL: MPU6050 connection failed!");
@@ -136,7 +145,7 @@ bool MPU6050_IMU::init() {
     int dmpAttempts = 0;
 
     // If the upload drops a packet due to static, instantly try again up to 5 times
-    while (devStatus != 0 && dmpAttempts < 5) {
+    while (devStatus != 0 && dmpAttempts < 10) {
         devStatus = mpu.dmpInitialize();
         
         if (devStatus == 0) {
@@ -149,7 +158,7 @@ bool MPU6050_IMU::init() {
         }
     }
 
-    // If it failed all 5 times, give up
+    // If it failed all 10 times, give up
     if (devStatus != 0) {
         return false; 
     }

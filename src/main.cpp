@@ -291,7 +291,7 @@ void SensorTask(void *pvParameters) {
 // ==========================================
 // SETUP: INITIALIZE HARDWARE & SCHEDULER
 // ==========================================
-/*void setup() {
+void setup() {
   // 1. BOOT THE LOGGER CORE (Starts Serial if requested)
   logger.beginSerial();
 
@@ -322,17 +322,18 @@ void SensorTask(void *pvParameters) {
   frontSonar.init();
   motors.init();
 
+  // === THE BULLETPROOF BOOT LOOP ===
   logger.println("Waking up the IMU...");
   int imuRetries = 0;
   while (!imu.init() && imuRetries < 5) {
-      logger.println("IMU is in a zombie state. Waiting for voltage to stabilize...");
+      logger.println("IMU failed to initialize. Rebooting I2C bus in 1 second...");
       delay(1000); // Wait 1 second and try again
       imuRetries++;
   }
   
-  // Remember if it survived or not
-  global_imuAlive = (imuRetries < 5);
-  // Ask the hardware: "Why did we turn on?"
+  global_imuAlive = (imuRetries < 5); // Remember if it survived or not
+
+    // Ask the hardware: "Why did we turn on?"
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     if (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED) {
         // This means someone physically flipped the power switch (Cold Boot)
@@ -373,63 +374,6 @@ void SensorTask(void *pvParameters) {
     &ControlLoopTaskHandle,
     1                   // Pin task to Core 1
   );
-}*/
-
-// ==========================================
-// SETUP: INITIALIZE HARDWARE & SCHEDULER
-// ==========================================
-void setup() {
-  // 1. BOOT THE LOGGER CORE (Starts USB Serial)
-  logger.beginSerial();
-
-  // === THE QUIET BOOT ZONE ===
-  // Give the Mini560 power bus a moment to stabilize
-  delay(500);
-  
-  // Initialize the delicate IMU BEFORE turning on the noisy WiFi radio!
-  logger.println("Waking up the IMU in electrical silence...");
-  global_imuAlive = imu.init(); 
-  // ===========================
-
-  // 2. BOOT RADIOS (This introduces the electrical noise!)
-  RadioManager::initRadios();
-  
-  // 3. BIND TELEMETRY (Opens Telnet/BLE)
-  logger.bindRadios();
-
-  // ==========================================
-  // THE TELNET WAITING ROOM 
-  // ==========================================
-  unsigned long waitStart = millis();
-  while (millis() - waitStart < 8000) {
-      logger.handleClient(); 
-      delay(50);
-  }
-  // ==========================================
-  
-  // 4. WAKE UP REMAINING HARDWARE
-  frontSonar.init();
-  motors.init();
-
-  // Ask the hardware: "Why did we turn on?"
-  esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
-  if (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED) {
-      logger.println("Cold Boot Detected. Waking up groggy...");
-      activeMood = Moods::GROGGY;
-      isGroggyPhase = true;
-      coldBootTime = millis();
-  } else {
-      logger.println("Woke from Deep Sleep! Ready to greet!");
-      activeMood = Moods::HAPPY; 
-      isGroggyPhase = false; 
-  }
-  
-  logger.println("Mister Mischief V1 Booting...");
-  delay(1000); 
-
-  // 5. Pin Tasks to Cores
-  xTaskCreatePinnedToCore(SensorTask, "SensorTask", 4096, NULL, 1, &SensorTaskHandle, 0);
-  xTaskCreatePinnedToCore(ControlLoopTask, "ControlLoopTask", 4096, NULL, 1, &ControlLoopTaskHandle, 1);
 }
 
 // ==========================================
