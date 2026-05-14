@@ -3,7 +3,7 @@
 #include "behaviours/IRobotMode.h"
 #include "hal/XY160D_MotorDriver.h"
 #include "hal/HCSR04_Sonar.h"
-#include "hal/MPU6050_IMU.h"
+#include "hal/I_IMU.h"
 #include "core/PIDController.h"
 
 // A struct to hold our "Point Cloud" data
@@ -16,7 +16,7 @@ class Mode_ObstacleAvoidance : public IRobotMode {
 private:
     XY160D_MotorDriver* motors;
     HCSR04_Sonar* sonar;
-    MPU6050_IMU* imu;
+    I_IMU* imu;
     PIDController* alignPID;
 
     // The streamlined Cockroach dance
@@ -38,7 +38,7 @@ private:
 
 public:
     // Dependency Injection upgraded
-    Mode_ObstacleAvoidance(XY160D_MotorDriver* m, HCSR04_Sonar* s, MPU6050_IMU* i, PIDController* p);
+    Mode_ObstacleAvoidance(XY160D_MotorDriver* m, HCSR04_Sonar* s, I_IMU* i, PIDController* p);
     
     void onEnter() override;
     void update(const RobotMood& currentMood) override;

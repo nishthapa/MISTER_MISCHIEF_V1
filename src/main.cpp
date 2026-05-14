@@ -3,6 +3,7 @@
 #include "config/PinConfig.h"         // The Blueprint
 //#include "hal/HCSR04_Sonar.h"         // The Sonar Factory
 //#include "hal/XY160D_MotorDriver.h"   // The Motor Factory
+#include "hal/IMUFactory.h"          // The IMU Factory
 
 #include "config/PersonalityConfig.h"
 #include "objectproviders/PIDPurposeProfileFactory.h" // The PID Factory
@@ -53,12 +54,7 @@ XY160D_MotorDriver motors(
 );
 
 // Instantiate the IMU (The Inner Ear)
-MPU6050_IMU imu(
-    HardwarePins::PIN_I2C_SDA, 
-    HardwarePins::PIN_I2C_SCL, 
-    HardwarePins::PIN_IMU_INT, 
-    0x68
-);
+I_IMU* imu = IMUFactory::createIMU();
 
 // The PID Profiles
 
@@ -67,9 +63,9 @@ PIDController compassPID = PIDPurposeProfileFactory::createCompassLockPID();
 PIDController distancePID = PIDPurposeProfileFactory::createDistanceHoldPID();
 PIDController obstacleAvoidancePID = PIDPurposeProfileFactory::createObstacleAvoidanceNewPathScanSweepPID(); // Using a dedicated PID for obstacle avoidance
 
-Mode_ObstacleAvoidance obstacleMode(&motors, &frontSonar, &imu, &obstacleAvoidancePID);
+Mode_ObstacleAvoidance obstacleMode(&motors, &frontSonar, imu, &obstacleAvoidancePID);
 Mode_NormalDriving normalMode(&motors); // The new default mode
-Mode_CompassLock compassMode(&imu, &motors, &compassPID); // --- Instantiate Balancing on a Platform Mode ---
+Mode_CompassLock compassMode(imu, &motors, &compassPID); // --- Instantiate Balancing on a Platform Mode ---
 Mode_MaintainDistance distanceMode(&frontSonar, &motors, &distancePID);
 Mode_Dizzy dizzyMode(&motors);
 Mode_DeepSleep sleepMode(&motors);
@@ -89,7 +85,7 @@ FusedAngles lastAngles = {0, 0, 0};
 void ControlLoopTask(void *pvParameters) { 
     IRobotMode* previousMode = nullptr; // To track mode changes for onEnter/onExit
     for (;;) {
-        FusedAngles currentAngles = imu.getAngles(); // Commented out for testing without the IMU, but remember to re-enable for the full experience!
+        FusedAngles currentAngles = imu->getAngles();
         // FusedAngles currentAngles = {0, 0, 0}; // Dummy angles for testing without the IMU
         
         // UPDATE THE BRIDGE FOR TELEMETRY
@@ -325,7 +321,7 @@ void setup() {
   // === THE BULLETPROOF BOOT LOOP ===
   logger.println("Waking up the IMU...");
   int imuRetries = 0;
-  while (!imu.init() && imuRetries < 5) {
+  while (!imu->init() && imuRetries < 5) {
       logger.println("IMU failed to initialize. Rebooting I2C bus in 1 second...");
       delay(1000); // Wait 1 second and try again
       imuRetries++;

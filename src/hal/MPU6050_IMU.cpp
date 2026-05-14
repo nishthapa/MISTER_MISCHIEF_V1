@@ -1,203 +1,151 @@
 #include "hal/MPU6050_IMU.h"
 #include "utils/RemoteLogger.h"
+#include "config/IMUConfig.h" // <-- Bring in the Config!
 #include <Wire.h>
 
-// --- THE QUARANTINED LIBRARIES ---
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 
-constexpr uint32_t I2C_COMM_FREQUENCY = 400000; // 400kHz I2C for fast DMP packet transfers and perfboard stability
-
-// These are baseline offsets. We will calibrate these specifically for our chip later (16-bit signed integers)
 constexpr int16_t DEFAULT_XGYRO_OFFSET = 0;
 constexpr int16_t DEFAULT_YGYRO_OFFSET = 0;
 constexpr int16_t DEFAULT_ZGYRO_OFFSET = 0;
 constexpr int16_t DEFAULT_ZACCEL_OFFSET = 1688;
 
-// Constants for Quick Auto-Calibration Routine
 constexpr uint8_t ACCEL_AUTO_CALIBRATION_SAMPLES = 6;
 constexpr uint8_t GYRO_AUTO_CALIBRATION_SAMPLES = 6;
 
-// Euler Attitude Array Indexes
 constexpr uint8_t ATTITUDE_YAW_INDEX = 0;
 constexpr uint8_t ATTITUDE_PITCH_INDEX = 1;
 constexpr uint8_t ATTITUDE_ROLL_INDEX = 2;
 
-// The hidden 3rd-party Electronic Cats MPU6050 Library object
 MPU6050 mpu;
 
-// DMP working variables (Hidden from main.cpp)
-uint8_t fifoBuffer[64]; // FIFO storage buffer for the DMP packet
-Quaternion q;           // [w, x, y, z] quaternion container
-VectorFloat gravity;    // [x, y, z] gravity vector
-float ypr[3];           // [yaw, pitch, roll] container
+// DMP memory
+uint8_t fifoBuffer[64]; 
+Quaternion q;           
+VectorFloat gravity;    
+float ypr[3];           
 
 MPU6050_IMU::MPU6050_IMU(int sda, int scl, int interruptPin, uint8_t address) {
-    sdaPin = sda;
-    sclPin = scl;
-    intPin = interruptPin;
-    deviceAddr = address;
+    sdaPin = sda; sclPin = scl; intPin = interruptPin; deviceAddr = address;
+    
+    // Initialize our placeholder compass data
+    lastKnownAngles.hasCompass = false;
+    lastKnownAngles.compassHeading = 0.0f;
 }
-
-/*bool MPU6050_IMU::init() {
-    // The library defaults the INT pin to Active HIGH
-    pinMode(intPin, INPUT);
-    
-    Wire.begin(sdaPin, sclPin);
-    Wire.setClock(I2C_COMM_FREQUENCY); 
-
-    // ==========================================
-    // THE I2C RADAR SWEEP
-    // ==========================================
-    logger.println("--- I2C RADAR SWEEP ---");
-    int devices = 0;
-    for(byte address = 1; address < 127; address++ ) {
-        Wire.beginTransmission(address);
-        if (Wire.endTransmission() == 0) {
-            logger.printf("Hardware found at address: 0x%02X\n", address);
-            devices++;
-        }
-    }
-    if (devices == 0) {
-        logger.println("RADAR EMPTY: MPU6050 is dead/disconnected.");
-    }
-    logger.println("-----------------------");
-    // ==========================================
-
-    mpu.initialize();
-    
-    if (!mpu.testConnection()) {
-        logger.println("CRITICAL: MPU6050 connection failed!");
-        return false;
-    }
-    
-    logger.println("Initializing Digital Motion Processor (DMP)...");
-    uint8_t devStatus = mpu.dmpInitialize();
-
-    mpu.setXGyroOffset(DEFAULT_XGYRO_OFFSET);
-    mpu.setYGyroOffset(DEFAULT_YGYRO_OFFSET);
-    mpu.setZGyroOffset(DEFAULT_ZGYRO_OFFSET);
-    mpu.setZAccelOffset(DEFAULT_ZACCEL_OFFSET);
-
-    // devStatus == 0 means the firmware blob successfully loaded
-    if (devStatus == 0) {
-        // Run a quick auto-calibration to zero out minor noise
-        mpu.CalibrateAccel(ACCEL_AUTO_CALIBRATION_SAMPLES);
-        mpu.CalibrateGyro(GYRO_AUTO_CALIBRATION_SAMPLES);
-        
-        // Turn the DMP on!
-        mpu.setDMPEnabled(true);
-        return true;
-    } else {
-        logger.printf("DMP Initialization failed (code %d)\n", devStatus); // <-- changed to logger
-        return false;
-    }
-}*/
-
 
 bool MPU6050_IMU::init() {
     pinMode(intPin, INPUT);
-    
-    // 1. Boot the wire ONCE
     Wire.begin(sdaPin, sclPin);
     
-    // THE FIX: Shift into Safe speed (400kHz) for DMP Firmware Upload to the MPU6050!
-    // Wire.setClock(400000); 
+    // Dynamic Speed Shift!
+    if (IMUConfig::MPU6050_USE_HARDWARE_DMP) { Wire.setClock(100000); } 
+    else { Wire.setClock(400000); }
 
-    // ==========================================
-    // THE I2C RADAR SWEEP
-    // ==========================================
-    logger.println("--- I2C RADAR SWEEP ---");
-    int devices = 0;
-    for(byte address = 1; address < 127; address++ ) {
-        Wire.beginTransmission(address);
-        if (Wire.endTransmission() == 0) {
-            logger.printf("Hardware found at address: 0x%02X\n", address);
-            devices++;
-        }
-    }
-    if (devices == 0) {
-        logger.println("RADAR EMPTY: MPU6050 is dead/disconnected.");
-    }
-    logger.println("-----------------------");
-    // ==========================================
+    logger.println("Resetting MPU6050 Internal Registers...");
+    mpu.reset();
+    delay(200); 
 
-    // === CLEAR THE CMOS LATCH-UP ===
-    //logger.println("Resetting MPU6050 Internal Registers...");
-    //mpu.reset();
-    //delay(200); // Let the internal charge pump and PLL clock stabilize
-    // ===============================
-
-    logger.println("INITIALIZING MPU6050...");
-    mpu.initialize();
-
-    delay(10000); // Let the MPU6050 silicon fully wake up and stabilize before we start talking to it. 
-    
-    if (!mpu.testConnection()) {
-        logger.println("CRITICAL: MPU6050 connection failed!");
-        return false;
-    }
-    
-    // === THE BRUTE FORCE UPLOAD LOOP ===
-    logger.println("Uploading Firmware to Digital Motion Processor (DMP)...");
-    
-    uint8_t devStatus = 1; // Start with a failed status
-    int dmpAttempts = 0;
-
-    // If the upload drops a packet due to static, instantly try again up to 5 times
-    while (devStatus != 0 && dmpAttempts < 10) {
-        devStatus = mpu.dmpInitialize();
+    // =========================================================
+    // BRANCH A: HARDWARE DMP BOOT 
+    // =========================================================
+    if (IMUConfig::MPU6050_USE_HARDWARE_DMP) {
+        logger.println("INITIALIZING MPU6050 (DMP MODE)...");
+        mpu.initialize();
+        delay(50);
         
-        if (devStatus == 0) {
-            logger.println("DMP Firmware Upload SUCCESS!");
-            break; 
-        } else {
-            logger.printf("DMP Upload failed (code %d). Retrying...\n", devStatus);
-            delay(100);
-            dmpAttempts++;
+        if (!mpu.testConnection()) {
+            logger.println("CRITICAL: MPU6050 connection failed!");
+            return false;
         }
+        
+        logger.println("Uploading Firmware to Digital Motion Processor (DMP)...");
+        uint8_t devStatus = 1; int dmpAttempts = 0;
+
+        while (devStatus != 0 && dmpAttempts < 10) {
+            devStatus = mpu.dmpInitialize();
+            if (devStatus == 0) {
+                logger.println("DMP Firmware Upload SUCCESS!");
+                break; 
+            } else {
+                logger.printf("DMP Upload failed (code %d). Retrying...\n", devStatus);
+                delay(100);
+                dmpAttempts++;
+            }
+        }
+
+        if (devStatus != 0) return false; 
+
+        mpu.setXGyroOffset(DEFAULT_XGYRO_OFFSET); mpu.setYGyroOffset(DEFAULT_YGYRO_OFFSET);
+        mpu.setZGyroOffset(DEFAULT_ZGYRO_OFFSET); mpu.setZAccelOffset(DEFAULT_ZACCEL_OFFSET);
+        mpu.CalibrateAccel(ACCEL_AUTO_CALIBRATION_SAMPLES); mpu.CalibrateGyro(GYRO_AUTO_CALIBRATION_SAMPLES);
+        mpu.setDMPEnabled(true);
+        return true;
+    } 
+    // =========================================================
+    // BRANCH B: RAW DATA BYPASS (Lightning Fast Boot)
+    // =========================================================
+    else {
+        logger.println("DMP Bypassed. Initializing Raw Data Mode...");
+        mpu.initialize();
+        delay(50);
+
+        if (!mpu.testConnection()) {
+            logger.println("CRITICAL: MPU6050 connection failed!");
+            return false;
+        }
+
+        mpu.setXGyroOffset(DEFAULT_XGYRO_OFFSET); mpu.setYGyroOffset(DEFAULT_YGYRO_OFFSET);
+        mpu.setZGyroOffset(DEFAULT_ZGYRO_OFFSET); mpu.setZAccelOffset(DEFAULT_ZACCEL_OFFSET);
+
+        lastUpdateTime = micros();
+        logger.println("Raw Mode Initialized Successfully!");
+        return true;
     }
-
-    // If it failed all 10 times, give up
-    if (devStatus != 0) {
-        return false; 
-    }
-    // ===================================
-
-    // If we made it here, the DMP is alive!
-    mpu.setXGyroOffset(DEFAULT_XGYRO_OFFSET);
-    mpu.setYGyroOffset(DEFAULT_YGYRO_OFFSET);
-    mpu.setZGyroOffset(DEFAULT_ZGYRO_OFFSET);
-    mpu.setZAccelOffset(DEFAULT_ZACCEL_OFFSET);
-
-    mpu.CalibrateAccel(ACCEL_AUTO_CALIBRATION_SAMPLES);
-    mpu.CalibrateGyro(GYRO_AUTO_CALIBRATION_SAMPLES);
-    
-    mpu.setDMPEnabled(true);
-    return true;
-}
-
-bool MPU6050_IMU::isDataReady() {
-    // The library configures the INT pin as Active HIGH by default
-    return (digitalRead(intPin) == HIGH);
 }
 
 FusedAngles MPU6050_IMU::getAngles() {
-    // REMOVE the isDataReady() check completely!
-    // Let the library directly manage and flush the FIFO buffer.
-    
-    if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
-        
-        mpu.dmpGetQuaternion(&q, fifoBuffer);
-        mpu.dmpGetGravity(&gravity, &q);
-        mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+    if (IMUConfig::MPU6050_USE_HARDWARE_DMP) {
+        if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+            mpu.dmpGetQuaternion(&q, fifoBuffer);
+            mpu.dmpGetGravity(&gravity, &q);
+            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 
-        // Update our internal memory
-        lastKnownAngles.yaw   = ypr[ATTITUDE_YAW_INDEX] * 180 / M_PI;
-        lastKnownAngles.pitch = ypr[ATTITUDE_PITCH_INDEX] * 180 / M_PI;
-        lastKnownAngles.roll  = ypr[ATTITUDE_ROLL_INDEX] * 180 / M_PI;
+            lastKnownAngles.yaw   = ypr[ATTITUDE_YAW_INDEX] * 180 / M_PI;
+            lastKnownAngles.pitch = ypr[ATTITUDE_PITCH_INDEX] * 180 / M_PI;
+            lastKnownAngles.roll  = ypr[ATTITUDE_ROLL_INDEX] * 180 / M_PI;
+        }
+    } 
+    else {
+        int16_t ax, ay, az, gx, gy, gz;
+        mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+        unsigned long currentTime = micros();
+        float dt = (currentTime - lastUpdateTime) / 1000000.0f;
+        lastUpdateTime = currentTime;
+
+        // Convert Gyro to Degrees Per Second 
+        float gyroRollRate  = gx / 131.0f;
+        float gyroPitchRate = gy / 131.0f;
+        float gyroYawRate   = gz / 131.0f;
+
+        // Calculate Absolute Angles from Accelerometer
+        float accelRoll  = atan2(ay, az) * 180.0f / M_PI;
+        float accelPitch = atan2(-ax, sqrt(ay * ay + az * az)) * 180.0f / M_PI;
+
+        // FUSION ALGORITHM
+        compRoll  = IMUConfig::COMP_FILTER_ALPHA * (compRoll + gyroRollRate * dt) + (1.0f - IMUConfig::COMP_FILTER_ALPHA) * accelRoll;
+        compPitch = IMUConfig::COMP_FILTER_ALPHA * (compPitch + gyroPitchRate * dt) + (1.0f - IMUConfig::COMP_FILTER_ALPHA) * accelPitch;
+        compYaw  += gyroYawRate * dt; 
+
+        lastKnownAngles.roll  = compRoll;
+        lastKnownAngles.pitch = compPitch;
+        lastKnownAngles.yaw   = compYaw;
     }
     
-    // Return the freshest memory
+    // Explicitly enforce that we do not have a compass on this hardware
+    lastKnownAngles.hasCompass = false;
+    lastKnownAngles.compassHeading = 0.0f;
+    
     return lastKnownAngles;
 }

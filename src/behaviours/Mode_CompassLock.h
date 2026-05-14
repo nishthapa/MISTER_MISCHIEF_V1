@@ -1,14 +1,14 @@
 #pragma once
 
 #include "behaviours/IRobotMode.h"
-#include "hal/MPU6050_IMU.h"
+#include "hal/I_IMU.h"
 #include "hal/XY160D_MotorDriver.h"
 #include "core/PIDController.h"
 
 class Mode_CompassLock : public IRobotMode {
 private:
     // This mode needs to "see" tilt, "move" motors, and "think" with PID
-    MPU6050_IMU* imu;
+    I_IMU* imu;
     XY160D_MotorDriver* motors;
     PIDController* pid;
 
@@ -17,7 +17,7 @@ private:
 
 public:
     // Dependency Injection: Hand the mode its tools
-    Mode_CompassLock(MPU6050_IMU* i, XY160D_MotorDriver* m, PIDController* p);
+    Mode_CompassLock(I_IMU* i, XY160D_MotorDriver* m, PIDController* p);
 
     // The Contract
     void onEnter() override;
