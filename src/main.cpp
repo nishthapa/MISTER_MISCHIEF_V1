@@ -37,6 +37,7 @@ volatile float global_frontDistanceCM = -1.0;
 volatile float global_yaw = 0.0;
 volatile float global_pitch = 0.0;
 volatile float global_roll = 0.0;
+volatile bool global_imuAlive = false; // to check if the imu has booted up on battery power or if it's still initializing
 
 // ==========================================
 // GLOBAL HARDWARE OBJECTS
@@ -274,11 +275,13 @@ void SensorTask(void *pvParameters) {
 
     // 2. TRANSMIT TELEMETRY
     // Print the Distance AND the IMU Angles!
-    logger.printf("Sonar: %.1f cm | Y: %5.1f | P: %5.1f | R: %5.1f\n", 
-                  global_frontDistanceCM, 
-                  global_yaw, 
-                  global_pitch, 
-                  global_roll);
+    if (global_imuAlive) {
+        logger.printf("Sonar: %.1f cm | Y: %5.1f | P: %5.1f | R: %5.1f\n", 
+                      global_frontDistanceCM, global_yaw, global_pitch, global_roll);
+    } else {
+        logger.printf("Sonar: %.1f cm | IMU: DEAD (ZOMBIE STATE)\n", 
+                      global_frontDistanceCM);
+    }
     
     // FreeRTOS delay: Wait 50ms before pinging again to prevent acoustic echoes from overlapping
     vTaskDelay(pdMS_TO_TICKS(50)); 
@@ -288,7 +291,7 @@ void SensorTask(void *pvParameters) {
 // ==========================================
 // SETUP: INITIALIZE HARDWARE & SCHEDULER
 // ==========================================
-void setup() {
+/*void setup() {
   // 1. BOOT THE LOGGER CORE (Starts Serial if requested)
   logger.beginSerial();
 
@@ -298,6 +301,18 @@ void setup() {
   // 3. BIND TELEMETRY (Opens Telnet/BLE)
   logger.bindRadios();
 
+  // ==========================================
+  // THE TELNET WAITING ROOM (The Race Condition Fix)
+  // ==========================================
+  // Force the ESP32 to pause for 8 seconds and actively listen for your 
+  // Putty connection before it boots the MPU6050 and runs the Radar Sweep!
+  unsigned long waitStart = millis();
+  while (millis() - waitStart < 8000) {
+      logger.handleClient(); 
+      delay(50);
+  }
+  // ==========================================
+
   // === THE FIX: HARDWARE WAKE-UP DELAY ===
   // Give the Mini560 power bus and the MPU6050 silicon half a second to fully stabilize 
   // before we start interrogating them over I2C.
@@ -306,8 +321,17 @@ void setup() {
   // 4. WAKE UP THE HARDWARE
   frontSonar.init();
   motors.init();
-  imu.init();
 
+  logger.println("Waking up the IMU...");
+  int imuRetries = 0;
+  while (!imu.init() && imuRetries < 5) {
+      logger.println("IMU is in a zombie state. Waiting for voltage to stabilize...");
+      delay(1000); // Wait 1 second and try again
+      imuRetries++;
+  }
+  
+  // Remember if it survived or not
+  global_imuAlive = (imuRetries < 5);
   // Ask the hardware: "Why did we turn on?"
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     if (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED) {
@@ -349,6 +373,63 @@ void setup() {
     &ControlLoopTaskHandle,
     1                   // Pin task to Core 1
   );
+}*/
+
+// ==========================================
+// SETUP: INITIALIZE HARDWARE & SCHEDULER
+// ==========================================
+void setup() {
+  // 1. BOOT THE LOGGER CORE (Starts USB Serial)
+  logger.beginSerial();
+
+  // === THE QUIET BOOT ZONE ===
+  // Give the Mini560 power bus a moment to stabilize
+  delay(500);
+  
+  // Initialize the delicate IMU BEFORE turning on the noisy WiFi radio!
+  logger.println("Waking up the IMU in electrical silence...");
+  global_imuAlive = imu.init(); 
+  // ===========================
+
+  // 2. BOOT RADIOS (This introduces the electrical noise!)
+  RadioManager::initRadios();
+  
+  // 3. BIND TELEMETRY (Opens Telnet/BLE)
+  logger.bindRadios();
+
+  // ==========================================
+  // THE TELNET WAITING ROOM 
+  // ==========================================
+  unsigned long waitStart = millis();
+  while (millis() - waitStart < 8000) {
+      logger.handleClient(); 
+      delay(50);
+  }
+  // ==========================================
+  
+  // 4. WAKE UP REMAINING HARDWARE
+  frontSonar.init();
+  motors.init();
+
+  // Ask the hardware: "Why did we turn on?"
+  esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+  if (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED) {
+      logger.println("Cold Boot Detected. Waking up groggy...");
+      activeMood = Moods::GROGGY;
+      isGroggyPhase = true;
+      coldBootTime = millis();
+  } else {
+      logger.println("Woke from Deep Sleep! Ready to greet!");
+      activeMood = Moods::HAPPY; 
+      isGroggyPhase = false; 
+  }
+  
+  logger.println("Mister Mischief V1 Booting...");
+  delay(1000); 
+
+  // 5. Pin Tasks to Cores
+  xTaskCreatePinnedToCore(SensorTask, "SensorTask", 4096, NULL, 1, &SensorTaskHandle, 0);
+  xTaskCreatePinnedToCore(ControlLoopTask, "ControlLoopTask", 4096, NULL, 1, &ControlLoopTaskHandle, 1);
 }
 
 // ==========================================

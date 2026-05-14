@@ -1,4 +1,5 @@
 #include "hal/MPU6050_IMU.h"
+#include "utils/RemoteLogger.h"
 #include <Wire.h>
 
 // --- THE QUARANTINED LIBRARIES ---
@@ -38,21 +39,39 @@ MPU6050_IMU::MPU6050_IMU(int sda, int scl, int interruptPin, uint8_t address) {
     deviceAddr = address;
 }
 
-bool MPU6050_IMU::init() {
+/*bool MPU6050_IMU::init() {
     // The library defaults the INT pin to Active HIGH
     pinMode(intPin, INPUT);
     
     Wire.begin(sdaPin, sclPin);
-    Wire.setClock(I2C_COMM_FREQUENCY);
+    Wire.setClock(I2C_COMM_FREQUENCY); 
+
+    // ==========================================
+    // THE I2C RADAR SWEEP
+    // ==========================================
+    logger.println("--- I2C RADAR SWEEP ---");
+    int devices = 0;
+    for(byte address = 1; address < 127; address++ ) {
+        Wire.beginTransmission(address);
+        if (Wire.endTransmission() == 0) {
+            logger.printf("Hardware found at address: 0x%02X\n", address);
+            devices++;
+        }
+    }
+    if (devices == 0) {
+        logger.println("RADAR EMPTY: MPU6050 is dead/disconnected.");
+    }
+    logger.println("-----------------------");
+    // ==========================================
 
     mpu.initialize();
     
     if (!mpu.testConnection()) {
-        Serial.println("CRITICAL: MPU6050 connection failed!");
+        logger.println("CRITICAL: MPU6050 connection failed!");
         return false;
     }
-
-    Serial.println("Initializing Digital Motion Processor (DMP)...");
+    
+    logger.println("Initializing Digital Motion Processor (DMP)...");
     uint8_t devStatus = mpu.dmpInitialize();
 
     mpu.setXGyroOffset(DEFAULT_XGYRO_OFFSET);
@@ -70,9 +89,83 @@ bool MPU6050_IMU::init() {
         mpu.setDMPEnabled(true);
         return true;
     } else {
-        Serial.printf("DMP Initialization failed (code %d)\n", devStatus);
+        logger.printf("DMP Initialization failed (code %d)\n", devStatus); // <-- changed to logger
         return false;
     }
+}*/
+
+
+bool MPU6050_IMU::init() {
+    pinMode(intPin, INPUT);
+    
+    // 1. Boot the wire ONCE
+    Wire.begin(sdaPin, sclPin);
+    
+    // THE FIX: Shift into Fast Mode (400kHz) to beat the I2Cdev Timeout!
+    Wire.setClock(400000); 
+
+    // ==========================================
+    // THE I2C RADAR SWEEP
+    // ==========================================
+    logger.println("--- I2C RADAR SWEEP ---");
+    int devices = 0;
+    for(byte address = 1; address < 127; address++ ) {
+        Wire.beginTransmission(address);
+        if (Wire.endTransmission() == 0) {
+            logger.printf("Hardware found at address: 0x%02X\n", address);
+            devices++;
+        }
+    }
+    if (devices == 0) {
+        logger.println("RADAR EMPTY: MPU6050 is dead/disconnected.");
+    }
+    logger.println("-----------------------");
+    // ==========================================
+
+    mpu.initialize();
+    
+    if (!mpu.testConnection()) {
+        logger.println("CRITICAL: MPU6050 connection failed!");
+        return false;
+    }
+    
+    // === THE BRUTE FORCE UPLOAD LOOP ===
+    logger.println("Uploading Firmware to Digital Motion Processor (DMP)...");
+    
+    uint8_t devStatus = 1; // Start with a failed status
+    int dmpAttempts = 0;
+
+    // If the upload drops a packet due to static, instantly try again up to 5 times
+    while (devStatus != 0 && dmpAttempts < 5) {
+        devStatus = mpu.dmpInitialize();
+        
+        if (devStatus == 0) {
+            logger.println("DMP Firmware Upload SUCCESS!");
+            break; 
+        } else {
+            logger.printf("DMP Upload failed (code %d). Retrying...\n", devStatus);
+            delay(100);
+            dmpAttempts++;
+        }
+    }
+
+    // If it failed all 5 times, give up
+    if (devStatus != 0) {
+        return false; 
+    }
+    // ===================================
+
+    // If we made it here, the DMP is alive!
+    mpu.setXGyroOffset(DEFAULT_XGYRO_OFFSET);
+    mpu.setYGyroOffset(DEFAULT_YGYRO_OFFSET);
+    mpu.setZGyroOffset(DEFAULT_ZGYRO_OFFSET);
+    mpu.setZAccelOffset(DEFAULT_ZACCEL_OFFSET);
+
+    mpu.CalibrateAccel(ACCEL_AUTO_CALIBRATION_SAMPLES);
+    mpu.CalibrateGyro(GYRO_AUTO_CALIBRATION_SAMPLES);
+    
+    mpu.setDMPEnabled(true);
+    return true;
 }
 
 bool MPU6050_IMU::isDataReady() {
