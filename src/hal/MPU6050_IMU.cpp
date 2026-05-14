@@ -1,6 +1,6 @@
 #include "hal/MPU6050_IMU.h"
 #include "utils/RemoteLogger.h"
-#include "config/IMUConfig.h" // <-- Bring in the Config!
+#include "config/IMUConfig.h" 
 #include <Wire.h>
 
 #include "I2Cdev.h"
@@ -18,7 +18,6 @@ constexpr uint8_t ATTITUDE_YAW_INDEX = 0;
 constexpr uint8_t ATTITUDE_PITCH_INDEX = 1;
 constexpr uint8_t ATTITUDE_ROLL_INDEX = 2;
 
-// extern MPU6050 mpu;
 MPU6050 mpu;
 
 // DMP memory
@@ -98,11 +97,14 @@ bool MPU6050_IMU::init() {
             return false;
         }
 
-        mpu.setXGyroOffset(DEFAULT_XGYRO_OFFSET); mpu.setYGyroOffset(DEFAULT_YGYRO_OFFSET);
-        mpu.setZGyroOffset(DEFAULT_ZGYRO_OFFSET); mpu.setZAccelOffset(DEFAULT_ZACCEL_OFFSET);
+        // NOTE: Manual offset clears removed here to preserve the MPU6050's hardware factory trim!
 
         lastUpdateTime = micros();
         logger.println("Raw Mode Initialized Successfully!");
+        
+        // Auto-trigger the silent background calibration sequence on boot
+        calibrateGyro();
+        
         return true;
     }
 }
@@ -129,45 +131,64 @@ void MPU6050_IMU::calibrateMag() {
 // THE PHYSICS ENGINE
 // ==========================================
 FusedAngles MPU6050_IMU::getAngles() {
-    int16_t ax, ay, az, gx, gy, gz;
-    mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    
+    if (IMUConfig::MPU6050_USE_HARDWARE_DMP) {
+        // --- DMP HARDWARE ROUTE ---
+        if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+            mpu.dmpGetQuaternion(&q, fifoBuffer);
+            mpu.dmpGetGravity(&gravity, &q);
+            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 
-    // BACKGROUND STATE MACHINE: Intercept the data for calibration if requested
-    if (calibratingGyro) {
-        sumX += gx; sumY += gy; sumZ += gz;
-        calibrationSamples++;
-        
-        if (calibrationSamples >= 500) {
-            gyroBiasX = (float)sumX / 500.0f;
-            gyroBiasY = (float)sumY / 500.0f;
-            gyroBiasZ = (float)sumZ / 500.0f;
-            calibratingGyro = false;
-            logger.printf("[IMU] Gyro Calibrated! Biases: X:%.1f Y:%.1f Z:%.1f\n", gyroBiasX, gyroBiasY, gyroBiasZ);
+            lastKnownAngles.yaw   = ypr[ATTITUDE_YAW_INDEX] * 180 / M_PI;
+            lastKnownAngles.pitch = ypr[ATTITUDE_PITCH_INDEX] * 180 / M_PI;
+            lastKnownAngles.roll  = ypr[ATTITUDE_ROLL_INDEX] * 180 / M_PI;
         }
-        return lastKnownAngles; // Freeze physics while calibrating
+    } 
+    else {
+        // --- MADGWICK SOFTWARE ROUTE ---
+        int16_t ax, ay, az, gx, gy, gz;
+        mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+        // BACKGROUND STATE MACHINE: Intercept the data for calibration if requested
+        if (calibratingGyro) {
+            sumX += gx; sumY += gy; sumZ += gz;
+            calibrationSamples++;
+            
+            if (calibrationSamples >= 500) {
+                gyroBiasX = (float)sumX / 500.0f;
+                gyroBiasY = (float)sumY / 500.0f;
+                gyroBiasZ = (float)sumZ / 500.0f;
+                calibratingGyro = false;
+                logger.printf("[IMU] Gyro Calibrated! Biases: X:%.1f Y:%.1f Z:%.1f\n", gyroBiasX, gyroBiasY, gyroBiasZ);
+                
+                // === THE TIME-TRAVEL FIX ===
+                // Reset the clock so dt doesn't explode to 5.0 seconds on the next physics frame!
+                lastUpdateTime = micros();
+            }
+            return lastKnownAngles; // Freeze physics while calibrating
+        }
+
+        // 1. Calculate DT
+        unsigned long currentTime = micros();
+        float dt = (currentTime - lastUpdateTime) / 1000000.0f;
+        lastUpdateTime = currentTime;
+
+        // 2. Subtract Bias & Convert Gyro to Radians/sec
+        float gx_rad = ((float)gx - gyroBiasX) * (M_PI / (180.0f * 131.0f));
+        float gy_rad = ((float)gy - gyroBiasY) * (M_PI / (180.0f * 131.0f));
+        float gz_rad = ((float)gz - gyroBiasZ) * (M_PI / (180.0f * 131.0f));
+
+        // 3. The Deadband Trick
+        if (abs(gz_rad) < 0.005f) gz_rad = 0.0f; 
+
+        // 4. Feed the Unified Math Engine! 
+        filter->compute(gx_rad, gy_rad, gz_rad, (float)ax, (float)ay, (float)az, 0.0f, 0.0f, 0.0f, dt, IMUConfig::HAS_COMPASS);
+
+        // 5. Update Memory
+        lastKnownAngles.roll  = filter->getRoll();
+        lastKnownAngles.pitch = filter->getPitch();
+        lastKnownAngles.yaw   = filter->getYaw();
     }
-
-    // 1. Calculate DT
-    unsigned long currentTime = micros();
-    float dt = (currentTime - lastUpdateTime) / 1000000.0f;
-    lastUpdateTime = currentTime;
-
-    // 2. Subtract Bias & Convert Gyro to Radians/sec
-    float gx_rad = ((float)gx - gyroBiasX) * (M_PI / (180.0f * 131.0f));
-    float gy_rad = ((float)gy - gyroBiasY) * (M_PI / (180.0f * 131.0f));
-    float gz_rad = ((float)gz - gyroBiasZ) * (M_PI / (180.0f * 131.0f));
-
-    // 3. The Deadband Trick
-    if (abs(gz_rad) < 0.005f) gz_rad = 0.0f; 
-
-    // 4. Feed the Unified Math Engine! 
-    // We pass 0.0f for mx/my/mz, and the HAS_COMPASS flag automatically tells the math engine what to do!
-    filter->compute(gx_rad, gy_rad, gz_rad, (float)ax, (float)ay, (float)az, 0.0f, 0.0f, 0.0f, dt, IMUConfig::HAS_COMPASS);
-
-    // 5. Update Memory
-    lastKnownAngles.roll  = filter->getRoll();
-    lastKnownAngles.pitch = filter->getPitch();
-    lastKnownAngles.yaw   = filter->getYaw();
     
     return lastKnownAngles;
 }
