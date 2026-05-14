@@ -85,7 +85,17 @@ FusedAngles lastAngles = {0, 0, 0};
 // ==========================================
 void ControlLoopTask(void *pvParameters) { 
     IRobotMode* previousMode = nullptr; // To track mode changes for onEnter/onExit
+
+    // === THE SOFTWARE METRONOME SETUP ===
+    // 10ms = 100Hz (The professional standard for flight controllers)
+    const TickType_t xFrequency = pdMS_TO_TICKS(10);
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+
     for (;;) {
+        // Lock the loop to exactly 100Hz. 
+        // This ensures dt in the Madgwick filter is always perfectly accurate!
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
         FusedAngles currentAngles = imu->getAngles();
         // FusedAngles currentAngles = {0, 0, 0}; // Dummy angles for testing without the IMU
         
@@ -244,8 +254,8 @@ void ControlLoopTask(void *pvParameters) {
             activeMode->update(activeMood);
         }
 
-        // Run this physics loop at exactly 100Hz
-        vTaskDelay(pdMS_TO_TICKS(10));
+        // NOTE: vTaskDelay(pdMS_TO_TICKS(10)); has been completely REMOVED from here!
+        // The pacing is now handled by vTaskDelayUntil at the top of the loop.
     }
 }
 

@@ -97,6 +97,12 @@ bool MPU6050_IMU::init() {
             return false;
         }
 
+        // === THE SILICON NOISE FILTER ===
+        // The DMP used to do this automatically. We must manually tell the MPU6050
+        // to filter out high-frequency mechanical chassis vibrations.
+        // 0 = 260Hz (Jittery), 3 = 42Hz (Smooth), 4 = 20Hz (Buttery)
+        mpu.setDLPFMode(4);
+
         // NOTE: Manual offset clears removed here to preserve the MPU6050's hardware factory trim!
 
         lastUpdateTime = micros();
