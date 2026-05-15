@@ -1,3 +1,4 @@
+#include "config/ConfigurationManager.h"
 #include "behaviours/Mode_NormalDriving.h"
 #include "config/PersonalityConfig.h" 
 #include "config/SystemConfig.h"
@@ -25,7 +26,7 @@ float Mode_NormalDriving::getShortestAngle(float target, float current) {
 }
 
 void Mode_NormalDriving::update(const RobotMood& currentMood) {
-    float baseSpeed = PersonalityConfig::NORMAL_CRUISING_SPEED * currentMood.speedMultiplier;
+    float finalSpeed = Config.CRUISING_SPEED * currentMood.speedMultiplier;
     
     // 1. Where are we pointing right now?
     float currentYaw = imu->getAngles().yaw;
@@ -41,7 +42,7 @@ void Mode_NormalDriving::update(const RobotMood& currentMood) {
     float finalCorrection = correction * currentMood.pidAggression;
 
     // 5. Mix the steering correction into the base speed
-    motors->drive(baseSpeed + finalCorrection, baseSpeed - finalCorrection);
+    motors->drive(finalSpeed + finalCorrection, finalSpeed - finalCorrection);
 }
 
 void Mode_NormalDriving::onExit() {
