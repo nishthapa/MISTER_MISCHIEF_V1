@@ -17,7 +17,7 @@ class BehaviourEngine {
 private:
     // The Hardware
     I_IMU* imu;
-    HCSR04_Sonar* sonar;
+    I_DistanceSensor* sonar;
 
     // The Modes
     Mode_ObstacleAvoidance* obstacleMode;
@@ -59,7 +59,7 @@ private:
     float smoothedTotalEnergy;
 
 public:
-    BehaviourEngine(I_IMU* i, HCSR04_Sonar* s, 
+    BehaviourEngine(I_IMU* i, I_DistanceSensor* s, 
                     Mode_ObstacleAvoidance* obs, Mode_NormalDriving* norm, 
                     Mode_CompassLock* comp, Mode_MaintainDistance* dist, 
                     Mode_Dizzy* diz, Mode_DeepSleep* sleep);

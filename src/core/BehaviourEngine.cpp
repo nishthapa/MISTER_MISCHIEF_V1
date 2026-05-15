@@ -13,7 +13,7 @@
 #include "behaviours/Mode_Dizzy.h"
 #include "behaviours/Mode_DeepSleep.h"
 
-BehaviourEngine::BehaviourEngine(I_IMU* i, HCSR04_Sonar* s, 
+BehaviourEngine::BehaviourEngine(I_IMU* i, I_DistanceSensor* s, 
                                  Mode_ObstacleAvoidance* obs, Mode_NormalDriving* norm, 
                                  Mode_CompassLock* comp, Mode_MaintainDistance* dist, 
                                  Mode_Dizzy* diz, Mode_DeepSleep* sleep) {

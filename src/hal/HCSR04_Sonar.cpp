@@ -19,18 +19,18 @@ void HCSR04_Sonar::init() {
 float HCSR04_Sonar::getDistanceCM() {
     // 1. Clear the trigger pin to ensure a clean high pulse
     digitalWrite(trigPin, LOW);
-    delayMicroseconds(SonarConfig::TRIGGER_CLEAR_DELAY_US);
+    delayMicroseconds(DistanceSensorConfig::TRIGGER_CLEAR_DELAY_US);
 
     // 2. Fire the 10-microsecond ultrasonic pulse
     digitalWrite(trigPin, HIGH);
-    delayMicroseconds(SonarConfig::TRIGGER_PULSE_DELAY_US);
+    delayMicroseconds(DistanceSensorConfig::TRIGGER_PULSE_DELAY_US);
     digitalWrite(trigPin, LOW);
 
     // 3. Measure the echo pulse length
     // CRITICAL FREERTOS SAFETY: The "25000" is a timeout in microseconds.
     // Without this timeout, if a wire disconnects, pulseIn() would wait forever,
     // locking up Core 0. 25,000us max wait = roughly 400cm maximum range.
-    unsigned long duration = pulseIn(echoPin, HIGH, SonarConfig::ECHO_TIMEOUT_US);
+    unsigned long duration = pulseIn(echoPin, HIGH, DistanceSensorConfig::ECHO_TIMEOUT_US);
 
     // 4. Handle errors (Timeout or wiring issue)
     if (duration == 0) {
@@ -40,7 +40,7 @@ float HCSR04_Sonar::getDistanceCM() {
     // 5. Calculate distance
     // The speed of sound is roughly 0.0343 cm per microsecond.
     // We divide by 2 because the sound wave travels to the wall AND back.
-    float distance = (duration * SonarConfig::SPEED_OF_SOUND_CM_US) / 2.0;
+    float distance = (duration * DistanceSensorConfig::SPEED_OF_SOUND_CM_US) / 2.0;
     
     return distance;
 }

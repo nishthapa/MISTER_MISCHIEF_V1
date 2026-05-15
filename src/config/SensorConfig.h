@@ -2,16 +2,27 @@
 #include <Arduino.h>
 
 // ==========================================
-// 1. ULTRASONIC SENSOR (HC-SR04)
+// 1. DISTANCE SENSOR CONFIG
 // ==========================================
-namespace SonarConfig {
-    // RANGE: 0.0330f TO 0.0350f // Speed of sound in air (cm per microsecond).
+namespace DistanceSensorConfig {
+    // === THE MUSEUM CATALOG ===
+    enum DistanceModel {
+        SENSOR_NONE,
+        SENSOR_HCSR04, // Ultrasonic
+        SENSOR_VL53L0X // Laser Time-of-Flight (For later!)
+    };
+
+    // 1. SELECT YOUR SENSOR HARDWARE
+    constexpr DistanceModel SELECTED_SENSOR = SENSOR_HCSR04;
+
+    // --- HC-SR04 (ULTRASONIC) Specific Tuning ---
+        // RANGE: 0.0330f TO 0.0350f // Speed of sound in air (cm per microsecond).
     // Note: 0.0343 is standard for sea level at 20°C. Cold/high altitude requires adjustment!
     constexpr float SPEED_OF_SOUND_CM_US = 0.0343f;
 
     // RANGE: 10000 TO 30000 // Microseconds to wait before giving up. 25,000us = ~400cm max range.
     constexpr unsigned long ECHO_TIMEOUT_US = 25000;
-
+    
     // --- Hardware Pin Timings ---
     constexpr unsigned int TRIGGER_CLEAR_DELAY_US = 2;  // Time to stabilize the pin LOW
     constexpr unsigned int TRIGGER_PULSE_DELAY_US = 10; // Time to hold the pin HIGH to fire the pulse

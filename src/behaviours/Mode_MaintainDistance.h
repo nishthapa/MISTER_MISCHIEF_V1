@@ -8,13 +8,13 @@
 class Mode_MaintainDistance : public IRobotMode {
 private:
     // The tools this mode needs to borrow
-    HCSR04_Sonar* sonar;
+    I_DistanceSensor* sonar;
     I_MotorDriver* motors;
     PIDController* pid;
 
 public:
     // Dependency Injection constructor
-    Mode_MaintainDistance(HCSR04_Sonar* s, I_MotorDriver* m, PIDController* p);
+    Mode_MaintainDistance(I_DistanceSensor* s, I_MotorDriver* m, PIDController* p);
 
     // The Contract
     void onEnter() override; // Nothing special needed on boot

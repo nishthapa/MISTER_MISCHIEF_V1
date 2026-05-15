@@ -3,7 +3,7 @@
 #include "config/PersonalityConfig.h" // <-- For the distance target
 #include "config/SystemConfig.h"      // <-- For the master clock
 
-Mode_MaintainDistance::Mode_MaintainDistance(HCSR04_Sonar* s, I_MotorDriver* m, PIDController* p) {
+Mode_MaintainDistance::Mode_MaintainDistance(I_DistanceSensor* s, I_MotorDriver* m, PIDController* p) {
     sonar = s; motors = m; pid = p;
 }
 

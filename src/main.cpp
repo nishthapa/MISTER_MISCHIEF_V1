@@ -2,7 +2,8 @@
 
 #include "config/PinConfig.h"         
 #include "hal/IMUFactory.h"
-#include "hal/MotorDriverFactory.h"          
+#include "hal/MotorDriverFactory.h"
+#include "hal/DistanceSensorFactory.h"          
 #include "objectproviders/PIDControllerFactory.h" 
 #include "behaviours/Mode_NormalDriving.h"
 #include "behaviours/Mode_CompassLock.h"
@@ -33,7 +34,7 @@ volatile bool global_imuAlive = false;
 // ==========================================
 // GLOBAL HARDWARE OBJECTS
 // ==========================================
-HCSR04_Sonar frontSonar(HardwarePins::PIN_SONAR_TRIG, HardwarePins::PIN_SONAR_ECHO);
+I_DistanceSensor* frontDistanceSensor = DistanceSensorFactory::createDistanceSensor();
 I_MotorDriver* motorDriver = MotorDriverFactory::createMotorDriver();
 I_IMU* imu = IMUFactory::createIMU();
 
@@ -48,20 +49,20 @@ PIDController distancePID = PIDControllerFactory::createDistanceHoldPID();
 // ==========================================
 // GLOBAL MODE OBJECTS
 // ==========================================
-Mode_ObstacleAvoidance obstacleMode(motorDriver, &frontSonar, imu, &obstacleAvoidancePID);
+Mode_ObstacleAvoidance obstacleMode(motorDriver, frontDistanceSensor, imu, &obstacleAvoidancePID);
 
 // THE UPGRADED CONSTRUCTOR IS NOW READY!
 Mode_NormalDriving normalMode(motorDriver, imu, &headingPID); 
 
 Mode_CompassLock compassMode(imu, motorDriver, &compassPID);
-Mode_MaintainDistance distanceMode(&frontSonar, motorDriver, &distancePID);
+Mode_MaintainDistance distanceMode(frontDistanceSensor, motorDriver, &distancePID);
 Mode_Dizzy dizzyMode(motorDriver);
 Mode_DeepSleep sleepMode(motorDriver);
 
 // ==========================================
 // MODE / MOOD SWITCHER
 // ==========================================
-BehaviourEngine brain(imu, &frontSonar, &obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode);
+BehaviourEngine brain(imu, frontDistanceSensor, &obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode);
 
 
 // ==========================================
@@ -111,7 +112,7 @@ void SensorTask(void *pvParameters) {
         } else { cliBuffer += incomingChar; }
     }
 
-    global_frontDistanceCM = frontSonar.getDistanceCM();
+    global_frontDistanceCM = frontDistanceSensor->getDistanceCM();
 
     if (global_imuAlive) {
         // Look how cleanly we can ask the brain for the current mode/mood!
@@ -150,7 +151,7 @@ void setup() {
   // === HARDWARE WAKE-UP DELAY ===
   delay(SystemConfig::HARDWARE_WAKE_DELAY_MS);
 
-  frontSonar.init();
+  frontDistanceSensor->init();
   motorDriver->init();
 
 logger.println("Waking up the IMU...");
