@@ -1,6 +1,6 @@
 #pragma once
 
-#include "hal/I_DistanceSensor.h"
+#include "hal/interfaces/I_DistanceSensor.h"
 
 class HCSR04_Sonar : public I_DistanceSensor {
 private:

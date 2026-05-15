@@ -1,4 +1,4 @@
-#include "hal/MPU6050_IMU.h"
+#include "hal/hardware/imu/MPU6050_IMU.h"
 #include "utils/RemoteLogger.h"
 #include "config/SensorConfig.h" 
 #include <Wire.h>

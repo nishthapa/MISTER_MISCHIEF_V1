@@ -1,8 +1,8 @@
 #pragma once
 
 #include "behaviours/IRobotMode.h"
-#include "hal/HCSR04_Sonar.h"
-#include "hal/XY160D_MotorDriver.h"
+#include "hal/hardware/distancesensor/HCSR04_Sonar.h"
+#include "hal/hardware/motordriver/XY160D_MotorDriver.h"
 #include "core/PIDController.h"
 
 class Mode_MaintainDistance : public IRobotMode {

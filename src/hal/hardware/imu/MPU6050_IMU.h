@@ -1,6 +1,6 @@
 #pragma once
 #include <Arduino.h>
-#include "hal/I_IMU.h" 
+#include "hal/interfaces/I_IMU.h" 
 #include "core/MadgwickFilter.h" 
 
 class MPU6050_IMU : public I_IMU {

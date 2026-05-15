@@ -1,7 +1,7 @@
 #pragma once
 
 #include "behaviours/IRobotMode.h"
-#include "hal/XY160D_MotorDriver.h"
+#include "hal/hardware/motordriver/XY160D_MotorDriver.h"
 
 class Mode_DeepSleep : public IRobotMode {
 private:

@@ -1,9 +1,9 @@
 #include <Arduino.h>
 
 #include "config/PinConfig.h"         
-#include "hal/IMUFactory.h"
-#include "hal/MotorDriverFactory.h"
-#include "hal/DistanceSensorFactory.h"          
+#include "hal/factories/MotorDriverFactory.h"
+#include "hal/factories/IMUFactory.h"
+#include "hal/factories/DistanceSensorFactory.h"          
 #include "objectproviders/PIDControllerFactory.h" 
 #include "behaviours/Mode_NormalDriving.h"
 #include "behaviours/Mode_CompassLock.h"

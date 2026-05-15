@@ -1,8 +1,8 @@
 #pragma once
-#include "hal/I_DistanceSensor.h"
+#include "hal/interfaces/I_DistanceSensor.h"
 #include "config/SensorConfig.h"
 #include "config/PinConfig.h"
-#include "hal/HCSR04_Sonar.h"
+#include "hal/hardware/distancesensor/HCSR04_Sonar.h"
 
 // #include "hal/VL53L0X_Laser.h" // You will uncomment this when you build the ToF driver!
 

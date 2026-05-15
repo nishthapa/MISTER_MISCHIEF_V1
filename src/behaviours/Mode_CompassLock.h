@@ -1,8 +1,8 @@
 #pragma once
 
 #include "behaviours/IRobotMode.h"
-#include "hal/I_IMU.h"
-#include "hal/XY160D_MotorDriver.h"
+#include "hal/interfaces/I_IMU.h"
+#include "hal/hardware/motordriver/XY160D_MotorDriver.h"
 #include "core/PIDController.h"
 
 class Mode_CompassLock : public IRobotMode {

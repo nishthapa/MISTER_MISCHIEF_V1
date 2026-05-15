@@ -1,9 +1,9 @@
 #pragma once
 
 #include "behaviours/IRobotMode.h"
-#include "hal/XY160D_MotorDriver.h"
-#include "hal/HCSR04_Sonar.h"
-#include "hal/I_IMU.h"
+#include "hal/hardware/motordriver/XY160D_MotorDriver.h"
+#include "hal/hardware/distancesensor/HCSR04_Sonar.h"
+#include "hal/interfaces/I_IMU.h"
 #include "core/PIDController.h"
 
 // A struct to hold our "Point Cloud" data

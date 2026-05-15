@@ -1,4 +1,4 @@
-#include "hal/XY160D_MotorDriver.h"
+#include "hal/hardware/motordriver/XY160D_MotorDriver.h"
 #include "config/MotorDriverConfig.h"
 
 // The Core 2.x API requires routing pins through specific hardware channels

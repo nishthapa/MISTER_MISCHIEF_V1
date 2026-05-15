@@ -1,7 +1,7 @@
 #pragma once
 #include "behaviours/IRobotMode.h"
-#include "hal/I_MotorDriver.h"
-#include "hal/I_IMU.h"
+#include "hal/interfaces/I_MotorDriver.h"
+#include "hal/interfaces/I_IMU.h"
 #include "core/PIDController.h"
 
 class Mode_NormalDriving : public IRobotMode {

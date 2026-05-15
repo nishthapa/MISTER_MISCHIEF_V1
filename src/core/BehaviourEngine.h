@@ -1,7 +1,7 @@
 #pragma once
 
-#include "hal/I_IMU.h"
-#include "hal/HCSR04_Sonar.h"
+#include "hal/interfaces/I_IMU.h"
+#include "hal/hardware/distancesensor/HCSR04_Sonar.h"
 #include "behaviours/IRobotMode.h"
 #include "behaviours/RobotMood.h"
 

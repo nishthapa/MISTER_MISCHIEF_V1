@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include "hal/I_MotorDriver.h" // <-- Include the contract
+#include "hal/interfaces/I_MotorDriver.h" // <-- Include the contract
 
 class XY160D_MotorDriver : public I_MotorDriver {
 private:

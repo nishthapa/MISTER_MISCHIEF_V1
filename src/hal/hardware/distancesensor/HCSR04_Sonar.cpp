@@ -1,4 +1,4 @@
-#include "hal/HCSR04_Sonar.h"
+#include "hal/hardware/distancesensor/HCSR04_Sonar.h"
 #include "config/SensorConfig.h"
 #include <Arduino.h>
 
