@@ -1,6 +1,7 @@
 #include "behaviours/Mode_ObstacleAvoidance.h"
 #include <Arduino.h>
 #include "utils/RemoteLogger.h" // For logging the radar sweep results and chosen escape path
+#include "config/ObstacleAvoidanceConfig.h"
 
 Mode_ObstacleAvoidance::Mode_ObstacleAvoidance(XY160D_MotorDriver* m, HCSR04_Sonar* s, I_IMU* i, PIDController* p) {
     motors = m; sonar = s; imu = i; alignPID = p;
@@ -29,12 +30,12 @@ void Mode_ObstacleAvoidance::onEnter() {
 
 void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
     unsigned long elapsed = millis() - stateStartTime;
-    float speed = 40.0f * currentMood.speedMultiplier; 
+    float speed = ObstacleConfig::BASE_SPEED * currentMood.speedMultiplier; 
 
     switch (currentState) {
         case BACKING_UP:
             motors->drive(-speed, -speed);
-            if (elapsed > 500) changeState(RADAR_SWEEP);
+            if (elapsed > ObstacleConfig::BACKUP_DURATION_MS) changeState(RADAR_SWEEP);
             break;
 
         case RADAR_SWEEP:
@@ -49,7 +50,8 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
 
             // 2. IMU-DRIVEN SWEEP: Stop sweeping exactly when we have turned 160 degrees. 
             // (Timeout added just in case the robot gets physically stuck)
-            if (abs(getShortestAngle(imu->getAngles().yaw, entryHeading)) >= 160.0f || elapsed > 3000) {
+            if (abs(getShortestAngle(imu->getAngles().yaw, entryHeading)) >= ObstacleConfig::SWEEP_ANGLE_DEG || 
+                elapsed > ObstacleConfig::SWEEP_TIMEOUT_MS) {
                 changeState(CALCULATING);
             }
             break;
@@ -97,13 +99,17 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
                 
                 motors->drive(finalCorrection, -finalCorrection);
 
-                if (abs(error) < 5.0f) changeState(ESCAPE);
+                // ADDED: The infinite loop timeout fix we discussed earlier
+                if (abs(error) < ObstacleConfig::ALIGN_SUCCESS_TOLERANCE_DEG || 
+                    elapsed > ObstacleConfig::ALIGN_TIMEOUT_MS) {
+                    changeState(ESCAPE);
+                }
             }
             break;
 
         case ESCAPE:
             motors->drive(speed, speed);
-            if (elapsed > 1000) changeState(FINISHED); 
+            if (elapsed > ObstacleConfig::ESCAPE_DURATION_MS) changeState(FINISHED); 
             break;
 
         case FINISHED:

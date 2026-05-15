@@ -9,9 +9,11 @@ namespace PersonalityConfig {
     // How close an object must be (in cm) to trigger a reaction
     constexpr float OBSTACLE_TRIGGER_DISTANCE_CM = 30.0f;
 
+    // RANGE: 10.0f TO 25.0f // Mister Mischief's personal space bubble for the push/pull game
+    constexpr float MAINTAIN_DISTANCE_TARGET_CM = 15.0f; 
+
     // --- Emotional Thresholds ---
     // Ticks required to trigger ANGRY mood (1 tick = 10ms in the control loop)
-    // 300 ticks = 3.0 seconds of teasing
     constexpr float DISTANCE_HOLD_FRUSTRATION_LIMIT = 300.0f; 
     
     // How fast frustration cools down when left alone

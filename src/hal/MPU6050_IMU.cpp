@@ -1,6 +1,6 @@
 #include "hal/MPU6050_IMU.h"
 #include "utils/RemoteLogger.h"
-#include "config/IMUConfig.h" 
+#include "config/SensorConfig.h" 
 #include <Wire.h>
 
 #include "I2Cdev.h"
@@ -203,12 +203,11 @@ FusedAngles MPU6050_IMU::getAngles() {
         lastUpdateTime = currentTime;
 
         // 2. Subtract Bias & Convert Gyro to Radians/sec
-        float gx_rad = ((float)gx - gyroBiasX) * (M_PI / (180.0f * 131.0f));
-        float gy_rad = ((float)gy - gyroBiasY) * (M_PI / (180.0f * 131.0f));
-        float gz_rad = ((float)gz - gyroBiasZ) * (M_PI / (180.0f * 131.0f));
-
+        float gx_rad = ((float)gx - gyroBiasX) * (M_PI / (180.0f * IMUConfig::GYRO_SCALE_FACTOR));
+        float gy_rad = ((float)gy - gyroBiasY) * (M_PI / (180.0f * IMUConfig::GYRO_SCALE_FACTOR));
+        float gz_rad = ((float)gz - gyroBiasZ) * (M_PI / (180.0f * IMUConfig::GYRO_SCALE_FACTOR));
         // 3. The Deadband Trick
-        if (abs(gz_rad) < 0.005f) gz_rad = 0.0f; 
+        if (abs(gz_rad) < IMUConfig::GYRO_DEADBAND_RAD_S) gz_rad = 0.0f; 
 
         // 4. Feed the Unified Math Engine! 
         filter->compute(gx_rad, gy_rad, gz_rad, (float)ax, (float)ay, (float)az, 0.0f, 0.0f, 0.0f, dt, IMUConfig::HAS_COMPASS);
@@ -219,7 +218,7 @@ FusedAngles MPU6050_IMU::getAngles() {
         float accelMag = sqrt((fax * fax) + (fay * fay) + (faz * faz));
         
         // At +/- 2G sensitivity, 16384 LSB equals 1.0 G of physical force
-        lastKnownAngles.gForce = accelMag / 16384.0f;
+        lastKnownAngles.gForce = accelMag / IMUConfig::ACCEL_SCALE_FACTOR;
 
         // 5. Update Memory
         lastKnownAngles.roll  = filter->getRoll();

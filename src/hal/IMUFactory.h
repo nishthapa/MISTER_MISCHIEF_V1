@@ -1,7 +1,7 @@
 #pragma once
 
 #include "hal/I_IMU.h"
-#include "config/IMUConfig.h"
+#include "config/SensorConfig.h"
 #include "config/PinConfig.h"
 
 // Include all supported IMUs here

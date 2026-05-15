@@ -1,5 +1,8 @@
 #include "behaviours/Mode_MaintainDistance.h"
 #include "utils/RemoteLogger.h"
+#include "config/PersonalityConfig.h" // <-- For the distance target
+#include "config/SystemConfig.h"      // <-- For the master clock
+
 Mode_MaintainDistance::Mode_MaintainDistance(HCSR04_Sonar* s, XY160D_MotorDriver* m, PIDController* p) {
     sonar = s; motors = m; pid = p;
 }
@@ -8,14 +11,14 @@ void Mode_MaintainDistance::onEnter() {
     logger.println("Mister Mischief is maintaining distance!");
 }
 
-
 void Mode_MaintainDistance::update(const RobotMood& currentMood) {
     float currentDistance = sonar->getDistanceCM();
     
-    // Target is exactly 15.0 cm
-    // If distance is 10cm (too close), error is positive -> robot backs up.
-    // If distance is 20cm (too far), error is negative -> robot moves forward.
-    float correction = pid->compute(15.0f, currentDistance, 0.01f); 
+    // Calculate dt (Delta Time) in seconds dynamically from the Master Clock!
+    float dt = SystemConfig::MAIN_LOOP_TICK_RATE_MS / 1000.0f;
+    
+    // Target distance to maintain is defined in PersonalityConfig
+    float correction = pid->compute(PersonalityConfig::MAINTAIN_DISTANCE_TARGET_CM, currentDistance, dt); 
     
     float finalSpeed = correction * currentMood.speedMultiplier;
     motors->drive(-finalSpeed, -finalSpeed); 

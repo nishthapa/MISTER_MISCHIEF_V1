@@ -16,6 +16,8 @@
 #include "config/DebugConfig.h" 
 #include "config/CommandRegistry.h" 
 
+#include "config/SystemConfig.h"
+
 RemoteLogger logger(NetworkConfig::TELNET_PORT); 
 
 // ==========================================
@@ -62,7 +64,7 @@ BehaviourEngine brain(imu, &frontSonar, &obstacleMode, &normalMode, &compassMode
 // CORE 1: THE MAIN CONTROL LOOP
 // ==========================================
 void ControlLoopTask(void *pvParameters) { 
-    const TickType_t xFrequency = pdMS_TO_TICKS(10);
+    const TickType_t xFrequency = pdMS_TO_TICKS(SystemConfig::MAIN_LOOP_TICK_RATE_MS);
     TickType_t xLastWakeTime = xTaskGetTickCount();
 
     for (;;) {
@@ -116,7 +118,7 @@ void SensorTask(void *pvParameters) {
         logger.printf("SONAR: %.1f cm | IMU: N/A | MODE: %s | MOOD: %s\n", 
                       global_frontDistanceCM, brain.getActiveModeName(), brain.getActiveMoodName());
     }
-    vTaskDelay(pdMS_TO_TICKS(50)); 
+    vTaskDelay(pdMS_TO_TICKS(SystemConfig::TELEMETRY_PING_DELAY_MS)); 
   }
 }
 
@@ -131,20 +133,29 @@ void setup() {
   RadioManager::initRadios();
   logger.bindRadios();
 
+// ==========================================
+  // THE TELNET WAITING ROOM
+  // ==========================================
   unsigned long waitStart = millis();
-  while (millis() - waitStart < 8000) { logger.handleClient(); delay(50); }
-  delay(500);
+  while (millis() - waitStart < SystemConfig::TELNET_WAIT_TIME_MS) {
+      logger.handleClient(); 
+      delay(50);
+  }
   
+  // === HARDWARE WAKE-UP DELAY ===
+  delay(SystemConfig::HARDWARE_WAKE_DELAY_MS);
+
   frontSonar.init();
   motors.init();
 
-  logger.println("Waking up the IMU...");
+logger.println("Waking up the IMU...");
   int imuRetries = 0;
-  while (!imu->init() && imuRetries < 5) {
-      logger.println("IMU failed to initialize. Rebooting I2C...");
-      delay(1000); imuRetries++;
+  while (!imu->init() && imuRetries < SystemConfig::IMU_MAX_RETRIES) {
+      logger.println("IMU failed to initialize. Rebooting I2C bus...");
+      delay(SystemConfig::IMU_RETRY_DELAY_MS); 
+      imuRetries++;
   }
-  global_imuAlive = (imuRetries < 5); 
+  global_imuAlive = (imuRetries < SystemConfig::IMU_MAX_RETRIES);
 
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   bool isColdBoot = (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED);
@@ -155,8 +166,18 @@ void setup() {
   logger.println("Mister Mischief V1 Booting...");
   delay(1000); 
 
-  xTaskCreatePinnedToCore(SensorTask, "SensorTask", 4096, NULL, 1, &SensorTaskHandle, 0);
-  xTaskCreatePinnedToCore(ControlLoopTask, "ControlLoopTask", 4096, NULL, 1, &ControlLoopTaskHandle, 1);
+// === TASK CREATION ===
+  xTaskCreatePinnedToCore(
+    SensorTask, "SensorTask", 
+    SystemConfig::TASK_STACK_SIZE, NULL, SystemConfig::SENSOR_TASK_PRIORITY, 
+    &SensorTaskHandle, SystemConfig::SENSOR_TASK_CORE_AFFINITY
+  );
+
+  xTaskCreatePinnedToCore(
+    ControlLoopTask, "ControlLoopTask", 
+    SystemConfig::TASK_STACK_SIZE, NULL, SystemConfig::CONTROL_TASK_PRIORITY, 
+    &ControlLoopTaskHandle, SystemConfig::CONTROL_TASK_CORE_AFFINITY
+  );
 }
 
 void loop() { vTaskDelete(NULL); }
