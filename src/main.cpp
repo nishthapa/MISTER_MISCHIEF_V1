@@ -34,7 +34,7 @@ volatile bool global_imuAlive = false;
 // GLOBAL HARDWARE OBJECTS
 // ==========================================
 HCSR04_Sonar frontSonar(HardwarePins::PIN_SONAR_TRIG, HardwarePins::PIN_SONAR_ECHO);
-I_MotorDriver* motors = MotorDriverFactory::createMotorDriver();
+I_MotorDriver* motorDriver = MotorDriverFactory::createMotorDriver();
 I_IMU* imu = IMUFactory::createIMU();
 
 // ==========================================
@@ -48,12 +48,13 @@ PIDController obstacleAvoidancePID = PIDPurposeProfileFactory::createObstacleAvo
 // ==========================================
 // GLOBAL MODE OBJECTS
 // ==========================================
-Mode_ObstacleAvoidance obstacleMode(&motors, &frontSonar, imu, &obstacleAvoidancePID);
-Mode_NormalDriving normalMode(&motors); 
-Mode_CompassLock compassMode(imu, &motors, &compassPID); 
-Mode_MaintainDistance distanceMode(&frontSonar, &motors, &distancePID);
-Mode_Dizzy dizzyMode(&motors);
-Mode_DeepSleep sleepMode(&motors);
+// Notice there are NO '&' symbols in front of "motors" anymore!
+Mode_ObstacleAvoidance obstacleMode(motorDriver, &frontSonar, imu, &obstacleAvoidancePID);
+Mode_NormalDriving normalMode(motorDriver, imu, &headingPID); 
+Mode_CompassLock compassMode(imu, motorDriver, &compassPID); 
+Mode_MaintainDistance distanceMode(&frontSonar, motorDriver, &distancePID);
+Mode_Dizzy dizzyMode(motorDriver);
+Mode_DeepSleep sleepMode(motorDriver);
 
 // ==========================================
 // MODE / MOOD SWITCHER
@@ -118,6 +119,7 @@ void SensorTask(void *pvParameters) {
     } else {
         logger.printf("SONAR: %.1f cm | IMU: N/A | MODE: %s | MOOD: %s\n", 
                       global_frontDistanceCM, brain.getActiveModeName(), brain.getActiveMoodName());
+                      motorDriver->stop();
     }
     vTaskDelay(pdMS_TO_TICKS(SystemConfig::TELEMETRY_PING_DELAY_MS)); 
   }
@@ -147,7 +149,7 @@ void setup() {
   delay(SystemConfig::HARDWARE_WAKE_DELAY_MS);
 
   frontSonar.init();
-  motors.init();
+  motorDriver->init();
 
 logger.println("Waking up the IMU...");
   int imuRetries = 0;
