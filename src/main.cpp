@@ -3,7 +3,7 @@
 #include "config/PinConfig.h"         
 #include "hal/IMUFactory.h"
 #include "hal/MotorDriverFactory.h"          
-#include "objectproviders/PIDPurposeProfileFactory.h" 
+#include "objectproviders/PIDControllerFactory.h" 
 #include "behaviours/Mode_NormalDriving.h"
 #include "behaviours/Mode_CompassLock.h"
 #include "behaviours/Mode_MaintainDistance.h"
@@ -40,10 +40,10 @@ I_IMU* imu = IMUFactory::createIMU();
 // ==========================================
 // GLOBAL PID CONTROLLERS
 // ==========================================
-PIDController obstacleAvoidancePID = PIDPurposeProfileFactory::createObstacleAvoidanceNewPathScanSweepPID();
-PIDController headingPID = PIDPurposeProfileFactory::createHeadingHoldPID();
-PIDController compassPID = PIDPurposeProfileFactory::createCompassLockPID();
-PIDController distancePID = PIDPurposeProfileFactory::createDistanceHoldPID();
+PIDController obstacleAvoidancePID = PIDControllerFactory::createObstacleAvoidanceNewPathScanSweepPID();
+PIDController headingPID = PIDControllerFactory::createHeadingHoldPID();
+PIDController compassPID = PIDControllerFactory::createCompassLockPID();
+PIDController distancePID = PIDControllerFactory::createDistanceHoldPID();
 
 // ==========================================
 // GLOBAL MODE OBJECTS

@@ -6,7 +6,7 @@
 #include "config/pidtuning/PIDTune_DistanceHold.h" // For holding distance from an object (like hand)
 #include "config/pidtuning/PIDTune_ObstacleAvoidanceNewPathScanSweep.h" // For the radial pathfinding scan after an obstacle is detected
 
-class PIDPurposeProfileFactory {
+class PIDControllerFactory {
 public:
     // A static "vending machine" function to dispense a pre-tuned Heading PID
     static PIDController createHeadingHoldPID() {
