@@ -6,11 +6,11 @@
 class Mode_DeepSleep : public IRobotMode {
 private:
     // Needs the motors strictly to force a stop before sleeping
-    XY160D_MotorDriver* motors;
+    I_MotorDriver* motors;
 
 public:
     // Dependency Injection constructor
-    Mode_DeepSleep(XY160D_MotorDriver* m);
+    Mode_DeepSleep(I_MotorDriver* m);
 
     // The Contract
     void onEnter() override; // The implementation here kills the CPU!

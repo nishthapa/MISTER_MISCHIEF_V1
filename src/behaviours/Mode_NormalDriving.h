@@ -4,10 +4,10 @@
 
 class Mode_NormalDriving : public IRobotMode {
 private:
-    XY160D_MotorDriver* motors;
+    I_MotorDriver* motors;
 
 public:
-    Mode_NormalDriving(XY160D_MotorDriver* m);
+    Mode_NormalDriving(I_MotorDriver* m);
     void onEnter() override;
     void update(const RobotMood& currentMood) override;
     const char* getName() const override { return "MODE_NORMAL_DRIVING"; }

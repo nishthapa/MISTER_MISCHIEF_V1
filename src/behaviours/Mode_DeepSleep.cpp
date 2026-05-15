@@ -4,7 +4,7 @@
 #include "utils/RemoteLogger.h" // <-- ADD THIS INCLUDE
 #include <esp_sleep.h> // For the ESP sleep commands
 
-Mode_DeepSleep::Mode_DeepSleep(XY160D_MotorDriver* m) {
+Mode_DeepSleep::Mode_DeepSleep(I_MotorDriver* m) {
     motors = m;
 }
 

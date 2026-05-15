@@ -1,5 +1,5 @@
 #include "hal/XY160D_MotorDriver.h"
-#include "config/MotorPWMConfig.h"
+#include "config/MotorDriverConfig.h"
 
 // The Core 2.x API requires routing pins through specific hardware channels
 #include "config/ChannelRegistry.h" // --- ESP32 Hardware PWM Channels ---
@@ -7,20 +7,20 @@
 #include <Arduino.h>
 
 // 1. Store the incoming pins into the object's private memory
-XY160D_MotorDriver::XY160D_MotorDriver(int leftFwd, int leftRev, int rightFwd, int rightRev) {
-    leftFwdPin = leftFwd;
-    leftRevPin = leftRev;
-    rightFwdPin = rightFwd;
-    rightRevPin = rightRev;
+XY160D_MotorDriver::XY160D_MotorDriver(int lf, int lr, int rf, int rr) {
+    leftFwdPin = lf;
+    leftRevPin = lr;
+    rightFwdPin = rf;
+    rightRevPin = rr;
 }
 
 void XY160D_MotorDriver::init() {
     // 1. Configure the 4 hardware channels with your frequency and resolution
     // (These CH_ variables are still fine, they come from ChannelRegistry.h)
-    ledcSetup(CH_MOTOR_LEFT_FWD, PWM_FREQ, PWM_RESOLUTION);
-    ledcSetup(CH_MOTOR_LEFT_REV, PWM_FREQ, PWM_RESOLUTION);
-    ledcSetup(CH_MOTOR_RIGHT_FWD, PWM_FREQ, PWM_RESOLUTION);
-    ledcSetup(CH_MOTOR_RIGHT_REV, PWM_FREQ, PWM_RESOLUTION);
+    ledcSetup(CH_MOTOR_LEFT_FWD, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
+    ledcSetup(CH_MOTOR_LEFT_REV, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
+    ledcSetup(CH_MOTOR_RIGHT_FWD, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
+    ledcSetup(CH_MOTOR_RIGHT_REV, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
 
     // 2. Attach the internally stored pins to the channels
     // DO NOT use PIN_MOTOR_..., use the private variables!
@@ -33,9 +33,9 @@ void XY160D_MotorDriver::init() {
     stop(); 
 }
 
-void XY160D_MotorDriver::setLeftSpeed(int speed) {
-    speed = constrain(speed, -100, 100);
-    int pwmValue = map(abs(speed), 0, 100, 0, PWM_MAX_DUTY_CYCLE);
+void XY160D_MotorDriver::setLeftSpeed(float speed) {
+    speed = constrain(speed, -100.0f, 100.0f);
+    int pwmValue = map(abs(speed), 0, 100, 0, MotorDriverConfig::MAX_DUTY);
 
     // Note: Core 2.x ledcWrite targets the CHANNEL, not the physical PIN
     if (speed > 0) {
@@ -50,9 +50,9 @@ void XY160D_MotorDriver::setLeftSpeed(int speed) {
     }
 }
 
-void XY160D_MotorDriver::setRightSpeed(int speed) {
-    speed = constrain(speed, -100, 100);
-    int pwmValue = map(abs(speed), 0, 100, 0, PWM_MAX_DUTY_CYCLE);
+void XY160D_MotorDriver::setRightSpeed(float speed) {
+    speed = constrain(speed, -100.0f, 100.0f);
+    int pwmValue = map(abs(speed), 0, 100, 0, MotorDriverConfig::MAX_DUTY);
 
     if (speed > 0) {
         ledcWrite(CH_MOTOR_RIGHT_FWD, pwmValue);
@@ -66,11 +66,11 @@ void XY160D_MotorDriver::setRightSpeed(int speed) {
     }
 }
 
-void XY160D_MotorDriver::drive(int leftSpeed, int rightSpeed) {
+void XY160D_MotorDriver::drive(float leftSpeed, float rightSpeed) {
     setLeftSpeed(leftSpeed);
     setRightSpeed(rightSpeed);
 }
 
 void XY160D_MotorDriver::stop() {
-    drive(0, 0);
+    drive(0.0f, 0.0f);
 }

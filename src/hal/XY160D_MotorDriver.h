@@ -1,28 +1,23 @@
 #pragma once
 
-class XY160D_MotorDriver {
-    private:
-    // Internal memory to hold the pin assignments
-    int leftFwdPin;
-    int leftRevPin;
-    int rightFwdPin;
-    int rightRevPin;
+#include <Arduino.h>
+#include "hal/I_MotorDriver.h" // <-- Include the contract
+
+class XY160D_MotorDriver : public I_MotorDriver {
+private:
+    // Variable names fixed to match your .cpp file!
+    int leftFwdPin, leftRevPin, rightFwdPin, rightRevPin;
 
 public:
-    // The new parameterized constructor
-    XY160D_MotorDriver(int leftFwd, int leftRev, int rightFwd, int rightRev);
+    XY160D_MotorDriver(int lf, int lr, int rf, int rr);
 
-    // Configures the ESP32 PWM timers and attaches the pins
-    void init();
+    // Notice we removed the accidental semicolon before override!
+    void init() override;
 
-    // Accepts a speed percentage from -100 (full reverse) to 100 (full forward).
-    // Automatically scales to your safe 3V PWM limit.
-    void setLeftSpeed(int speed);
-    void setRightSpeed(int speed);
+    void setLeftSpeed(float speed);
+    void setRightSpeed(float speed);
 
-    // Convenience command to drive both tracks simultaneously
-    void drive(int leftSpeed, int rightSpeed);
-
-    // Hard emergency stop (grounds all H-bridge inputs)
-    void stop();
+    // Added the "override" keyword so it fulfills the Contract!
+    void drive(float leftSpeed, float rightSpeed) override;
+    void stop() override;
 };

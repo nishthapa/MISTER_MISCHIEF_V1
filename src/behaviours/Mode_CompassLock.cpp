@@ -2,7 +2,7 @@
 #include "utils/RemoteLogger.h" // <-- ADD THIS INCLUDE
 #include <Arduino.h>
 
-Mode_CompassLock::Mode_CompassLock(I_IMU* i, XY160D_MotorDriver* m, PIDController* p) {
+Mode_CompassLock::Mode_CompassLock(I_IMU* i, I_MotorDriver* m, PIDController* p) {
     imu = i; motors = m; pid = p;
     targetYaw = 0.0f;
 }

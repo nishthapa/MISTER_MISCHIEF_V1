@@ -14,7 +14,7 @@ struct RadarPing {
 
 class Mode_ObstacleAvoidance : public IRobotMode {
 private:
-    XY160D_MotorDriver* motors;
+    I_MotorDriver* motors;
     HCSR04_Sonar* sonar;
     I_IMU* imu;
     PIDController* alignPID;
@@ -38,7 +38,7 @@ private:
 
 public:
     // Dependency Injection upgraded
-    Mode_ObstacleAvoidance(XY160D_MotorDriver* m, HCSR04_Sonar* s, I_IMU* i, PIDController* p);
+    Mode_ObstacleAvoidance(I_MotorDriver* m, HCSR04_Sonar* s, I_IMU* i, PIDController* p);
     
     void onEnter() override;
     void update(const RobotMood& currentMood) override;

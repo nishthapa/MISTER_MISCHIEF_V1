@@ -3,7 +3,7 @@
 #include "utils/RemoteLogger.h" // For logging when we enter normal driving mode
 #include <Arduino.h>
 
-Mode_NormalDriving::Mode_NormalDriving(XY160D_MotorDriver* m) {
+Mode_NormalDriving::Mode_NormalDriving(I_MotorDriver* m) {
     motors = m;
 }
 

@@ -3,7 +3,7 @@
 #include "utils/RemoteLogger.h" // For logging the radar sweep results and chosen escape path
 #include "config/ObstacleAvoidanceConfig.h"
 
-Mode_ObstacleAvoidance::Mode_ObstacleAvoidance(XY160D_MotorDriver* m, HCSR04_Sonar* s, I_IMU* i, PIDController* p) {
+Mode_ObstacleAvoidance::Mode_ObstacleAvoidance(I_MotorDriver* m, HCSR04_Sonar* s, I_IMU* i, PIDController* p) {
     motors = m; sonar = s; imu = i; alignPID = p;
     currentState = FINISHED;
 }

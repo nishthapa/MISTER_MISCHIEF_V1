@@ -1,7 +1,8 @@
 #include <Arduino.h>
 
 #include "config/PinConfig.h"         
-#include "hal/IMUFactory.h"          
+#include "hal/IMUFactory.h"
+#include "hal/MotorDriverFactory.h"          
 #include "objectproviders/PIDPurposeProfileFactory.h" 
 #include "behaviours/Mode_NormalDriving.h"
 #include "behaviours/Mode_CompassLock.h"
@@ -33,7 +34,7 @@ volatile bool global_imuAlive = false;
 // GLOBAL HARDWARE OBJECTS
 // ==========================================
 HCSR04_Sonar frontSonar(HardwarePins::PIN_SONAR_TRIG, HardwarePins::PIN_SONAR_ECHO);
-XY160D_MotorDriver motors(HardwarePins::PIN_MOTOR_LEFT_FWD, HardwarePins::PIN_MOTOR_LEFT_REV, HardwarePins::PIN_MOTOR_RIGHT_FWD, HardwarePins::PIN_MOTOR_RIGHT_REV);
+I_MotorDriver* motors = MotorDriverFactory::createMotorDriver();
 I_IMU* imu = IMUFactory::createIMU();
 
 // ==========================================

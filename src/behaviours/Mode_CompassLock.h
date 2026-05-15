@@ -9,7 +9,7 @@ class Mode_CompassLock : public IRobotMode {
 private:
     // This mode needs to "see" tilt, "move" motors, and "think" with PID
     I_IMU* imu;
-    XY160D_MotorDriver* motors;
+    I_MotorDriver* motors;
     PIDController* pid;
 
     // The memory of where he was looking when he was picked up
@@ -17,7 +17,7 @@ private:
 
 public:
     // Dependency Injection: Hand the mode its tools
-    Mode_CompassLock(I_IMU* i, XY160D_MotorDriver* m, PIDController* p);
+    Mode_CompassLock(I_IMU* i, I_MotorDriver* m, PIDController* p);
 
     // The Contract
     void onEnter() override;

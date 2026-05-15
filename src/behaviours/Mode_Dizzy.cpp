@@ -2,7 +2,7 @@
 #include <Arduino.h>
 #include "utils/RemoteLogger.h"
 
-Mode_Dizzy::Mode_Dizzy(XY160D_MotorDriver* m) {
+Mode_Dizzy::Mode_Dizzy(I_MotorDriver* m) {
     motors = m;
 }
 

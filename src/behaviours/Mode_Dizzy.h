@@ -6,11 +6,11 @@
 class Mode_Dizzy : public IRobotMode {
 private:
     // This mode acts blind, it only needs the muscles
-    XY160D_MotorDriver* motors;
+    I_MotorDriver* motors;
 
 public:
     // Dependency Injection constructor
-    Mode_Dizzy(XY160D_MotorDriver* m);
+    Mode_Dizzy(I_MotorDriver* m);
 
     // The Contract
     void onEnter() override;
