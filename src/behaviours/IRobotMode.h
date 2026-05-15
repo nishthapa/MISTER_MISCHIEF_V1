@@ -11,6 +11,9 @@ public:
     // 💥 NEW: Every mode now receives the current mood!
     virtual void update(const RobotMood& currentMood) = 0;
 
+    // NEW: Force every mode to return its name!
+    virtual const char* getName() const = 0;
+
     // Called once when the robot switches OUT OF this mood
-    virtual void onExit() = 0;
+    virtual void onExit() = 0;    
 };

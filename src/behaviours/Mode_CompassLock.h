@@ -22,5 +22,6 @@ public:
     // The Contract
     void onEnter() override;
     void update(const RobotMood& currentMood) override;
+    const char* getName() const override { return "MODE_COMPASS_LOCK"; }
     void onExit() override;
 };

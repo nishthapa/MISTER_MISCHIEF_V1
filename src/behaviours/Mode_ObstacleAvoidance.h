@@ -42,6 +42,7 @@ public:
     
     void onEnter() override;
     void update(const RobotMood& currentMood) override;
+    const char* getName() const override { return "MODE_OBSTACLE_AVOIDANCE"; }
     void onExit() override;
-    bool isSequenceComplete(); 
+    bool isSequenceComplete();
 };

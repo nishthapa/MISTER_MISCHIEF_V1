@@ -15,5 +15,6 @@ public:
     // The Contract
     void onEnter() override; // The implementation here kills the CPU!
     void update(const RobotMood& currentMood) override;
+    const char* getName() const override { return "MODE_DEEP_SLEEP"; }
     void onExit() override {} // Will never be called, CPU resets upon waking
 };

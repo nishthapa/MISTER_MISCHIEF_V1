@@ -10,5 +10,6 @@ public:
     Mode_NormalDriving(XY160D_MotorDriver* m);
     void onEnter() override;
     void update(const RobotMood& currentMood) override;
+    const char* getName() const override { return "MODE_NORMAL_DRIVING"; }
     void onExit() override;
 };

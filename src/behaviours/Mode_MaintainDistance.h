@@ -19,5 +19,6 @@ public:
     // The Contract
     void onEnter() override; // Nothing special needed on boot
     void update(const RobotMood& currentMood) override;
+    const char* getName() const override { return "MODE_MAINTAIN_DISTANCE"; }
     void onExit() override { motors->stop(); } // Safety stop when leaving this mode
 };
