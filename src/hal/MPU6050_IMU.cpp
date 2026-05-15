@@ -213,6 +213,14 @@ FusedAngles MPU6050_IMU::getAngles() {
         // 4. Feed the Unified Math Engine! 
         filter->compute(gx_rad, gy_rad, gz_rad, (float)ax, (float)ay, (float)az, 0.0f, 0.0f, 0.0f, dt, IMUConfig::HAS_COMPASS);
 
+        // --- NEW: Calculate Total G-Force ---
+        // Convert the raw 16-bit integers to floats before squaring to prevent math overflow
+        float fax = ax; float fay = ay; float faz = az;
+        float accelMag = sqrt((fax * fax) + (fay * fay) + (faz * faz));
+        
+        // At +/- 2G sensitivity, 16384 LSB equals 1.0 G of physical force
+        lastKnownAngles.gForce = accelMag / 16384.0f;
+
         // 5. Update Memory
         lastKnownAngles.roll  = filter->getRoll();
         lastKnownAngles.pitch = filter->getPitch();

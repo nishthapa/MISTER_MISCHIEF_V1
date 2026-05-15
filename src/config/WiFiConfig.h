@@ -13,10 +13,10 @@ namespace NetworkConfig {
     // constexpr bool ENABLE_OTA_UPDATES = false;
 
     // === CREDENTIALS ===
-    constexpr char WIFI_SSID[] = "Airtel_Hevnoraak";
-    constexpr char WIFI_PASSWORD[] = "Kalimpong@321";
+    //constexpr char WIFI_SSID[] = "Airtel_Hevnoraak";
+    //constexpr char WIFI_PASSWORD[] = "Kalimpong@321";
 
-    //constexpr char WIFI_SSID[] = "Nishant's S24 Ultra";
-    //constexpr char WIFI_PASSWORD[] = "1234567890";
+    constexpr char WIFI_SSID[] = "Nishant's S24 Ultra";
+    constexpr char WIFI_PASSWORD[] = "1234567890";
     constexpr int TELNET_PORT = 23;
 }

@@ -6,6 +6,9 @@ struct FusedAngles {
     float pitch;           // Y-axis rotation (Nose up/down)
     float roll;            // X-axis rotation (Tilting left/right)
     
+    // --- THE FIX 10: THE GRAVITY DATA ---
+    float gForce;          // 1.0 is normal gravity. >1.2 means being lifted!
+
     // --- THE FUTURE-PROOF COMPASS DATA ---
     bool hasCompass;       // Tells the robot if it can trust the absolute heading
     float compassHeading;  // Absolute Magnetic North (0 to 360 degrees)

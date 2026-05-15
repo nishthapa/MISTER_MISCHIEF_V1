@@ -80,15 +80,21 @@ unsigned long dizzyStartTime = 0;
 bool isDizzy = false;
 FusedAngles lastAngles = {0, 0, 0};
 
+
 // ==========================================
 // CORE 1: THE MAIN CONTROL LOOP
 // ==========================================
 void ControlLoopTask(void *pvParameters) { 
     IRobotMode* previousMode = nullptr; // To track mode changes for onEnter/onExit
 
-    // Static variables for our Hysteresis Timers (Preserved between loop ticks)
-    unsigned long settlingStartTime = 0;
-    bool settlingTimerActive = false;
+    // === THE FIX 9: GLOBAL MEMORY ===
+    // Moved these to the top so they survive between ticks AND can be wiped by Dizzy Mode!
+    static unsigned long settlingStartTime = 0;
+    static bool settlingTimerActive = false;
+    static unsigned long pickupStartTime = 0;
+    static bool pickupTimerActive = false;
+    static bool isHandling = false;
+    static bool hasExperiencedLift = false; // NEW: The Gravity Latch!
 
     // === THE SOFTWARE METRONOME SETUP ===
     // 10ms = 100Hz (The professional standard for flight controllers)
@@ -142,7 +148,20 @@ void ControlLoopTask(void *pvParameters) {
         // Calculate total energy and run it through an EMA to ignore 1-frame sensor noise spikes!
         float totalRawEnergy = rawYawEnergy + rawPitchEnergy + rawRollEnergy;
         static float smoothedTotalEnergy = 0.0f;
-        smoothedTotalEnergy = (0.05f * totalRawEnergy) + (0.95f * smoothedTotalEnergy);
+        
+        // THE FIX 8: Increased alpha to 0.10f so it detects hand tremors faster and doesn't over-smooth!
+        smoothedTotalEnergy = (0.10f * totalRawEnergy) + (0.90f * smoothedTotalEnergy);
+
+        // --- THE FIX 10: GRAVITY VECTOR PRE-CHECK! ---
+        // Slowly lowering him is indistinguishable from holding him steady, 
+        // UNLESS we look at the raw acceleration! 
+        // Pull the live physical G-Force from the upgraded IMU struct!
+        float currentGForce = currentAngles.gForce;
+        
+        // A standard 1G environment reads ~1.0. Lifting him sharply will spike this > 1.2 or < 0.8
+        if (currentGForce > 1.2f || currentGForce < 0.8f || totalRawEnergy > 300.0f) {
+            hasExperiencedLift = true; // The physical proof he was picked up!
+        }
 
         // 2. THE KINETIC ENERGY ACCUMULATOR
         // THE FIX 2: Replaced the Transport Freeze with an "Energy Deadband"!
@@ -217,6 +236,15 @@ void ControlLoopTask(void *pvParameters) {
         else if (isDizzy) {
             if (millis() - dizzyStartTime > 10000) {
                 isDizzy = false; 
+                
+                // THE FIX 9: The Ghost Latch Wipe!
+                // We MUST clear these out. If we don't, motor vibrations from Normal Mode 
+                // will falsely trigger the Compass Entry timer.
+                isHandling = false;
+                hasExperiencedLift = false; 
+                pickupTimerActive = false;
+                settlingTimerActive = false;
+                
                 // Only return to normal if he isn't currently being held by a human
                 if (activeMode == &dizzyMode) {
                     activeMode = &normalMode; 
@@ -229,21 +257,21 @@ void ControlLoopTask(void *pvParameters) {
         // PRIORITY 3: PHYSICAL HANDLING (Compass Lock)
         // This only runs if he IS NOT dizzy. 
         else {
-            static unsigned long pickupStartTime = 0;
-            static bool pickupTimerActive = false;
-            static bool isHandling = false;
-
-            // THE FIX 5: The "Handling" Latch. 
-            // If he gets heavily tilted, we definitively know a human grabbed him.
+            // THE FIX 5 & 10: The "Handling" Latch with GRAVITY PRE-CHECK! 
+            // If he gets heavily tilted AND has experienced a lift, we definitively know a human grabbed him.
+            // He can NO LONGER accidentally trigger this by just being lowered down!
             if (abs(currentAngles.pitch) > 25.0f || abs(currentAngles.roll) > 25.0f) {
-                isHandling = true;
+                if (hasExperiencedLift) {
+                    isHandling = true;
+                }
             }
 
             // THE FIX 7.2: Unlatching the human hand.
-            // If he is perfectly flat AND the smoothed energy is rock solid (< 10.0), the human let go.
+            // If he is perfectly flat AND the smoothed energy is rock solid (< 4.0), the human let go.
             bool isUpright = (abs(currentAngles.pitch) < 5.0f && abs(currentAngles.roll) < 5.0f);
-            if (isUpright && smoothedTotalEnergy < 10.0f) {
+            if (isUpright && smoothedTotalEnergy < 4.0f) {
                 isHandling = false;
+                hasExperiencedLift = false; // Reset the gravity lock so he must be lifted anew next time!
             }
 
             if (activeMode != &compassMode) {
@@ -274,10 +302,9 @@ void ControlLoopTask(void *pvParameters) {
             else if (activeMode == &compassMode) {
                 if (!isHandling) {
                     // THE FIX 7.3: The "Floor Unlatch"
-                    // We changed from 'totalRawEnergy < 45.0f' to 'smoothedTotalEnergy < 10.0f'.
-                    // By smoothing the energy, we ignore random 1-frame sensor glitches, which allows us 
-                    // to use a hyper-strict threshold (10.0). A table is ~2.0, a steady hand is ~15.0+.
-                    bool isPerfectlyStill = (smoothedTotalEnergy < 10.0f);
+                    // We changed from 10.0f to 4.0f. A steady human hand easily averages 8-10. 
+                    // A solid wooden table averages 1.5 to 2.5. 4.0 is the perfect razor's edge!
+                    bool isPerfectlyStill = (smoothedTotalEnergy < 4.0f);
                     
                     if (isPerfectlyStill) {
                         if (!settlingTimerActive) {
