@@ -38,20 +38,22 @@ I_MotorDriver* motorDriver = MotorDriverFactory::createMotorDriver();
 I_IMU* imu = IMUFactory::createIMU();
 
 // ==========================================
-// GLOBAL SOFTWARE / MATH OBJECTS
+// GLOBAL PID CONTROLLERS
 // ==========================================
-PIDController headingHoldPID = PIDPurposeProfileFactory::createHeadingHoldPID();
+PIDController obstacleAvoidancePID = PIDPurposeProfileFactory::createObstacleAvoidanceNewPathScanSweepPID();
+PIDController headingPID = PIDPurposeProfileFactory::createHeadingHoldPID();
 PIDController compassPID = PIDPurposeProfileFactory::createCompassLockPID();
 PIDController distancePID = PIDPurposeProfileFactory::createDistanceHoldPID();
-PIDController obstacleAvoidancePID = PIDPurposeProfileFactory::createObstacleAvoidanceNewPathScanSweepPID(); 
 
 // ==========================================
 // GLOBAL MODE OBJECTS
 // ==========================================
-// Notice there are NO '&' symbols in front of "motors" anymore!
 Mode_ObstacleAvoidance obstacleMode(motorDriver, &frontSonar, imu, &obstacleAvoidancePID);
+
+// THE UPGRADED CONSTRUCTOR IS NOW READY!
 Mode_NormalDriving normalMode(motorDriver, imu, &headingPID); 
-Mode_CompassLock compassMode(imu, motorDriver, &compassPID); 
+
+Mode_CompassLock compassMode(imu, motorDriver, &compassPID);
 Mode_MaintainDistance distanceMode(&frontSonar, motorDriver, &distancePID);
 Mode_Dizzy dizzyMode(motorDriver);
 Mode_DeepSleep sleepMode(motorDriver);
