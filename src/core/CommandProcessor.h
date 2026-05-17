@@ -16,6 +16,7 @@ private:
 
     String cliBuffer = "";
     int cursorPos = 0;
+    int lastBufferLength = 0; // To optimize redraws with tab autocomplete
 
     bool isTabbing = false;
     String tabPrefix = "";

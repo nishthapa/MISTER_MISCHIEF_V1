@@ -49,20 +49,34 @@ const char* sysVariables[] = {
 const int sysVarCount = sizeof(sysVariables) / sizeof(sysVariables[0]);
 
 void CommandProcessor::redrawCLI() {
-    // 1. THE NUCLEAR ERASE
-    // Return to index 0, blast 80 blank spaces to obliterate any native terminal 
-    // Tab or Backspace ghosting, and then return to index 0 again.
-    Serial.print("\r                                                                                \r");
+    // 1. Carriage Return to the start of the line
+    Serial.print("\r");
     
-    // 2. Draw the pristine prompt and buffer
+    // 2. Draw the pristine prompt and the current buffer
     Serial.print("mischief> ");
     Serial.print(cliBuffer);
     
-    // 3. Walk the cursor back to exactly where you were editing
-    int spacesToMoveBack = cliBuffer.length() - cursorPos;
+    // 3. THE SMART ERASER
+    // Calculate exactly how many ghost characters are left over from the last draw
+    int charsToErase = lastBufferLength - cliBuffer.length();
+    if (charsToErase < 0) charsToErase = 0;
+    
+    // Add 1 extra space just as a safety buffer
+    int spacesToPrint = charsToErase + 1;
+    
+    // Print exactly enough spaces to wipe the ghosts away cleanly
+    for (int i = 0; i < spacesToPrint; i++) {
+        Serial.print(" ");
+    }
+    
+    // 4. Walk the cursor back over the spaces we just printed, PLUS the actual cursor offset
+    int spacesToMoveBack = spacesToPrint + (cliBuffer.length() - cursorPos);
     for (int i = 0; i < spacesToMoveBack; i++) {
         Serial.print("\b");
     }
+    
+    // 5. Save the new length so the eraser knows what to do next time!
+    lastBufferLength = cliBuffer.length();
 }
 
 void CommandProcessor::processChar(char c) {
@@ -98,16 +112,16 @@ void CommandProcessor::processChar(char c) {
                         redrawCLI();
                     }
                 }
-                else if (arrow == 'C') { // RIGHT ARROW
+                else if (arrow == 'C') { // RIGHT ARROW (Optimized ASCII)
                     if (cursorPos < cliBuffer.length()) {
+                        Serial.print(cliBuffer[cursorPos]); // Reprint the char to push cursor right!
                         cursorPos++;
-                        redrawCLI();
                     }
                 }
-                else if (arrow == 'D') { // LEFT ARROW
+                else if (arrow == 'D') { // LEFT ARROW (Optimized ASCII)
                     if (cursorPos > 0) {
                         cursorPos--;
-                        redrawCLI();
+                        Serial.print("\b"); // Standard backspace physically moves cursor left!
                     }
                 }
             }
@@ -150,9 +164,18 @@ void CommandProcessor::processChar(char c) {
     // --- BACKSPACE DECODER ---
     if (c == '\b' || c == 127) { 
         if (cursorPos > 0) {
-            cliBuffer = cliBuffer.substring(0, cursorPos - 1) + cliBuffer.substring(cursorPos);
-            cursorPos--;
-            redrawCLI();
+            if (cursorPos == cliBuffer.length()) {
+                // Optimized: Backspacing at the very end
+                cliBuffer.remove(cliBuffer.length() - 1);
+                cursorPos--;
+                Serial.print("\b \b"); 
+                lastBufferLength = cliBuffer.length(); // <-- ADD THIS
+            } else {
+                // Splicing in the middle
+                cliBuffer = cliBuffer.substring(0, cursorPos - 1) + cliBuffer.substring(cursorPos);
+                cursorPos--;
+                redrawCLI(); 
+            }
         }
         return;
     }
@@ -173,10 +196,12 @@ void CommandProcessor::processChar(char c) {
             }
             historyIndex = -1; 
 
-            processInput(cliBuffer); // Internal call!
+            processInput(cliBuffer); 
             
             cliBuffer = ""; 
             cursorPos = 0; 
+            lastBufferLength = 0; // <-- ADD THIS TO RESET THE ERASER!
+            
         } else {
             // EMERGENCY BRAKE
             if (Config.SERIAL_DEBUG_MASTER) {
@@ -191,9 +216,17 @@ void CommandProcessor::processChar(char c) {
 
     // --- STANDARD TYPING ---
     if (c >= 32 && c <= 126) { 
-        cliBuffer = cliBuffer.substring(0, cursorPos) + c + cliBuffer.substring(cursorPos);
-        cursorPos++;
-        redrawCLI();
+        if (cursorPos == cliBuffer.length()) {
+            // Optimized: Typing at the very end of the string
+            cliBuffer += c;
+            cursorPos++;
+            Serial.print(c);
+        } else {
+            // Splicing in the middle (Requires full redraw)
+            cliBuffer = cliBuffer.substring(0, cursorPos) + c + cliBuffer.substring(cursorPos);
+            cursorPos++;
+            redrawCLI();
+        }
     }
 }
 
@@ -207,23 +240,45 @@ void CommandProcessor::processInput(String input) {
         return;
     }
 
-    // 1. SPLIT THE TOKENS
+    // 1. EXTRACT COMMAND
     int firstSpace = input.indexOf(' ');
     String cmd = (firstSpace == -1) ? input : input.substring(0, firstSpace);
     cmd.toLowerCase();
 
     String remainder = (firstSpace == -1) ? "" : input.substring(firstSpace + 1);
     remainder.trim();
+
+    // 2. EXTRACT VARIABLE NAME
     int secondSpace = remainder.indexOf(' ');
-    
     String varName = (secondSpace == -1) ? remainder : remainder.substring(0, secondSpace);
     varName.toUpperCase();
 
-    String valStr = (secondSpace == -1) ? "" : remainder.substring(secondSpace + 1);
-    valStr.trim();
+    // 3. EXTRACT VALUE (The Quote-Preserving Tokenizer!)
+    String valStr = "";
+    remainder = (secondSpace == -1) ? "" : remainder.substring(secondSpace + 1);
+    remainder.trim();
 
-    // 2. ASK THE REGISTRY TO EXECUTE IT
-    // No more if/else blocks! The map instantly routes to the correct function.
+    if (remainder.startsWith("\"")) {
+        // It's a quoted string! Find the closing quote.
+        int closingQuote = remainder.indexOf('"', 1);
+        if (closingQuote != -1) {
+            // PRESERVE the quotes so the handler can validate them!
+            valStr = remainder.substring(0, closingQuote + 1); 
+        } else {
+            // User forgot the closing quote
+            valStr = remainder;
+        }
+    } else {
+        // Standard single-word value. Read exactly until the next space.
+        int thirdSpace = remainder.indexOf(' ');
+        if (thirdSpace != -1) {
+            valStr = remainder.substring(0, thirdSpace);
+        } else {
+            valStr = remainder; 
+        }
+    }
+
+    // 4. ASK THE REGISTRY TO EXECUTE IT
     if (!registry.executeCommand(cmd, varName, valStr)) {
         logger.printf("Unknown command: %s\n", cmd.c_str());
         logger.printf("Available commands: %s\n", registry.getAvailableCommands().c_str());
@@ -233,7 +288,6 @@ void CommandProcessor::processInput(String input) {
 // ==========================================
 // THE SPECIFIC HANDLERS
 // ==========================================
-
 void CommandProcessor::handleSet(String varName, String valStr) {
     if (varName == "") {
         logger.println("Usage: set <VARIABLE> <VALUE>");
@@ -244,6 +298,24 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     if (valStr == "") {
         logger.printf("Error: Please provide a value to set for %s\n", varName.c_str());
         return;
+    }
+
+    // ==========================================
+    // CONTEXT-AWARE STRING VALIDATION
+    // ==========================================
+    bool isStringVariable = (varName == "WIFI_SSID" || varName == "WIFI_PASSWORD" || varName == "BT_NAME");
+    
+    if (isStringVariable) {
+        // Check if it is perfectly wrapped in double quotes
+        if (valStr.startsWith("\"") && valStr.endsWith("\"") && valStr.length() >= 2) {
+            // Valid! Strip the quotes off so we don't save literal quotes to the hard drive
+            valStr = valStr.substring(1, valStr.length() - 1);
+        } else {
+            // Invalid! Block the save and educate the user.
+            logger.println("\n[ERROR] Text variables must be enclosed in double quotes!");
+            logger.printf("Example: set %s \"My Value\"\n", varName.c_str());
+            return; // Abort the command entirely
+        }
     }
 
     if (varName == "CRUISING_SPEED") { Config.CRUISING_SPEED = valStr.toFloat(); }
@@ -310,7 +382,7 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     // ==========================================
     // THE PROFESSIONAL "GET ALL" CHECK
     // ==========================================
-    if (varName == "ALL" || "all") {
+    if (varName == "ALL") {
         logger.println("\n=== ALL SYSTEM VARIABLES ===");
         
         // Dynamically loop through the central variable list!

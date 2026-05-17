@@ -69,14 +69,23 @@ public:
         // ==========================================
         // THE NVS EMPTY STRING GUARDRAILS
         // ==========================================
-        if (currentSettings.WIFI_SSID == "") preferences.remove("WIFI_SSID");
-        else preferences.putString("WIFI_SSID", currentSettings.WIFI_SSID);
+        if (currentSettings.WIFI_SSID == "") {
+            if (preferences.isKey("WIFI_SSID")) preferences.remove("WIFI_SSID");
+        } else {
+            preferences.putString("WIFI_SSID", currentSettings.WIFI_SSID);
+        }
 
-        if (currentSettings.WIFI_PASSWORD == "") preferences.remove("WIFI_PASS");
-        else preferences.putString("WIFI_PASS", currentSettings.WIFI_PASSWORD);
+        if (currentSettings.WIFI_PASSWORD == "") {
+            if (preferences.isKey("WIFI_PASS")) preferences.remove("WIFI_PASS");
+        } else {
+            preferences.putString("WIFI_PASS", currentSettings.WIFI_PASSWORD);
+        }
 
-        if (currentSettings.BT_NAME == "") preferences.remove("BT_NAME");
-        else preferences.putString("BT_NAME", currentSettings.BT_NAME);
+        if (currentSettings.BT_NAME == "") {
+            if (preferences.isKey("BT_NAME")) preferences.remove("BT_NAME");
+        } else {
+            preferences.putString("BT_NAME", currentSettings.BT_NAME);
+        }
         // ==========================================
 
         preferences.putBool("WIFI_ACT", currentSettings.WIFI_ACTIVE);
