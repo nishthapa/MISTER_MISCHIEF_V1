@@ -1,38 +1,42 @@
 #pragma once
 #include <Arduino.h>
-#include "utils/RemoteLogger.h"
+#include <map>
+#include <functional>
 
-namespace CLI {
-    // The super-efficient integer codes for our commands
-    enum class CommandCode {
-        CALIB_GYRO,
-        CALIB_ACCEL,
-        CALIB_MAG,
-        CALIB_SONAR,
-        UNKNOWN
-    };
+// Define the blueprint for a command callback (Delegate)
+// It accepts the Variable Name and the Value String
+using CommandHandler = std::function<void(String, String)>;
 
-    // The Parser: Converts the string from Putty into the integer code
-    inline CommandCode parseCommand(String cmd) {
-        cmd.trim();
-        cmd.toLowerCase();
+class CommandRegistry {
+private:
+    std::map<String, CommandHandler> commands;
 
-        if (cmd == "calib_gyro")  return CommandCode::CALIB_GYRO;
-        if (cmd == "calib_accel") return CommandCode::CALIB_ACCEL;
-        if (cmd == "calib_mag")   return CommandCode::CALIB_MAG;
-        if (cmd == "calib_sonar") return CommandCode::CALIB_SONAR;
+public:
+    // Add a new command to the dictionary
+    void registerCommand(String cmdName, CommandHandler handler) {
+        cmdName.toLowerCase(); // Enforce lowercase rule for the keys
+        commands[cmdName] = handler;
+    }
+
+    // Look up the string in the map and fire the attached function
+    bool executeCommand(String cmdName, String varName, String valStr) {
+        cmdName.toLowerCase();
         
-        return CommandCode::UNKNOWN;
+        // If the command exists in the dictionary, execute it!
+        if (commands.find(cmdName) != commands.end()) {
+            commands[cmdName](varName, valStr);
+            return true;
+        }
+        return false; // Command not found
     }
-
-    // The Help Menu
-    inline void printHelpMenu(class RemoteLogger& logger) {
-        logger.println("\n===========================================");
-        logger.println("INVALID COMMAND. Available Commands:");
-        logger.println("  calib_gyro   : Calibrates the Gyroscope (Keep robot perfectly still)");
-        logger.println("  calib_accel  : Calibrates the Accelerometer (Ensure robot is perfectly level)");
-        logger.println("  calib_mag    : Calibrates the Compass (Rotate robot in all 3D axes)");
-        logger.println("  calib_sonar  : Calibrates environmental offset for HC-SR04");
-        logger.println("===========================================\n");
+    
+    // Helper to dynamically build the "Available Commands" help text
+    String getAvailableCommands() {
+        String list = "";
+        for (auto const& pair : commands) {
+            list += pair.first + ", ";
+        }
+        if (list.length() > 0) list = list.substring(0, list.length() - 2);
+        return list;
     }
-}
+};

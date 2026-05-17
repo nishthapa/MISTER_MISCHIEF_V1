@@ -18,6 +18,7 @@
 #include "utils/RemoteLogger.h"
 #include "config/DebugConfig.h" 
 #include "config/CommandRegistry.h" 
+#include "core/CommandProcessor.h"
 
 #include "config/SystemConfig.h"
 
@@ -60,11 +61,16 @@ Mode_MaintainDistance distanceMode(frontDistanceSensor, motorDriver, &distancePI
 Mode_Dizzy dizzyMode(motorDriver);
 Mode_DeepSleep sleepMode(motorDriver);
 
+
 // ==========================================
 // MODE / MOOD SWITCHER
 // ==========================================
 BehaviourEngine brain(imu, frontDistanceSensor, &obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode);
 
+// ==========================================
+// THE COMMAND LINE ENGINE
+// ==========================================
+CommandProcessor cliEngine;
 
 // ==========================================
 // CORE 1: THE MAIN CONTROL LOOP
@@ -97,141 +103,9 @@ void ControlLoopTask(void *pvParameters) {
 }
 
 // ==========================================
-// CORE 0: THE PRO CLI PARSER, NOW READS
-// FROM THE ROM GLOBAL PREFERENCES
+// CORE 0: SENSOR READS & HIGH-SPEED CLI
 // ==========================================
-void executeCLICommand(String input) {
-    input.trim();
-    if (input.length() == 0) return;
-
-    // 1. SPLIT THE TOKENS
-    int firstSpace = input.indexOf(' ');
-    String cmd = (firstSpace == -1) ? input : input.substring(0, firstSpace);
-    cmd.toLowerCase(); // RULE: Commands must be lowercase (e.g., "set", "get")
-
-    String remainder = (firstSpace == -1) ? "" : input.substring(firstSpace + 1);
-    remainder.trim();
-    int secondSpace = remainder.indexOf(' ');
-    
-    String varName = (secondSpace == -1) ? remainder : remainder.substring(0, secondSpace);
-    varName.toUpperCase(); // RULE: Variables must be uppercase (e.g., "CRUISING_SPEED")
-
-    String valStr = (secondSpace == -1) ? "" : remainder.substring(secondSpace + 1);
-    valStr.trim();
-
-    // 2. EXECUTE LOGIC
-    if (cmd == "set") {
-        if (varName == "") {
-            logger.println("Usage: set <VARIABLE> <VALUE>");
-            return;
-        }
-
-        // --- PERSONALITY VARS ---
-        if (varName == "CRUISING_SPEED") { Config.CRUISING_SPEED = valStr.toFloat(); }
-        else if (varName == "OBSTACLE_TRIGGER_CM") { Config.OBSTACLE_TRIGGER_CM = valStr.toFloat(); }
-        else if (varName == "MAINTAIN_DIST_CM") { Config.MAINTAIN_DIST_CM = valStr.toFloat(); }
-
-        // --- DEBUG VARS ---
-        else if (varName == "SERIAL_DEBUG_MASTER") { 
-            valStr.toLowerCase();
-            Config.SERIAL_DEBUG_MASTER = (valStr == "on" || valStr == "true" || valStr == "1"); 
-        }
-
-        /* FOR LATER: Granular debug controls for each subsystem!
-        else if (varName == "SERIAL_DEBUG_IMU") { 
-            valStr.toLowerCase();
-            Config.SERIAL_DEBUG_IMU = (valStr == "on" || valStr == "true" || valStr == "1"); 
-        }
-        else if (varName == "SERIAL_DEBUG_SONAR") { 
-            valStr.toLowerCase();
-            Config.SERIAL_DEBUG_SONAR = (valStr == "on" || valStr == "true" || valStr == "1"); 
-        }
-        else if (varName == "SERIAL_DEBUG_MOTOR_DRIVER") { 
-            valStr.toLowerCase();
-            Config.SERIAL_DEBUG_MOTOR_DRIVER = (valStr == "on" || valStr == "true" || valStr == "1"); 
-        }*/
-
-        // --- SYSTEM VARS ---
-        else if (varName == "BRAIN_ACTIVE") { 
-            valStr.toLowerCase();
-            Config.BRAIN_ACTIVE = (valStr == "on" || valStr == "true" || valStr == "1"); 
-        }
-
-        else {
-            logger.printf("Unknown variable: %s\n", varName.c_str());
-            return;
-        }
-
-        ConfigSys.save(); // Save to permanent memory!
-        logger.printf("Successfully set %s to %s\n", varName.c_str(), valStr.c_str());
-    } 
-    else if (cmd == "get") {
-        if (varName == "CRUISING_SPEED") { logger.printf("CRUISING_SPEED = %.1f\n", Config.CRUISING_SPEED); }
-        else if (varName == "OBSTACLE_TRIGGER_CM") { logger.printf("OBSTACLE_TRIGGER_CM = %.1f\n", Config.OBSTACLE_TRIGGER_CM); }
-        else if (varName == "MAINTAIN_DIST_CM") { logger.printf("MAINTAIN_DIST_CM = %.1f\n", Config.MAINTAIN_DIST_CM); }
-
-        // --- DEBUG VARS ---
-        else if (varName == "SERIAL_DEBUG_MASTER") { 
-            valStr.toLowerCase();
-            Config.SERIAL_DEBUG_MASTER = (valStr == "on" || valStr == "true" || valStr == "1"); 
-        }
-        
-        /* FOR LATER: Granular debug controls for each subsystem!
-        else if (varName == "SERIAL_DEBUG_IMU") { 
-            valStr.toLowerCase();
-            Config.SERIAL_DEBUG_IMU = (valStr == "on" || valStr == "true" || valStr == "1"); 
-        }
-        else if (varName == "SERIAL_DEBUG_SONAR") { 
-            valStr.toLowerCase();
-            Config.SERIAL_DEBUG_SONAR = (valStr == "on" || valStr == "true" || valStr == "1"); 
-        }
-        else if (varName == "SERIAL_DEBUG_MOTOR_DRIVER") { 
-            valStr.toLowerCase();
-            Config.SERIAL_DEBUG_MOTOR_DRIVER = (valStr == "on" || valStr == "true" || valStr == "1"); 
-        }*/
-
-        // --- SYSTEM VARS ---
-        else if (varName == "BRAIN_ACTIVE") { 
-            valStr.toLowerCase();
-            Config.BRAIN_ACTIVE = (valStr == "on" || valStr == "true" || valStr == "1"); 
-        }
-
-        else { logger.printf("Unknown variable: %s\n", varName.c_str()); }
-    }
-    else if (cmd == "reset") {
-        if (varName == "ALL") {
-            logger.println("WIPING NON-VOLATILE MEMORY...");
-            ConfigSys.factoryReset();
-            logger.println("Factory Reset Complete. Rebooting in 3 seconds...");
-            delay(3000);
-            ESP.restart(); // Physically reboot the robot!
-        } else {
-            logger.println("Usage: reset ALL");
-        }
-    }
-    else if (cmd == "calib") { // Keeping your old hardware commands!
-        if (varName == "GYRO") { imu->calibrateGyro(); }
-        else if (varName == "ACCEL") { imu->calibrateAccel(); }
-        else if (varName == "MAG") { imu->calibrateMag(); }
-        else { logger.println("Usage: calib <GYRO|ACCEL|MAG>"); }
-    }
-    else {
-        logger.printf("Unknown command: %s\n", cmd.c_str());
-        logger.println("Available commands: set, get, reset, calib");
-    }
-}
-
-// ==========================================
-// CLI COMMAND HISTORY BUFFER
-// ==========================================
-constexpr int HISTORY_MAX = 5;
-String cmdHistory[HISTORY_MAX];
-int historyCount = 0;
-int historyIndex = -1; // -1 means we are currently typing a new command
-
 void SensorTask(void *pvParameters) {
-  static String cliBuffer = ""; 
-  
   // Two separate stopwatches!
   unsigned long lastTelemetryTime = 0;
   unsigned long lastSonarTime = 0;
@@ -243,85 +117,8 @@ void SensorTask(void *pvParameters) {
     // 1. INSTANT CLI PROCESSING (Runs every 1ms)
     // ==========================================
     while (Serial.available()) {
-        char c = Serial.read();
-        
-        // --- ANSI ESCAPE SEQUENCE DECODER ---
-        if (c == 27) { 
-            delay(5); 
-            if (Serial.available() >= 2) {
-                char bracket = Serial.read();
-                char arrow = Serial.read();
-                
-                if (bracket == '[') {
-                    if (arrow == 'A') { // UP ARROW
-                        if (historyCount > 0) {
-                            if (historyIndex == -1) historyIndex = historyCount - 1; 
-                            else if (historyIndex > 0) historyIndex--;               
-                            
-                            Serial.print("\rmischief>                                          \r"); 
-                            cliBuffer = cmdHistory[historyIndex];
-                            Serial.print("mischief> " + cliBuffer);
-                        }
-                    } 
-                    else if (arrow == 'B') { // DOWN ARROW
-                        if (historyIndex != -1) {
-                            if (historyIndex < historyCount - 1) {
-                                historyIndex++;
-                                cliBuffer = cmdHistory[historyIndex];
-                            } else {
-                                historyIndex = -1; 
-                                cliBuffer = "";
-                            }
-                            Serial.print("\rmischief>                                          \r"); 
-                            Serial.print("mischief> " + cliBuffer);
-                        }
-                    }
-                }
-            }
-            continue; 
-        }
-
-        // --- STANDARD TYPING ---
-        if (c == '\r') continue; 
-        
-        if (c == '\b' || c == 127) { 
-            if (cliBuffer.length() > 0) {
-                cliBuffer.remove(cliBuffer.length() - 1);
-                Serial.print("\b \b"); 
-            }
-            continue;
-        }
-
-        if (c == '\n') {
-            Serial.println(); 
-            if (cliBuffer.length() > 0) { 
-                
-                // SAVE COMMAND TO HISTORY
-                if (historyCount == 0 || cmdHistory[historyCount - 1] != cliBuffer) {
-                    if (historyCount < HISTORY_MAX) {
-                        cmdHistory[historyCount++] = cliBuffer;
-                    } else {
-                        for (int i = 0; i < HISTORY_MAX - 1; i++) cmdHistory[i] = cmdHistory[i + 1];
-                        cmdHistory[HISTORY_MAX - 1] = cliBuffer;
-                    }
-                }
-                historyIndex = -1; 
-
-                executeCLICommand(cliBuffer);
-                cliBuffer = ""; 
-            } else {
-                if (Config.SERIAL_DEBUG_MASTER) {
-                    Config.SERIAL_DEBUG_MASTER = false;
-                    ConfigSys.save();
-                    logger.println("[SYSTEM] Telemetry Paused! Type 'set SERIAL_DEBUG_MASTER on' to resume.");
-                }
-            }
-            Serial.print("mischief> "); 
-        } 
-        else { 
-            cliBuffer += c; 
-            Serial.print(c); 
-        }
+        // Feed raw bytes to the isolated Terminal Emulator!
+        cliEngine.processChar(Serial.read()); 
     }
 
     unsigned long currentTime = millis();
@@ -330,20 +127,20 @@ void SensorTask(void *pvParameters) {
     // 2. SONAR PHYSICS (Strictly limited to 50ms = 20Hz)
     // ==========================================
     // Allowing 50ms ensures all sound waves from the previous ping have safely died out!
-    if (currentTime - lastSonarTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
+    if (currentTime - lastSonarTime >= 50) { 
         lastSonarTime = currentTime;
         global_frontDistanceCM = frontDistanceSensor->getDistanceCM();
     }
 
     // ==========================================
-    // 3. TELEMETRY PRINTING (Strictly limited to 50ms)
+    // 3. TELEMETRY PRINTING 
     // ==========================================
     if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
         lastTelemetryTime = currentTime;
         
         if (Config.SERIAL_DEBUG_MASTER) {
             if (Config.SERIAL_DEBUG_SONAR) {
-                logger.printf("[SONAR] Distance: %.1f cm | \n", global_frontDistanceCM);
+                logger.printf("[SONAR] Distance: %.1f cm | ", global_frontDistanceCM);
             }
             
             if (global_imuAlive) {
