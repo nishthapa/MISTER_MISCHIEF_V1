@@ -30,4 +30,6 @@ namespace SystemConfig {
     // --- IMU Boot Watchdog ---
     constexpr int IMU_MAX_RETRIES = 5;                    // How many times to try booting the MPU6050
     constexpr unsigned long IMU_RETRY_DELAY_MS = 1000;    // Wait time between failures
+
+    constexpr int TELNET_PORT = 23; // Moved from the old WiFiConfig!
 }

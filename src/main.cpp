@@ -13,16 +13,14 @@
 #include "behaviours/Mode_Dizzy.h"
 #include "behaviours/Mode_DeepSleep.h"
 #include "core/BehaviourEngine.h"
-#include "config/WiFiConfig.h"
 #include "utils/RadioManager.h"
 #include "utils/RemoteLogger.h"
 #include "config/DebugConfig.h" 
 #include "config/CommandRegistry.h" 
 #include "core/CommandProcessor.h"
-
 #include "config/SystemConfig.h"
 
-RemoteLogger logger(NetworkConfig::TELNET_PORT); 
+RemoteLogger logger(SystemConfig::TELNET_PORT); 
 
 // ==========================================
 // INTER-CORE COMMUNICATION (THE BRIDGE)

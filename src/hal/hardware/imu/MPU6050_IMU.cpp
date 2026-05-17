@@ -142,14 +142,17 @@ bool MPU6050_IMU::init() {
 // CLI EXECUTION
 // ==========================================
 void MPU6050_IMU::calibrateGyro() {
-    logger.println("\n[IMU] Gyroscope Calibration Started! Keep robot still for 5 seconds...");
+    logger.println("\n[IMU] GYROSCOPE CALIBRATION STARTED. KEEP HARDWARE STILL FOR 5 SECONDS...");
     calibratingGyro = true;
     calibrationSamples = 0;
     sumX = 0; sumY = 0; sumZ = 0;
 }
 
 void MPU6050_IMU::calibrateAccel() {
-    logger.println("\n[IMU] Accel calibration acknowledged (Math module pending).");
+    logger.println("\n[IMU] ACCELEROMETER CALIBRATION STARTED. KEEP HARDWARE PERFECTLY LEVEL FOR 5 SECONDS...");
+    calibratingAccel = true;
+    accelCalibSamples = 0;
+    sumAccelX = 0; sumAccelY = 0; sumAccelZ = 0;
 }
 
 void MPU6050_IMU::calibrateMag() {
@@ -178,7 +181,31 @@ FusedAngles MPU6050_IMU::getAngles() {
         int16_t ax, ay, az, gx, gy, gz;
         mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-        // BACKGROUND STATE MACHINE: Intercept the data for calibration if requested
+        // ----------------------------------------------------
+        // STATE MACHINE A: ACCELEROMETER CALIBRATION
+        // ----------------------------------------------------
+        if (calibratingAccel) {
+            sumAccelX += ax; sumAccelY += ay; sumAccelZ += az;
+            accelCalibSamples++;
+            
+            if (accelCalibSamples >= 500) {
+                accelBiasX = (float)sumAccelX / 500.0f;
+                accelBiasY = (float)sumAccelY / 500.0f;
+                
+                // Gravity Math: Z-axis should be experiencing exactly 1.0G. 
+                // We subtract 1.0G from the average to find the true sensor error/bias!
+                accelBiasZ = ((float)sumAccelZ / 500.0f) - IMUConfig::ACCEL_SCALE_FACTOR;
+                
+                calibratingAccel = false;
+                logger.printf("[IMU] Accel Calibrated! Biases: X:%.1f Y:%.1f Z:%.1f\n", accelBiasX, accelBiasY, accelBiasZ);
+                lastUpdateTime = micros(); // Prevent time-travel explosion
+            }
+            return lastKnownAngles; 
+        }
+
+        // ----------------------------------------------------
+        // STATE MACHINE B: GYROSCOPE CALIBRATION
+        // ----------------------------------------------------
         if (calibratingGyro) {
             sumX += gx; sumY += gy; sumZ += gz;
             calibrationSamples++;
@@ -189,12 +216,9 @@ FusedAngles MPU6050_IMU::getAngles() {
                 gyroBiasZ = (float)sumZ / 500.0f;
                 calibratingGyro = false;
                 logger.printf("[IMU] Gyro Calibrated! Biases: X:%.1f Y:%.1f Z:%.1f\n", gyroBiasX, gyroBiasY, gyroBiasZ);
-                
-                // === THE TIME-TRAVEL FIX ===
-                // Reset the clock so dt doesn't explode to 5.0 seconds on the next physics frame!
                 lastUpdateTime = micros();
             }
-            return lastKnownAngles; // Freeze physics while calibrating
+            return lastKnownAngles; 
         }
 
         // 1. Calculate DT
@@ -202,22 +226,23 @@ FusedAngles MPU6050_IMU::getAngles() {
         float dt = (currentTime - lastUpdateTime) / 1000000.0f;
         lastUpdateTime = currentTime;
 
-        // 2. Subtract Bias & Convert Gyro to Radians/sec
+        // 2. Subtract Gyro Bias & Convert to Radians/sec
         float gx_rad = ((float)gx - gyroBiasX) * (M_PI / (180.0f * IMUConfig::GYRO_SCALE_FACTOR));
         float gy_rad = ((float)gy - gyroBiasY) * (M_PI / (180.0f * IMUConfig::GYRO_SCALE_FACTOR));
         float gz_rad = ((float)gz - gyroBiasZ) * (M_PI / (180.0f * IMUConfig::GYRO_SCALE_FACTOR));
-        // 3. The Deadband Trick
+        
         if (abs(gz_rad) < IMUConfig::GYRO_DEADBAND_RAD_S) gz_rad = 0.0f; 
 
+        // 3. Subtract Accel Bias
+        float ax_cal = (float)ax - accelBiasX;
+        float ay_cal = (float)ay - accelBiasY;
+        float az_cal = (float)az - accelBiasZ;
+
         // 4. Feed the Unified Math Engine! 
-        filter->compute(gx_rad, gy_rad, gz_rad, (float)ax, (float)ay, (float)az, 0.0f, 0.0f, 0.0f, dt, IMUConfig::HAS_COMPASS);
+        filter->compute(gx_rad, gy_rad, gz_rad, ax_cal, ay_cal, az_cal, 0.0f, 0.0f, 0.0f, dt, IMUConfig::HAS_COMPASS);
 
         // --- NEW: Calculate Total G-Force ---
-        // Convert the raw 16-bit integers to floats before squaring to prevent math overflow
-        float fax = ax; float fay = ay; float faz = az;
-        float accelMag = sqrt((fax * fax) + (fay * fay) + (faz * faz));
-        
-        // At +/- 2G sensitivity, 16384 LSB equals 1.0 G of physical force
+        float accelMag = sqrt((ax_cal * ax_cal) + (ay_cal * ay_cal) + (az_cal * az_cal));
         lastKnownAngles.gForce = accelMag / IMUConfig::ACCEL_SCALE_FACTOR;
 
         // 5. Update Memory

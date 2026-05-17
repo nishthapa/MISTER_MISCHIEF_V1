@@ -3,8 +3,10 @@
 #include "config/FactoryDefaults.h"
 #include "utils/RemoteLogger.h"
 #include "utils/RadioManager.h"
+#include "hal/interfaces/I_IMU.h" // for calibration commands
 
 extern RemoteLogger logger;
+extern I_IMU* imu; // Reaches into main.cpp to grab the global IMU!
 
 CommandProcessor::CommandProcessor() {
     // ==========================================
@@ -201,7 +203,7 @@ void CommandProcessor::processChar(char c) {
             cliBuffer = ""; 
             cursorPos = 0; 
             lastBufferLength = 0; // <-- ADD THIS TO RESET THE ERASER!
-            
+
         } else {
             // EMERGENCY BRAKE
             if (Config.SERIAL_DEBUG_MASTER) {
@@ -486,8 +488,18 @@ void CommandProcessor::handleReset(String varName, String dummyVal) {
 }
 
 void CommandProcessor::handleCalib(String varName, String dummyVal) {
-    // You can wire your IMU calibration logic back in here later!
-    logger.println("Calibration command received.");
+    if (varName == "GYRO") {
+        imu->calibrateGyro();
+    } 
+    else if (varName == "ACCEL") {
+        imu->calibrateAccel();
+    } 
+    else if (varName == "MAG") {
+        imu->calibrateMag();
+    } 
+    else {
+        logger.println("Usage: calib GYRO | calib ACCEL | calib MAG");
+    }
 }
 
 void CommandProcessor::handleResetConfirm(String input) {
