@@ -1,58 +1,26 @@
 #pragma once
-
 #include "core/PIDController.h"
-#include "config/pidtuning/PIDTune_HeadingHold.h" // For Heading hold during normal driving
-#include "config/pidtuning/PIDTune_CompassLock.h" // For Heading Hold on a rotating platform and act like a compass
-#include "config/pidtuning/PIDTune_DistanceHold.h" // For holding distance from an object (like hand)
-#include "config/pidtuning/PIDTune_ObstacleAvoidanceNewPathScanSweep.h" // For the radial pathfinding scan after an obstacle is detected
+#include "config/ConfigurationManager.h" 
 
 class PIDControllerFactory {
 public:
-    // A static "vending machine" function to dispense a pre-tuned Heading PID
     static PIDController createHeadingHoldPID() {
-        return PIDController(
-            TuningHeading::KP, 
-            TuningHeading::KI, 
-            TuningHeading::KD, 
-            TuningHeading::MAX_INTEGRAL,
-            TuningHeading::MAX_OUTPUT,
-            TuningHeading::D_FILTER_CUTOFF_HZ
-        );
+        return PIDController(Config.PID_HEADING_P, Config.PID_HEADING_I, Config.PID_HEADING_D, 
+                             Config.PID_HEADING_LIM, Config.PID_HEADING_ILIM, Config.PID_HEADING_DEAD);
     }
 
-    // A static "vending machine" function to dispense a pre-tuned Compass Lock PID
     static PIDController createCompassLockPID() {
-        return PIDController(
-            TuningCompassLock::KP, 
-            TuningCompassLock::KI, 
-            TuningCompassLock::KD, 
-            TuningCompassLock::MAX_INTEGRAL,
-            TuningCompassLock::MAX_OUTPUT,
-            TuningCompassLock::D_FILTER_CUTOFF_HZ
-        );
+        return PIDController(Config.PID_COMPASS_P, Config.PID_COMPASS_I, Config.PID_COMPASS_D, 
+                             Config.PID_COMPASS_LIM, Config.PID_COMPASS_ILIM, Config.PID_COMPASS_DEAD);
     }
 
-    // A static "vending machine" function to dispense a pre-tuned Distance Hold PID
     static PIDController createDistanceHoldPID() {
-        return PIDController(
-            TuningDistanceHold::KP, 
-            TuningDistanceHold::KI, 
-            TuningDistanceHold::KD, 
-            TuningDistanceHold::MAX_INTEGRAL,
-            TuningDistanceHold::MAX_OUTPUT,
-            TuningDistanceHold::D_FILTER_CUTOFF_HZ
-        );
+        return PIDController(Config.PID_DIST_P, Config.PID_DIST_I, Config.PID_DIST_D, 
+                             Config.PID_DIST_LIM, Config.PID_DIST_ILIM, Config.PID_DIST_DEAD);
     }
 
-    // A static "vending machine" function to dispense a pre-tuned Obstacle Avoidance New Path Scan Sweep PID
     static PIDController createObstacleAvoidanceNewPathScanSweepPID() {
-        return PIDController(
-            TuningObstacleAvoidanceNewPathScanSweep::KP, 
-            TuningObstacleAvoidanceNewPathScanSweep::KI, 
-            TuningObstacleAvoidanceNewPathScanSweep::KD, 
-            TuningObstacleAvoidanceNewPathScanSweep::MAX_INTEGRAL,
-            TuningObstacleAvoidanceNewPathScanSweep::MAX_OUTPUT,
-            TuningObstacleAvoidanceNewPathScanSweep::D_FILTER_CUTOFF_HZ
-        );
+        return PIDController(Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D, 
+                             Config.PID_OBSTACLE_LIM, Config.PID_OBSTACLE_ILIM, Config.PID_OBSTACLE_DEAD);
     }
 };

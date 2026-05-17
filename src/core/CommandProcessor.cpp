@@ -31,23 +31,51 @@ CommandProcessor::CommandProcessor() {
 // The Autocomplete Dictionary
 const char* autoDict[] = {
     "set", "get", "reset", "calib", "default", "ALL",
-    "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DIST_CM",
-    "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", "SERIAL_DEBUG_IMU",
-    "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER",
+    "connect", "disconnect", "reboot", "wifi", "bluetooth",
+    "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DISTANCE_CM", "MOTOR_MIN_PWM",
+    "OBS_SWEEP_ANGLE", "OBS_SWEEP_SPEED", "OBS_SWEEP_PAUSE", "OBS_CLEAR_THRESH", "OBS_HYSTERESIS",
+    "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
+    "IMU_MADGWICK_BETA", "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
+    "PID_HEADING_P", "PID_HEADING_I", "PID_HEADING_D", "PID_HEADING_LIM", "PID_HEADING_ILIM", "PID_HEADING_DEAD",
+    "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
+    "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
+    "PID_OBSTACLE_P", "PID_OBSTACLE_I", "PID_OBSTACLE_D", "PID_OBSTACLE_LIM", "PID_OBSTACLE_ILIM", "PID_OBSTACLE_DEAD",
+    "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", "SERIAL_DEBUG_IMU", "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER",
     "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE",
-    "connect", "disconnect", "reboot", "wifi", "bluetooth"
-
-    
+    "PIN_MOTOR_L_PWM", "PIN_MOTOR_R_PWM", "PIN_SONAR_TRIG", "PIN_SONAR_ECHO", "I2C_ADDR_MPU6050", "SYS_TASK_CORE", "SYS_TELNET_PORT"
 };
+
 const int dictSize = sizeof(autoDict) / sizeof(autoDict[0]);
 
 // THE NEW ARRAY: Just the variables for the "get ALL" loop!
+/*const char* sysVariables[] = {
+    "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DISTANCE_CM", "MOTOR_MIN_PWM",
+    "OBS_SWEEP_ANGLE", "OBS_SWEEP_SPEED", "OBS_SWEEP_PAUSE", "OBS_CLEAR_THRESH", "OBS_HYSTERESIS",
+    "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
+    "IMU_MADGWICK_BETA", "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
+    "PID_HEADING_P", "PID_HEADING_I", "PID_HEADING_D", "PID_HEADING_LIM", "PID_HEADING_ILIM", "PID_HEADING_DEAD",
+    "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
+    "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
+    "PID_OBSTACLE_P", "PID_OBSTACLE_I", "PID_OBSTACLE_D", "PID_OBSTACLE_LIM", "PID_OBSTACLE_ILIM", "PID_OBSTACLE_DEAD",
+    "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", "SERIAL_DEBUG_IMU", "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER",
+    "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE",
+    "PIN_MOTOR_L_PWM", "PIN_MOTOR_R_PWM", "PIN_SONAR_TRIG", "PIN_SONAR_ECHO", "I2C_ADDR_MPU6050", "SYS_TASK_CORE", "SYS_TELNET_PORT"
+};*/
+
+// Just the variables for the "get ALL" loop!
 const char* sysVariables[] = {
-    "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DIST_CM",
-    "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", 
-    "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", 
-    "BT_NAME", "BT_ACTIVE"
+    "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DISTANCE_CM", "MOTOR_MIN_PWM",
+    "OBS_SWEEP_ANGLE", "OBS_SWEEP_SPEED", "OBS_SWEEP_PAUSE", "OBS_CLEAR_THRESH", "OBS_HYSTERESIS",
+    "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
+    "IMU_MADGWICK_BETA", "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
+    "PID_HEADING_P", "PID_HEADING_I", "PID_HEADING_D", "PID_HEADING_LIM", "PID_HEADING_ILIM", "PID_HEADING_DEAD",
+    "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
+    "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
+    "PID_OBSTACLE_P", "PID_OBSTACLE_I", "PID_OBSTACLE_D", "PID_OBSTACLE_LIM", "PID_OBSTACLE_ILIM", "PID_OBSTACLE_DEAD",
+    "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", "SERIAL_DEBUG_IMU", "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER",
+    "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE"
 };
+
 const int sysVarCount = sizeof(sysVariables) / sizeof(sysVariables[0]);
 
 void CommandProcessor::redrawCLI() {
@@ -287,10 +315,7 @@ void CommandProcessor::processInput(String input) {
     }
 }
 
-// ==========================================
-// THE SPECIFIC HANDLERS
-// ==========================================
-void CommandProcessor::handleSet(String varName, String valStr) {
+/*void CommandProcessor::handleSet(String varName, String valStr) {
     if (varName == "") {
         logger.println("Usage: set <VARIABLE> <VALUE>");
         return;
@@ -361,6 +386,132 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     else if (varName == "SERIAL_DEBUG_MOTOR_DRIVER") { 
         valStr.toLowerCase();
         Config.SERIAL_DEBUG_MOTOR_DRIVER = (valStr == "on" || valStr == "true" || valStr == "1"); 
+    }//
+    
+    else {
+        logger.printf("Unknown variable: %s\n", varName.c_str());
+        return;
+    }
+
+    ConfigSys.save();
+    logger.printf("Successfully set %s to %s\n", varName.c_str(), valStr.c_str());
+}*/
+
+
+// ==========================================
+// THE SPECIFIC HANDLERS
+// ==========================================
+void CommandProcessor::handleSet(String varName, String valStr) {
+    if (varName == "") {
+        logger.println("Usage: set <VARIABLE> <VALUE>");
+        return;
+    }
+
+    // --- THE EDGE CASE FIX ---
+    if (valStr == "") {
+        logger.printf("Error: Please provide a value to set for %s\n", varName.c_str());
+        return;
+    }
+
+    // ==========================================
+    // CONTEXT-AWARE STRING VALIDATION
+    // ==========================================
+    bool isStringVariable = (varName == "WIFI_SSID" || varName == "WIFI_PASSWORD" || varName == "BT_NAME");
+    
+    if (isStringVariable) {
+        // Check if it is perfectly wrapped in double quotes
+        if (valStr.startsWith("\"") && valStr.endsWith("\"") && valStr.length() >= 2) {
+            // Valid! Strip the quotes off so we don't save literal quotes to the hard drive
+            valStr = valStr.substring(1, valStr.length() - 1);
+        } else {
+            // Invalid! Block the save and educate the user.
+            logger.println("\n[ERROR] Text variables must be enclosed in double quotes!");
+            logger.printf("Example: set %s \"My Value\"\n", varName.c_str());
+            return; // Abort the command entirely
+        }
+    }
+
+    // ==========================================
+    // VARIABLE ASSIGNMENT & TYPE CONVERSION
+    // ==========================================
+
+    // --- MOVEMENT TUNING VARS ---
+    if (varName == "CRUISING_SPEED") { Config.CRUISING_SPEED = valStr.toFloat(); }
+    else if (varName == "OBSTACLE_TRIGGER_CM") { Config.OBSTACLE_TRIGGER_CM = valStr.toFloat(); }
+    else if (varName == "MAINTAIN_DISTANCE_CM") { Config.MAINTAIN_DISTANCE_CM = valStr.toFloat(); }
+    else if (varName == "MOTOR_MIN_PWM") { Config.MOTOR_MIN_PWM = valStr.toInt(); }
+
+    // --- OBSTACLE AVOIDANCE TUNING VARS ---
+    else if (varName == "OBS_SWEEP_ANGLE") { Config.OBS_SWEEP_ANGLE = valStr.toFloat(); }
+    else if (varName == "OBS_SWEEP_SPEED") { Config.OBS_SWEEP_SPEED = valStr.toFloat(); }
+    else if (varName == "OBS_SWEEP_PAUSE") { Config.OBS_SWEEP_PAUSE = valStr.toInt(); }
+    else if (varName == "OBS_CLEAR_THRESH") { Config.OBS_CLEAR_THRESH = valStr.toFloat(); }
+    else if (varName == "OBS_HYSTERESIS") { Config.OBS_HYSTERESIS = valStr.toFloat(); }
+
+    // --- MODE TUNING VARS ---
+    else if (varName == "DIZZY_SPIN_PWM") { Config.DIZZY_SPIN_PWM = valStr.toInt(); }
+    else if (varName == "DIZZY_SPIN_TIME") { Config.DIZZY_SPIN_TIME = valStr.toInt(); }
+    else if (varName == "DIZZY_COOLDOWN") { Config.DIZZY_COOLDOWN = valStr.toInt(); }
+    else if (varName == "SLEEP_TIMEOUT_MS") { Config.SLEEP_TIMEOUT_MS = valStr.toInt(); }
+    else if (varName == "SLEEP_WAKE_G") { Config.SLEEP_WAKE_G = valStr.toFloat(); }
+
+    // --- SENSOR TUNING VARS ---
+    else if (varName == "IMU_MADGWICK_BETA") { Config.IMU_MADGWICK_BETA = valStr.toFloat(); }
+    else if (varName == "IMU_GYRO_DEADBAND") { Config.IMU_GYRO_DEADBAND = valStr.toFloat(); }
+    else if (varName == "SONAR_MAX_DIST") { Config.SONAR_MAX_DIST = valStr.toFloat(); }
+
+    // --- PID TUNING VARS ---
+    else if (varName == "PID_HEADING_P") { Config.PID_HEADING_P = valStr.toFloat(); }
+    else if (varName == "PID_HEADING_I") { Config.PID_HEADING_I = valStr.toFloat(); }
+    else if (varName == "PID_HEADING_D") { Config.PID_HEADING_D = valStr.toFloat(); }
+    else if (varName == "PID_HEADING_LIM") { Config.PID_HEADING_LIM = valStr.toFloat(); }
+    else if (varName == "PID_HEADING_ILIM") { Config.PID_HEADING_ILIM = valStr.toFloat(); }
+    else if (varName == "PID_HEADING_DEAD") { Config.PID_HEADING_DEAD = valStr.toFloat(); }
+
+    else if (varName == "PID_COMPASS_P") { Config.PID_COMPASS_P = valStr.toFloat(); }
+    else if (varName == "PID_COMPASS_I") { Config.PID_COMPASS_I = valStr.toFloat(); }
+    else if (varName == "PID_COMPASS_D") { Config.PID_COMPASS_D = valStr.toFloat(); }
+    else if (varName == "PID_COMPASS_LIM") { Config.PID_COMPASS_LIM = valStr.toFloat(); }
+    else if (varName == "PID_COMPASS_ILIM") { Config.PID_COMPASS_ILIM = valStr.toFloat(); }
+    else if (varName == "PID_COMPASS_DEAD") { Config.PID_COMPASS_DEAD = valStr.toFloat(); }
+
+    else if (varName == "PID_DIST_P") { Config.PID_DIST_P = valStr.toFloat(); }
+    else if (varName == "PID_DIST_I") { Config.PID_DIST_I = valStr.toFloat(); }
+    else if (varName == "PID_DIST_D") { Config.PID_DIST_D = valStr.toFloat(); }
+    else if (varName == "PID_DIST_LIM") { Config.PID_DIST_LIM = valStr.toFloat(); }
+    else if (varName == "PID_DIST_ILIM") { Config.PID_DIST_ILIM = valStr.toFloat(); }
+    else if (varName == "PID_DIST_DEAD") { Config.PID_DIST_DEAD = valStr.toFloat(); }
+
+    else if (varName == "PID_OBSTACLE_P") { Config.PID_OBSTACLE_P = valStr.toFloat(); }
+    else if (varName == "PID_OBSTACLE_I") { Config.PID_OBSTACLE_I = valStr.toFloat(); }
+    else if (varName == "PID_OBSTACLE_D") { Config.PID_OBSTACLE_D = valStr.toFloat(); }
+    else if (varName == "PID_OBSTACLE_LIM") { Config.PID_OBSTACLE_LIM = valStr.toFloat(); }
+    else if (varName == "PID_OBSTACLE_ILIM") { Config.PID_OBSTACLE_ILIM = valStr.toFloat(); }
+    else if (varName == "PID_OBSTACLE_DEAD") { Config.PID_OBSTACLE_DEAD = valStr.toFloat(); }
+
+    // --- NETWORK VARS ---
+    else if (varName == "WIFI_SSID") { Config.WIFI_SSID = valStr; }
+    else if (varName == "WIFI_PASSWORD") { Config.WIFI_PASSWORD = valStr; }
+    else if (varName == "BT_NAME") { Config.BT_NAME = valStr; }
+    else if (varName == "WIFI_ACTIVE") { Config.WIFI_ACTIVE = (valStr == "on" || valStr == "1"); }
+    else if (varName == "BT_ACTIVE") { Config.BT_ACTIVE = (valStr == "on" || valStr == "1"); }
+ 
+    // --- SYSTEM VARS ---
+    else if (varName == "BRAIN_ACTIVE") { Config.BRAIN_ACTIVE = (valStr == "on" || valStr == "1"); }
+    else if (varName == "SERIAL_DEBUG_MASTER") { Config.SERIAL_DEBUG_MASTER = (valStr == "on" || valStr == "1"); }
+    
+    /* FOR LATER: Granular debug controls for each subsystem!
+    else if (varName == "SERIAL_DEBUG_IMU") { 
+        valStr.toLowerCase();
+        Config.SERIAL_DEBUG_IMU = (valStr == "on" || valStr == "true" || valStr == "1"); 
+    }
+    else if (varName == "SERIAL_DEBUG_SONAR") { 
+        valStr.toLowerCase();
+        Config.SERIAL_DEBUG_SONAR = (valStr == "on" || valStr == "true" || valStr == "1"); 
+    }
+    else if (varName == "SERIAL_DEBUG_MOTOR_DRIVER") { 
+        valStr.toLowerCase();
+        Config.SERIAL_DEBUG_MOTOR_DRIVER = (valStr == "on" || valStr == "true" || valStr == "1"); 
     }*/
     
     else {
@@ -371,6 +522,7 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     ConfigSys.save();
     logger.printf("Successfully set %s to %s\n", varName.c_str(), valStr.c_str());
 }
+
 
 void CommandProcessor::handleGet(String varName, String valStr) {
     // 1. Did the user type "get default <variable>"?
@@ -409,35 +561,175 @@ void CommandProcessor::handleGet(String varName, String valStr) {
         if (wantDefaultOnly) logger.printf("[OBSTACLE_TRIGGER_CM] Default: %.1f\n", FactoryDefaults::OBSTACLE_TRIGGER_CM);
         else logger.printf("[OBSTACLE_TRIGGER_CM] Current: %.1f | Default: %.1f\n", Config.OBSTACLE_TRIGGER_CM, FactoryDefaults::OBSTACLE_TRIGGER_CM);
     }
-    else if (varName == "MAINTAIN_DIST_CM") { 
-        if (wantDefaultOnly) logger.printf("[MAINTAIN_DIST_CM] Default: %.1f\n", FactoryDefaults::MAINTAIN_DIST_CM);
-        else logger.printf("[MAINTAIN_DIST_CM] Current: %.1f | Default: %.1f\n", Config.MAINTAIN_DIST_CM, FactoryDefaults::MAINTAIN_DIST_CM);
+    else if (varName == "MAINTAIN_DISTANCE_CM") { 
+        if (wantDefaultOnly) logger.printf("[MAINTAIN_DISTANCE_CM] Default: %.1f\n", FactoryDefaults::MAINTAIN_DISTANCE_CM);
+        else logger.printf("[MAINTAIN_DISTANCE_CM] Current: %.1f | Default: %.1f\n", Config.MAINTAIN_DISTANCE_CM, FactoryDefaults::MAINTAIN_DISTANCE_CM);
     }
-    else if (varName == "BRAIN_ACTIVE") { 
-        if (wantDefaultOnly) logger.printf("[BRAIN_ACTIVE] Default: %s\n", FactoryDefaults::BRAIN_ACTIVE ? "ON" : "OFF");
-        else logger.printf("[BRAIN_ACTIVE] Current: %s | Default: %s\n", Config.BRAIN_ACTIVE ? "ON" : "OFF", FactoryDefaults::BRAIN_ACTIVE ? "ON" : "OFF");
-    }
-    else if (varName == "SERIAL_DEBUG_MASTER") { 
-        if (wantDefaultOnly) logger.printf("[SERIAL_DEBUG_MASTER] Default: %s\n", FactoryDefaults::SERIAL_DEBUG_MASTER ? "ON" : "OFF");
-        else logger.printf("[SERIAL_DEBUG_MASTER] Current: %s | Default: %s\n", Config.SERIAL_DEBUG_MASTER ? "ON" : "OFF", FactoryDefaults::SERIAL_DEBUG_MASTER ? "ON" : "OFF");
+    else if (varName == "MOTOR_MIN_PWM") { 
+        if (wantDefaultOnly) logger.printf("[MOTOR_MIN_PWM] Default: %d\n", FactoryDefaults::MOTOR_MIN_PWM);
+        else logger.printf("[MOTOR_MIN_PWM] Current: %d | Default: %d\n", Config.MOTOR_MIN_PWM, FactoryDefaults::MOTOR_MIN_PWM);
     }
 
-    /* FOR LATER: Granular debug controls for each subsystem!
-    else if (varName == "SERIAL_DEBUG_IMU") { 
-        if (wantDefaultOnly) logger.printf("[SERIAL_DEBUG_IMU] Default: %s\n", FactoryDefaults::SERIAL_DEBUG_IMU ? "ON" : "OFF");
-        else logger.printf("[SERIAL_DEBUG_IMU] Current: %s | Default: %s\n", Config.SERIAL_DEBUG_IMU ? "ON" : "OFF", FactoryDefaults::SERIAL_DEBUG_IMU ? "ON" : "OFF");
+    // --- OBSTACLE AVOIDANCE TUNING VARS ---
+    else if (varName == "OBS_SWEEP_ANGLE") { 
+        if (wantDefaultOnly) logger.printf("[OBS_SWEEP_ANGLE] Default: %.1f\n", FactoryDefaults::OBS_SWEEP_ANGLE);
+        else logger.printf("[OBS_SWEEP_ANGLE] Current: %.1f | Default: %.1f\n", Config.OBS_SWEEP_ANGLE, FactoryDefaults::OBS_SWEEP_ANGLE);
     }
-    else if (varName == "SERIAL_DEBUG_SONAR") { 
-        if (wantDefaultOnly) logger.printf("[SERIAL_DEBUG_SONAR] Default: %s\n", FactoryDefaults::SERIAL_DEBUG_SONAR ? "ON" : "OFF");
-        else logger.printf("[SERIAL_DEBUG_SONAR] Current: %s | Default: %s\n", Config.SERIAL_DEBUG_SONAR ? "ON" : "OFF", FactoryDefaults::SERIAL_DEBUG_SONAR ? "ON" : "OFF");
+    else if (varName == "OBS_SWEEP_SPEED") { 
+        if (wantDefaultOnly) logger.printf("[OBS_SWEEP_SPEED] Default: %.1f\n", FactoryDefaults::OBS_SWEEP_SPEED);
+        else logger.printf("[OBS_SWEEP_SPEED] Current: %.1f | Default: %.1f\n", Config.OBS_SWEEP_SPEED, FactoryDefaults::OBS_SWEEP_SPEED);
     }
-    else if (varName == "SERIAL_DEBUG_MOTOR_DRIVER") { 
-        if (wantDefaultOnly) logger.printf("[SERIAL_DEBUG_MOTOR_DRIVER] Default: %s\n", FactoryDefaults::SERIAL_DEBUG_MOTOR_DRIVER ? "ON" : "OFF");
-        else logger.printf("[SERIAL_DEBUG_MOTOR_DRIVER] Current: %s | Default: %s\n", Config.SERIAL_DEBUG_MOTOR_DRIVER ? "ON" : "OFF", FactoryDefaults::SERIAL_DEBUG_MOTOR_DRIVER ? "ON" : "OFF");
+    else if (varName == "OBS_SWEEP_PAUSE") { 
+        if (wantDefaultOnly) logger.printf("[OBS_SWEEP_PAUSE] Default: %d\n", FactoryDefaults::OBS_SWEEP_PAUSE);
+        else logger.printf("[OBS_SWEEP_PAUSE] Current: %d | Default: %d\n", Config.OBS_SWEEP_PAUSE, FactoryDefaults::OBS_SWEEP_PAUSE);
     }
-    */
+    else if (varName == "OBS_CLEAR_THRESH") { 
+        if (wantDefaultOnly) logger.printf("[OBS_CLEAR_THRESH] Default: %.1f\n", FactoryDefaults::OBS_CLEAR_THRESH);
+        else logger.printf("[OBS_CLEAR_THRESH] Current: %.1f | Default: %.1f\n", Config.OBS_CLEAR_THRESH, FactoryDefaults::OBS_CLEAR_THRESH);
+    }
+    else if (varName == "OBS_HYSTERESIS") { 
+        if (wantDefaultOnly) logger.printf("[OBS_HYSTERESIS] Default: %.1f\n", FactoryDefaults::OBS_HYSTERESIS);
+        else logger.printf("[OBS_HYSTERESIS] Current: %.1f | Default: %.1f\n", Config.OBS_HYSTERESIS, FactoryDefaults::OBS_HYSTERESIS);
+    }
 
-    // NETWORK COMMAND CHECKS
+    // --- MODE TUNING VARS ---
+    else if (varName == "DIZZY_SPIN_PWM") { 
+        if (wantDefaultOnly) logger.printf("[DIZZY_SPIN_PWM] Default: %d\n", FactoryDefaults::DIZZY_SPIN_PWM);
+        else logger.printf("[DIZZY_SPIN_PWM] Current: %d | Default: %d\n", Config.DIZZY_SPIN_PWM, FactoryDefaults::DIZZY_SPIN_PWM);
+    }
+    else if (varName == "DIZZY_SPIN_TIME") { 
+        if (wantDefaultOnly) logger.printf("[DIZZY_SPIN_TIME] Default: %d\n", FactoryDefaults::DIZZY_SPIN_TIME);
+        else logger.printf("[DIZZY_SPIN_TIME] Current: %d | Default: %d\n", Config.DIZZY_SPIN_TIME, FactoryDefaults::DIZZY_SPIN_TIME);
+    }
+    else if (varName == "DIZZY_COOLDOWN") { 
+        if (wantDefaultOnly) logger.printf("[DIZZY_COOLDOWN] Default: %d\n", FactoryDefaults::DIZZY_COOLDOWN);
+        else logger.printf("[DIZZY_COOLDOWN] Current: %d | Default: %d\n", Config.DIZZY_COOLDOWN, FactoryDefaults::DIZZY_COOLDOWN);
+    }
+    else if (varName == "SLEEP_TIMEOUT_MS") { 
+        if (wantDefaultOnly) logger.printf("[SLEEP_TIMEOUT_MS] Default: %d\n", FactoryDefaults::SLEEP_TIMEOUT_MS);
+        else logger.printf("[SLEEP_TIMEOUT_MS] Current: %d | Default: %d\n", Config.SLEEP_TIMEOUT_MS, FactoryDefaults::SLEEP_TIMEOUT_MS);
+    }
+    else if (varName == "SLEEP_WAKE_G") { 
+        if (wantDefaultOnly) logger.printf("[SLEEP_WAKE_G] Default: %.1f\n", FactoryDefaults::SLEEP_WAKE_G);
+        else logger.printf("[SLEEP_WAKE_G] Current: %.1f | Default: %.1f\n", Config.SLEEP_WAKE_G, FactoryDefaults::SLEEP_WAKE_G);
+    }
+
+    // --- SENSOR TUNING VARS ---
+    else if (varName == "IMU_MADGWICK_BETA") { 
+        if (wantDefaultOnly) logger.printf("[IMU_MADGWICK_BETA] Default: %.1f\n", FactoryDefaults::IMU_MADGWICK_BETA);
+        else logger.printf("[IMU_MADGWICK_BETA] Current: %.1f | Default: %.1f\n", Config.IMU_MADGWICK_BETA, FactoryDefaults::IMU_MADGWICK_BETA);
+    }
+    else if (varName == "IMU_GYRO_DEADBAND") { 
+        if (wantDefaultOnly) logger.printf("[IMU_GYRO_DEADBAND] Default: %.1f\n", FactoryDefaults::IMU_GYRO_DEADBAND);
+        else logger.printf("[IMU_GYRO_DEADBAND] Current: %.1f | Default: %.1f\n", Config.IMU_GYRO_DEADBAND, FactoryDefaults::IMU_GYRO_DEADBAND);
+    }
+    else if (varName == "SONAR_MAX_DIST") { 
+        if (wantDefaultOnly) logger.printf("[SONAR_MAX_DIST] Default: %.1f\n", FactoryDefaults::SONAR_MAX_DIST);
+        else logger.printf("[SONAR_MAX_DIST] Current: %.1f | Default: %.1f\n", Config.SONAR_MAX_DIST, FactoryDefaults::SONAR_MAX_DIST);
+    }
+
+    // --- PID TUNING VARS ---
+    else if (varName == "PID_HEADING_P") { 
+        if (wantDefaultOnly) logger.printf("[PID_HEADING_P] Default: %.1f\n", FactoryDefaults::PID_HEADING_P);
+        else logger.printf("[PID_HEADING_P] Current: %.1f | Default: %.1f\n", Config.PID_HEADING_P, FactoryDefaults::PID_HEADING_P);
+    }
+    else if (varName == "PID_HEADING_I") { 
+        if (wantDefaultOnly) logger.printf("[PID_HEADING_I] Default: %.1f\n", FactoryDefaults::PID_HEADING_I);
+        else logger.printf("[PID_HEADING_I] Current: %.1f | Default: %.1f\n", Config.PID_HEADING_I, FactoryDefaults::PID_HEADING_I);
+    }
+    else if (varName == "PID_HEADING_D") { 
+        if (wantDefaultOnly) logger.printf("[PID_HEADING_D] Default: %.1f\n", FactoryDefaults::PID_HEADING_D);
+        else logger.printf("[PID_HEADING_D] Current: %.1f | Default: %.1f\n", Config.PID_HEADING_D, FactoryDefaults::PID_HEADING_D);
+    }
+    else if (varName == "PID_HEADING_LIM") { 
+        if (wantDefaultOnly) logger.printf("[PID_HEADING_LIM] Default: %.1f\n", FactoryDefaults::PID_HEADING_LIM);
+        else logger.printf("[PID_HEADING_LIM] Current: %.1f | Default: %.1f\n", Config.PID_HEADING_LIM, FactoryDefaults::PID_HEADING_LIM);
+    }
+    else if (varName == "PID_HEADING_ILIM") { 
+        if (wantDefaultOnly) logger.printf("[PID_HEADING_ILIM] Default: %.1f\n", FactoryDefaults::PID_HEADING_ILIM);
+        else logger.printf("[PID_HEADING_ILIM] Current: %.1f | Default: %.1f\n", Config.PID_HEADING_ILIM, FactoryDefaults::PID_HEADING_ILIM);
+    }
+    else if (varName == "PID_HEADING_DEAD") { 
+        if (wantDefaultOnly) logger.printf("[PID_HEADING_DEAD] Default: %.1f\n", FactoryDefaults::PID_HEADING_DEAD);
+        else logger.printf("[PID_HEADING_DEAD] Current: %.1f | Default: %.1f\n", Config.PID_HEADING_DEAD, FactoryDefaults::PID_HEADING_DEAD);
+    }
+
+    else if (varName == "PID_COMPASS_P") { 
+        if (wantDefaultOnly) logger.printf("[PID_COMPASS_P] Default: %.1f\n", FactoryDefaults::PID_COMPASS_P);
+        else logger.printf("[PID_COMPASS_P] Current: %.1f | Default: %.1f\n", Config.PID_COMPASS_P, FactoryDefaults::PID_COMPASS_P);
+    }
+    else if (varName == "PID_COMPASS_I") { 
+        if (wantDefaultOnly) logger.printf("[PID_COMPASS_I] Default: %.1f\n", FactoryDefaults::PID_COMPASS_I);
+        else logger.printf("[PID_COMPASS_I] Current: %.1f | Default: %.1f\n", Config.PID_COMPASS_I, FactoryDefaults::PID_COMPASS_I);
+    }
+    else if (varName == "PID_COMPASS_D") { 
+        if (wantDefaultOnly) logger.printf("[PID_COMPASS_D] Default: %.1f\n", FactoryDefaults::PID_COMPASS_D);
+        else logger.printf("[PID_COMPASS_D] Current: %.1f | Default: %.1f\n", Config.PID_COMPASS_D, FactoryDefaults::PID_COMPASS_D);
+    }
+    else if (varName == "PID_COMPASS_LIM") { 
+        if (wantDefaultOnly) logger.printf("[PID_COMPASS_LIM] Default: %.1f\n", FactoryDefaults::PID_COMPASS_LIM);
+        else logger.printf("[PID_COMPASS_LIM] Current: %.1f | Default: %.1f\n", Config.PID_COMPASS_LIM, FactoryDefaults::PID_COMPASS_LIM);
+    }
+    else if (varName == "PID_COMPASS_ILIM") { 
+        if (wantDefaultOnly) logger.printf("[PID_COMPASS_ILIM] Default: %.1f\n", FactoryDefaults::PID_COMPASS_ILIM);
+        else logger.printf("[PID_COMPASS_ILIM] Current: %.1f | Default: %.1f\n", Config.PID_COMPASS_ILIM, FactoryDefaults::PID_COMPASS_ILIM);
+    }
+    else if (varName == "PID_COMPASS_DEAD") { 
+        if (wantDefaultOnly) logger.printf("[PID_COMPASS_DEAD] Default: %.1f\n", FactoryDefaults::PID_COMPASS_DEAD);
+        else logger.printf("[PID_COMPASS_DEAD] Current: %.1f | Default: %.1f\n", Config.PID_COMPASS_DEAD, FactoryDefaults::PID_COMPASS_DEAD);
+    }
+
+    else if (varName == "PID_DIST_P") { 
+        if (wantDefaultOnly) logger.printf("[PID_DIST_P] Default: %.1f\n", FactoryDefaults::PID_DIST_P);
+        else logger.printf("[PID_DIST_P] Current: %.1f | Default: %.1f\n", Config.PID_DIST_P, FactoryDefaults::PID_DIST_P);
+    }
+    else if (varName == "PID_DIST_I") { 
+        if (wantDefaultOnly) logger.printf("[PID_DIST_I] Default: %.1f\n", FactoryDefaults::PID_DIST_I);
+        else logger.printf("[PID_DIST_I] Current: %.1f | Default: %.1f\n", Config.PID_DIST_I, FactoryDefaults::PID_DIST_I);
+    }
+    else if (varName == "PID_DIST_D") { 
+        if (wantDefaultOnly) logger.printf("[PID_DIST_D] Default: %.1f\n", FactoryDefaults::PID_DIST_D);
+        else logger.printf("[PID_DIST_D] Current: %.1f | Default: %.1f\n", Config.PID_DIST_D, FactoryDefaults::PID_DIST_D);
+    }
+    else if (varName == "PID_DIST_LIM") { 
+        if (wantDefaultOnly) logger.printf("[PID_DIST_LIM] Default: %.1f\n", FactoryDefaults::PID_DIST_LIM);
+        else logger.printf("[PID_DIST_LIM] Current: %.1f | Default: %.1f\n", Config.PID_DIST_LIM, FactoryDefaults::PID_DIST_LIM);
+    }
+    else if (varName == "PID_DIST_ILIM") { 
+        if (wantDefaultOnly) logger.printf("[PID_DIST_ILIM] Default: %.1f\n", FactoryDefaults::PID_DIST_ILIM);
+        else logger.printf("[PID_DIST_ILIM] Current: %.1f | Default: %.1f\n", Config.PID_DIST_ILIM, FactoryDefaults::PID_DIST_ILIM);
+    }
+    else if (varName == "PID_DIST_DEAD") { 
+        if (wantDefaultOnly) logger.printf("[PID_DIST_DEAD] Default: %.1f\n", FactoryDefaults::PID_DIST_DEAD);
+        else logger.printf("[PID_DIST_DEAD] Current: %.1f | Default: %.1f\n", Config.PID_DIST_DEAD, FactoryDefaults::PID_DIST_DEAD);
+    }
+
+    else if (varName == "PID_OBSTACLE_P") { 
+        if (wantDefaultOnly) logger.printf("[PID_OBSTACLE_P] Default: %.1f\n", FactoryDefaults::PID_OBSTACLE_P);
+        else logger.printf("[PID_OBSTACLE_P] Current: %.1f | Default: %.1f\n", Config.PID_OBSTACLE_P, FactoryDefaults::PID_OBSTACLE_P);
+    }
+    else if (varName == "PID_OBSTACLE_I") { 
+        if (wantDefaultOnly) logger.printf("[PID_OBSTACLE_I] Default: %.1f\n", FactoryDefaults::PID_OBSTACLE_I);
+        else logger.printf("[PID_OBSTACLE_I] Current: %.1f | Default: %.1f\n", Config.PID_OBSTACLE_I, FactoryDefaults::PID_OBSTACLE_I);
+    }
+    else if (varName == "PID_OBSTACLE_D") { 
+        if (wantDefaultOnly) logger.printf("[PID_OBSTACLE_D] Default: %.1f\n", FactoryDefaults::PID_OBSTACLE_D);
+        else logger.printf("[PID_OBSTACLE_D] Current: %.1f | Default: %.1f\n", Config.PID_OBSTACLE_D, FactoryDefaults::PID_OBSTACLE_D);
+    }
+    else if (varName == "PID_OBSTACLE_LIM") { 
+        if (wantDefaultOnly) logger.printf("[PID_OBSTACLE_LIM] Default: %.1f\n", FactoryDefaults::PID_OBSTACLE_LIM);
+        else logger.printf("[PID_OBSTACLE_LIM] Current: %.1f | Default: %.1f\n", Config.PID_OBSTACLE_LIM, FactoryDefaults::PID_OBSTACLE_LIM);
+    }
+    else if (varName == "PID_OBSTACLE_ILIM") { 
+        if (wantDefaultOnly) logger.printf("[PID_OBSTACLE_ILIM] Default: %.1f\n", FactoryDefaults::PID_OBSTACLE_ILIM);
+        else logger.printf("[PID_OBSTACLE_ILIM] Current: %.1f | Default: %.1f\n", Config.PID_OBSTACLE_ILIM, FactoryDefaults::PID_OBSTACLE_ILIM);
+    }
+    else if (varName == "PID_OBSTACLE_DEAD") { 
+        if (wantDefaultOnly) logger.printf("[PID_OBSTACLE_DEAD] Default: %.1f\n", FactoryDefaults::PID_OBSTACLE_DEAD);
+        else logger.printf("[PID_OBSTACLE_DEAD] Current: %.1f | Default: %.1f\n", Config.PID_OBSTACLE_DEAD, FactoryDefaults::PID_OBSTACLE_DEAD);
+    }
+
+    // --- NETWORK VARS ---
     else if (varName == "WIFI_SSID") { 
         if (wantDefaultOnly) logger.printf("[WIFI_SSID] Default: \"%s\"\n", FactoryDefaults::WIFI_SSID);
         else logger.printf("[WIFI_SSID] Current: \"%s\" | Default: \"%s\"\n", Config.WIFI_SSID.c_str(), FactoryDefaults::WIFI_SSID);
@@ -448,19 +740,28 @@ void CommandProcessor::handleGet(String varName, String valStr) {
         if (wantDefaultOnly) logger.printf("[WIFI_PASSWORD] Default: %s\n", defMasked.c_str());
         else logger.printf("[WIFI_PASSWORD] Current: %s | Default: %s\n", masked.c_str(), defMasked.c_str());
     }
-    else if (varName == "WIFI_ACTIVE") { 
-        if (wantDefaultOnly) logger.printf("[WIFI_ACTIVE] Default: %s\n", FactoryDefaults::WIFI_ACTIVE ? "ON" : "OFF");
-        else logger.printf("[WIFI_ACTIVE] Current: %s | Default: %s\n", Config.WIFI_ACTIVE ? "ON" : "OFF", FactoryDefaults::WIFI_ACTIVE ? "ON" : "OFF");
-    }
     else if (varName == "BT_NAME") { 
         if (wantDefaultOnly) logger.printf("[BT_NAME] Default: \"%s\"\n", FactoryDefaults::BT_NAME);
         else logger.printf("[BT_NAME] Current: \"%s\" | Default: \"%s\"\n", Config.BT_NAME.c_str(), FactoryDefaults::BT_NAME);
+    }
+    else if (varName == "WIFI_ACTIVE") { 
+        if (wantDefaultOnly) logger.printf("[WIFI_ACTIVE] Default: %s\n", FactoryDefaults::WIFI_ACTIVE ? "ON" : "OFF");
+        else logger.printf("[WIFI_ACTIVE] Current: %s | Default: %s\n", Config.WIFI_ACTIVE ? "ON" : "OFF", FactoryDefaults::WIFI_ACTIVE ? "ON" : "OFF");
     }
     else if (varName == "BT_ACTIVE") { 
         if (wantDefaultOnly) logger.printf("[BT_ACTIVE] Default: %s\n", FactoryDefaults::BT_ACTIVE ? "ON" : "OFF");
         else logger.printf("[BT_ACTIVE] Current: %s | Default: %s\n", Config.BT_ACTIVE ? "ON" : "OFF", FactoryDefaults::BT_ACTIVE ? "ON" : "OFF");
     }
 
+    // --- SYSTEM VARS ---
+    else if (varName == "BRAIN_ACTIVE") { 
+        if (wantDefaultOnly) logger.printf("[BRAIN_ACTIVE] Default: %s\n", FactoryDefaults::BRAIN_ACTIVE ? "ON" : "OFF");
+        else logger.printf("[BRAIN_ACTIVE] Current: %s | Default: %s\n", Config.BRAIN_ACTIVE ? "ON" : "OFF", FactoryDefaults::BRAIN_ACTIVE ? "ON" : "OFF");
+    }
+    else if (varName == "SERIAL_DEBUG_MASTER") { 
+        if (wantDefaultOnly) logger.printf("[SERIAL_DEBUG_MASTER] Default: %s\n", FactoryDefaults::SERIAL_DEBUG_MASTER ? "ON" : "OFF");
+        else logger.printf("[SERIAL_DEBUG_MASTER] Current: %s | Default: %s\n", Config.SERIAL_DEBUG_MASTER ? "ON" : "OFF", FactoryDefaults::SERIAL_DEBUG_MASTER ? "ON" : "OFF");
+    }
 
     else if (varName == "") {
         logger.println("Usage: get <VARIABLE> or get default <VARIABLE>");
@@ -522,7 +823,7 @@ void CommandProcessor::printDefaults() {
     logger.println("\n--- FACTORY DEFAULTS APPLIED ---");
     logger.printf("CRUISING_SPEED = %.1f\n", FactoryDefaults::CRUISING_SPEED);
     logger.printf("OBSTACLE_TRIGGER_CM = %.1f\n", FactoryDefaults::OBSTACLE_TRIGGER_CM);
-    logger.printf("MAINTAIN_DIST_CM = %.1f\n", FactoryDefaults::MAINTAIN_DIST_CM);
+    logger.printf("MAINTAIN_DIST_CM = %.1f\n", FactoryDefaults::MAINTAIN_DISTANCE_CM);
     logger.printf("BRAIN_ACTIVE = %s\n", FactoryDefaults::BRAIN_ACTIVE ? "ON" : "OFF");
     logger.printf("SERIAL_DEBUG_MASTER = %s\n", FactoryDefaults::SERIAL_DEBUG_MASTER ? "ON" : "OFF");
     logger.println("--------------------------------");
