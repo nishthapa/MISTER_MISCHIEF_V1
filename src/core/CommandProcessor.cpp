@@ -1,6 +1,10 @@
 #include "core/CommandProcessor.h"
 #include "config/ConfigurationManager.h"
 #include "config/FactoryDefaults.h"
+#include "config/PinConfig.h"
+#include "config/I2CRegistry.h"
+#include "config/ChannelRegistry.h"
+#include "config/SystemConfig.h"
 #include "utils/RemoteLogger.h"
 #include "utils/RadioManager.h"
 #include "hal/interfaces/I_IMU.h" // for calibration commands
@@ -42,7 +46,10 @@ const char* autoDict[] = {
     "PID_OBSTACLE_P", "PID_OBSTACLE_I", "PID_OBSTACLE_D", "PID_OBSTACLE_LIM", "PID_OBSTACLE_ILIM", "PID_OBSTACLE_DEAD",
     "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", "SERIAL_DEBUG_IMU", "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER",
     "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE",
-    "PIN_MOTOR_L_PWM", "PIN_MOTOR_R_PWM", "PIN_SONAR_TRIG", "PIN_SONAR_ECHO", "I2C_ADDR_MPU6050", "SYS_TASK_CORE", "SYS_TELNET_PORT"
+    // -- The Static Variables --
+    "PIN_MOTOR_LEFT_FWD", "PIN_MOTOR_LEFT_REV", "PIN_MOTOR_RIGHT_FWD", "PIN_MOTOR_RIGHT_REV",
+    "PIN_SONAR_TRIG", "PIN_SONAR_ECHO", "PIN_I2C_SCL", "PIN_I2C_SDA", "PIN_IMU_INT",
+    "I2C_ADDR_MPU6050", "CH_MOTOR_LEFT_FWD", "CH_MOTOR_RIGHT_FWD", "TELNET_PORT", "MAIN_LOOP_TICK_RATE_MS"
 };
 
 const int dictSize = sizeof(autoDict) / sizeof(autoDict[0]);
@@ -73,7 +80,12 @@ const char* sysVariables[] = {
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
     "PID_OBSTACLE_P", "PID_OBSTACLE_I", "PID_OBSTACLE_D", "PID_OBSTACLE_LIM", "PID_OBSTACLE_ILIM", "PID_OBSTACLE_DEAD",
     "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", "SERIAL_DEBUG_IMU", "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER",
-    "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE"
+    "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE",
+    // read-only static variables so 'get ALL' dumps the hardware map too!
+    "PIN_MOTOR_LEFT_FWD", "PIN_MOTOR_LEFT_REV", "PIN_MOTOR_RIGHT_FWD", "PIN_MOTOR_RIGHT_REV",
+    "PIN_SONAR_TRIG", "PIN_SONAR_ECHO", "PIN_I2C_SCL", "PIN_I2C_SDA", "PIN_IMU_INT",
+    "I2C_ADDR_MPU6050", "CH_MOTOR_LEFT_FWD", "CH_MOTOR_LEFT_REV", "CH_MOTOR_RIGHT_FWD", "CH_MOTOR_RIGHT_REV",
+    "TELNET_PORT", "MAIN_LOOP_TICK_RATE_MS"
 };
 
 const int sysVarCount = sizeof(sysVariables) / sizeof(sysVariables[0]);
@@ -431,6 +443,12 @@ void CommandProcessor::handleSet(String varName, String valStr) {
         }
     }
 
+    // Catch attempts to modify read-only variables
+    if (varName.startsWith("PIN_") || varName.startsWith("CH_") || varName.startsWith("I2C_")) {
+        logger.printf("[ERROR] %s is a physical hardware binding and cannot be changed at runtime.\n", varName.c_str());
+        return;
+    }
+
     // ==========================================
     // VARIABLE ASSIGNMENT & TYPE CONVERSION
     // ==========================================
@@ -493,12 +511,12 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     else if (varName == "WIFI_SSID") { Config.WIFI_SSID = valStr; }
     else if (varName == "WIFI_PASSWORD") { Config.WIFI_PASSWORD = valStr; }
     else if (varName == "BT_NAME") { Config.BT_NAME = valStr; }
-    else if (varName == "WIFI_ACTIVE") { Config.WIFI_ACTIVE = (valStr == "on" || valStr == "1"); }
-    else if (varName == "BT_ACTIVE") { Config.BT_ACTIVE = (valStr == "on" || valStr == "1"); }
- 
+    else if (varName == "WIFI_ACTIVE") { Config.WIFI_ACTIVE = (valStr == "on" || valStr == "1" || valStr == "true"); }
+    else if (varName == "BT_ACTIVE") { Config.BT_ACTIVE = (valStr == "on" || valStr == "1" || valStr == "true"); }
+
     // --- SYSTEM VARS ---
-    else if (varName == "BRAIN_ACTIVE") { Config.BRAIN_ACTIVE = (valStr == "on" || valStr == "1"); }
-    else if (varName == "SERIAL_DEBUG_MASTER") { Config.SERIAL_DEBUG_MASTER = (valStr == "on" || valStr == "1"); }
+    else if (varName == "BRAIN_ACTIVE") { Config.BRAIN_ACTIVE = (valStr == "on" || valStr == "1" || valStr == "true"); }
+    else if (varName == "SERIAL_DEBUG_MASTER") { Config.SERIAL_DEBUG_MASTER = (valStr == "on" || valStr == "1" || valStr == "true"); }
     
     /* FOR LATER: Granular debug controls for each subsystem!
     else if (varName == "SERIAL_DEBUG_IMU") { 
@@ -766,6 +784,31 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     else if (varName == "") {
         logger.println("Usage: get <VARIABLE> or get default <VARIABLE>");
     }
+
+    // ==========================================
+    // READ-ONLY STATIC VARIABLES (Hardware & Pins)
+    // ==========================================
+    // --- PIN CONFIGS ---
+    else if (varName == "PIN_MOTOR_LEFT_FWD") { logger.printf("[PIN_MOTOR_LEFT_FWD] Static: %d\n", HardwarePins::PIN_MOTOR_LEFT_FWD); }
+    else if (varName == "PIN_MOTOR_LEFT_REV") { logger.printf("[PIN_MOTOR_LEFT_REV] Static: %d\n", HardwarePins::PIN_MOTOR_LEFT_REV); }
+    else if (varName == "PIN_MOTOR_RIGHT_FWD") { logger.printf("[PIN_MOTOR_RIGHT_FWD] Static: %d\n", HardwarePins::PIN_MOTOR_RIGHT_FWD); }
+    else if (varName == "PIN_MOTOR_RIGHT_REV") { logger.printf("[PIN_MOTOR_RIGHT_REV] Static: %d\n", HardwarePins::PIN_MOTOR_RIGHT_REV); }
+    else if (varName == "PIN_SONAR_TRIG") { logger.printf("[PIN_SONAR_TRIG] Static: %d\n", HardwarePins::PIN_SONAR_TRIG); }
+    else if (varName == "PIN_SONAR_ECHO") { logger.printf("[PIN_SONAR_ECHO] Static: %d\n", HardwarePins::PIN_SONAR_ECHO); }
+    else if (varName == "PIN_I2C_SCL") { logger.printf("[PIN_I2C_SCL] Static: %d\n", HardwarePins::PIN_I2C_SCL); }
+    else if (varName == "PIN_I2C_SDA") { logger.printf("[PIN_I2C_SDA] Static: %d\n", HardwarePins::PIN_I2C_SDA); }
+    else if (varName == "PIN_IMU_INT") { logger.printf("[PIN_IMU_INT] Static: %d\n", HardwarePins::PIN_IMU_INT); }
+
+    // --- I2C & PWM CHANNELS ---
+    else if (varName == "I2C_ADDR_MPU6050") { logger.printf("[I2C_ADDR_MPU6050] Static: 0x%02X\n", I2CRegistry::I2C_ADDR_MPU6050); }
+    else if (varName == "CH_MOTOR_LEFT_FWD") { logger.printf("[CH_MOTOR_LEFT_FWD] Static: %d\n", ChannelRegistry::CH_MOTOR_LEFT_FWD); }
+    else if (varName == "CH_MOTOR_LEFT_REV") { logger.printf("[CH_MOTOR_LEFT_REV] Static: %d\n", ChannelRegistry::CH_MOTOR_LEFT_REV); }
+    else if (varName == "CH_MOTOR_RIGHT_FWD") { logger.printf("[CH_MOTOR_RIGHT_FWD] Static: %d\n", ChannelRegistry::CH_MOTOR_RIGHT_FWD); }
+    else if (varName == "CH_MOTOR_RIGHT_REV") { logger.printf("[CH_MOTOR_RIGHT_REV] Static: %d\n", ChannelRegistry::CH_MOTOR_RIGHT_REV); }
+
+    // --- SYSTEM & OS ---
+    else if (varName == "TELNET_PORT") { logger.printf("[TELNET_PORT] Static: %d\n", SystemConfig::TELNET_PORT); }
+    else if (varName == "MAIN_LOOP_TICK_RATE_MS") { logger.printf("[MAIN_LOOP_TICK_RATE_MS] Static: %d ms\n", SystemConfig::MAIN_LOOP_TICK_RATE_MS); }
     else { 
         logger.printf("Unknown variable: %s\n", varName.c_str()); 
     }
