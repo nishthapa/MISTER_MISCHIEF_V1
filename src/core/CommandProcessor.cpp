@@ -14,6 +14,8 @@ CommandProcessor::CommandProcessor() {
     registry.registerCommand("get",   std::bind(&CommandProcessor::handleGet,   this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("reset", std::bind(&CommandProcessor::handleReset, this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("calib", std::bind(&CommandProcessor::handleCalib, this, std::placeholders::_1, std::placeholders::_2));
+    registry.registerCommand("connect",    std::bind(&CommandProcessor::handleConnect,    this, std::placeholders::_1, std::placeholders::_2));
+    registry.registerCommand("disconnect", std::bind(&CommandProcessor::handleDisconnect, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 // ==========================================
@@ -25,7 +27,8 @@ const char* autoDict[] = {
     "set", "get", "reset", "calib", "default", "ALL",
     "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DIST_CM",
     "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", "SERIAL_DEBUG_IMU",
-    "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER"
+    "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER",
+    "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE"
 };
 const int dictSize = sizeof(autoDict) / sizeof(autoDict[0]);
 
@@ -230,7 +233,20 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     if (varName == "CRUISING_SPEED") { Config.CRUISING_SPEED = valStr.toFloat(); }
     else if (varName == "OBSTACLE_TRIGGER_CM") { Config.OBSTACLE_TRIGGER_CM = valStr.toFloat(); }
     else if (varName == "MAINTAIN_DIST_CM") { Config.MAINTAIN_DIST_CM = valStr.toFloat(); }
-    
+
+    // --- NETWORK VARS ---
+    else if (varName == "WIFI_SSID") { Config.WIFI_SSID = valStr; }
+    else if (varName == "WIFI_PASSWORD") { Config.WIFI_PASSWORD = valStr; }
+    else if (varName == "BT_NAME") { Config.BT_NAME = valStr; }
+    else if (varName == "WIFI_ACTIVE") { 
+        valStr.toLowerCase();
+        Config.WIFI_ACTIVE = (valStr == "on" || valStr == "true" || valStr == "1"); 
+    }
+    else if (varName == "BT_ACTIVE") { 
+        valStr.toLowerCase();
+        Config.BT_ACTIVE = (valStr == "on" || valStr == "true" || valStr == "1"); 
+    }
+ 
     // --- SYSTEM VARS ---
     else if (varName == "BRAIN_ACTIVE") { 
         valStr.toLowerCase();
@@ -312,6 +328,31 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     }
     */
 
+    // NETWORK COMMAND CHECKS
+    else if (varName == "WIFI_SSID") { 
+        if (wantDefaultOnly) logger.printf("[WIFI_SSID] Default: \"%s\"\n", FactoryDefaults::WIFI_SSID);
+        else logger.printf("[WIFI_SSID] Current: \"%s\" | Default: \"%s\"\n", Config.WIFI_SSID.c_str(), FactoryDefaults::WIFI_SSID);
+    }
+    else if (varName == "WIFI_PASSWORD") { 
+        String masked = (Config.WIFI_PASSWORD == "") ? "<empty>" : "********";
+        String defMasked = (String(FactoryDefaults::WIFI_PASSWORD) == "") ? "<empty>" : "********";
+        if (wantDefaultOnly) logger.printf("[WIFI_PASSWORD] Default: %s\n", defMasked.c_str());
+        else logger.printf("[WIFI_PASSWORD] Current: %s | Default: %s\n", masked.c_str(), defMasked.c_str());
+    }
+    else if (varName == "WIFI_ACTIVE") { 
+        if (wantDefaultOnly) logger.printf("[WIFI_ACTIVE] Default: %s\n", FactoryDefaults::WIFI_ACTIVE ? "ON" : "OFF");
+        else logger.printf("[WIFI_ACTIVE] Current: %s | Default: %s\n", Config.WIFI_ACTIVE ? "ON" : "OFF", FactoryDefaults::WIFI_ACTIVE ? "ON" : "OFF");
+    }
+    else if (varName == "BT_NAME") { 
+        if (wantDefaultOnly) logger.printf("[BT_NAME] Default: \"%s\"\n", FactoryDefaults::BT_NAME);
+        else logger.printf("[BT_NAME] Current: \"%s\" | Default: \"%s\"\n", Config.BT_NAME.c_str(), FactoryDefaults::BT_NAME);
+    }
+    else if (varName == "BT_ACTIVE") { 
+        if (wantDefaultOnly) logger.printf("[BT_ACTIVE] Default: %s\n", FactoryDefaults::BT_ACTIVE ? "ON" : "OFF");
+        else logger.printf("[BT_ACTIVE] Current: %s | Default: %s\n", Config.BT_ACTIVE ? "ON" : "OFF", FactoryDefaults::BT_ACTIVE ? "ON" : "OFF");
+    }
+
+
     else if (varName == "") {
         logger.println("Usage: get <VARIABLE> or get default <VARIABLE>");
     }
@@ -366,4 +407,57 @@ void CommandProcessor::printDefaults() {
     logger.printf("BRAIN_ACTIVE = %s\n", FactoryDefaults::BRAIN_ACTIVE ? "ON" : "OFF");
     logger.printf("SERIAL_DEBUG_MASTER = %s\n", FactoryDefaults::SERIAL_DEBUG_MASTER ? "ON" : "OFF");
     logger.println("--------------------------------");
+}
+
+void CommandProcessor::handleConnect(String target, String dummyVal) {
+    target.toLowerCase();
+
+    if (target == "wifi") {
+        if (Config.WIFI_SSID == "") {
+            logger.println("\n[ERROR] Wi-Fi SSID is not configured!");
+            logger.println("To fix this, type the following commands:");
+            logger.println("  1. set WIFI_SSID MyNetworkName");
+            logger.println("  2. set WIFI_PASSWORD MyPassword123");
+            logger.println("  3. connect wifi");
+            return;
+        }
+        
+        logger.printf("\n[NETWORK] Attempting to connect to Wi-Fi SSID: \"%s\"...\n", Config.WIFI_SSID.c_str());
+        Config.WIFI_ACTIVE = true;
+        ConfigSys.save();
+        
+        // TODO: Call your actual WiFiConfig::init() function here later!
+        logger.println("[NETWORK] Wi-Fi Subsystem activated.");
+    } 
+    else if (target == "bluetooth" || target == "bt") {
+        logger.printf("\n[NETWORK] Starting Bluetooth Service as: \"%s\"...\n", Config.BT_NAME.c_str());
+        Config.BT_ACTIVE = true;
+        ConfigSys.save();
+        
+        // TODO: Call your Bluetooth Init logic here later!
+        logger.println("[NETWORK] Bluetooth Subsystem activated.");
+    }
+    else {
+        logger.println("Usage: connect wifi OR connect bluetooth");
+    }
+}
+
+void CommandProcessor::handleDisconnect(String target, String dummyVal) {
+    target.toLowerCase();
+
+    if (target == "wifi") {
+        logger.println("\n[NETWORK] Disconnecting from Wi-Fi and disabling radio...");
+        Config.WIFI_ACTIVE = false;
+        ConfigSys.save();
+        // TODO: Call actual WiFi disconnect logic here
+    } 
+    else if (target == "bluetooth" || target == "bt") {
+        logger.println("\n[NETWORK] Shutting down Bluetooth radio...");
+        Config.BT_ACTIVE = false;
+        ConfigSys.save();
+        // TODO: Call actual BT disconnect logic here
+    }
+    else {
+        logger.println("Usage: disconnect wifi OR disconnect bluetooth");
+    }
 }

@@ -31,6 +31,10 @@ private:
     void handleGet(String varName, String dummyVal); 
     void handleReset(String varName, String dummyVal);
     void handleCalib(String varName, String dummyVal); 
+
+    // THE NEW NETWORK COMMANDS
+    void handleConnect(String target, String dummyVal);
+    void handleDisconnect(String target, String dummyVal);
     
     void handleResetConfirm(String input);
     void printDefaults();

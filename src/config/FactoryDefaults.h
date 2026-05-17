@@ -9,6 +9,14 @@ namespace FactoryDefaults {
     // --- System States ---
     constexpr bool BRAIN_ACTIVE = true;
 
+    // --- Network & Comms ---
+    constexpr const char* WIFI_SSID = "";       // Blank by default!
+    constexpr const char* WIFI_PASSWORD = "";
+    constexpr bool WIFI_ACTIVE = false;         // Off by default to save battery
+    
+    constexpr const char* BT_NAME = "Mister_Mischief";
+    constexpr bool BT_ACTIVE = false;
+
     // --- Debug & Telemetry ---
     constexpr bool SERIAL_DEBUG_MASTER = true;
     constexpr bool SERIAL_DEBUG_IMU = true;
