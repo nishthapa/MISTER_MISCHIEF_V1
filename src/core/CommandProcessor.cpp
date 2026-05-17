@@ -2,6 +2,7 @@
 #include "config/ConfigurationManager.h"
 #include "config/FactoryDefaults.h"
 #include "utils/RemoteLogger.h"
+#include "utils/RadioManager.h"
 
 extern RemoteLogger logger;
 
@@ -16,6 +17,9 @@ CommandProcessor::CommandProcessor() {
     registry.registerCommand("calib", std::bind(&CommandProcessor::handleCalib, this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("connect",    std::bind(&CommandProcessor::handleConnect,    this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("disconnect", std::bind(&CommandProcessor::handleDisconnect, this, std::placeholders::_1, std::placeholders::_2));
+    registry.registerCommand("connect",    std::bind(&CommandProcessor::handleConnect,    this, std::placeholders::_1, std::placeholders::_2));
+    registry.registerCommand("disconnect", std::bind(&CommandProcessor::handleDisconnect, this, std::placeholders::_1, std::placeholders::_2));
+    registry.registerCommand("reboot",     std::bind(&CommandProcessor::handleReboot,     this, std::placeholders::_1, std::placeholders::_2));
 }
 
 // ==========================================
@@ -28,9 +32,21 @@ const char* autoDict[] = {
     "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DIST_CM",
     "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", "SERIAL_DEBUG_IMU",
     "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER",
-    "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE"
+    "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE",
+    "connect", "disconnect", "reboot", "wifi", "bluetooth"
+
+    
 };
 const int dictSize = sizeof(autoDict) / sizeof(autoDict[0]);
+
+// THE NEW ARRAY: Just the variables for the "get ALL" loop!
+const char* sysVariables[] = {
+    "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DIST_CM",
+    "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", 
+    "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", 
+    "BT_NAME", "BT_ACTIVE"
+};
+const int sysVarCount = sizeof(sysVariables) / sizeof(sysVariables[0]);
 
 void CommandProcessor::redrawCLI() {
     // 1. THE NUCLEAR ERASE
@@ -291,6 +307,25 @@ void CommandProcessor::handleGet(String varName, String valStr) {
         varName.toUpperCase();
     }
 
+    // ==========================================
+    // THE PROFESSIONAL "GET ALL" CHECK
+    // ==========================================
+    if (varName == "ALL" || "all") {
+        logger.println("\n=== ALL SYSTEM VARIABLES ===");
+        
+        // Dynamically loop through the central variable list!
+        for (int i = 0; i < sysVarCount; i++) {
+            if (wantDefaultOnly) {
+                handleGet("DEFAULT", sysVariables[i]);
+            } else {
+                handleGet(sysVariables[i], "");
+            }
+        }
+        
+        logger.println("============================\n");
+        return;
+    }
+
     // 2. The Elegant Formatter
     if (varName == "CRUISING_SPEED") { 
         if (wantDefaultOnly) logger.printf("[CRUISING_SPEED] Default: %.1f\n", FactoryDefaults::CRUISING_SPEED);
@@ -424,17 +459,22 @@ void CommandProcessor::handleConnect(String target, String dummyVal) {
         
         logger.printf("\n[NETWORK] Attempting to connect to Wi-Fi SSID: \"%s\"...\n", Config.WIFI_SSID.c_str());
         Config.WIFI_ACTIVE = true;
-        ConfigSys.save();
+        ConfigSys.save(); // Save intent to permanent memory
         
-        // TODO: Call your actual WiFiConfig::init() function here later!
-        logger.println("[NETWORK] Wi-Fi Subsystem activated.");
+        RadioManager::connectWiFi(Config.WIFI_SSID, Config.WIFI_PASSWORD);
+        
+        if (WiFi.status() == WL_CONNECTED) {
+            logger.printf("[NETWORK] Wi-Fi Subsystem activated. IP: %s\n", WiFi.localIP().toString().c_str());
+        } else {
+            logger.println("[NETWORK] Connection failed. Check SSID and Password.");
+        }
     } 
     else if (target == "bluetooth" || target == "bt") {
         logger.printf("\n[NETWORK] Starting Bluetooth Service as: \"%s\"...\n", Config.BT_NAME.c_str());
         Config.BT_ACTIVE = true;
         ConfigSys.save();
         
-        // TODO: Call your Bluetooth Init logic here later!
+        RadioManager::connectBluetooth(Config.BT_NAME);
         logger.println("[NETWORK] Bluetooth Subsystem activated.");
     }
     else {
@@ -449,15 +489,25 @@ void CommandProcessor::handleDisconnect(String target, String dummyVal) {
         logger.println("\n[NETWORK] Disconnecting from Wi-Fi and disabling radio...");
         Config.WIFI_ACTIVE = false;
         ConfigSys.save();
-        // TODO: Call actual WiFi disconnect logic here
+        
+        RadioManager::disconnectWiFi();
+        logger.println("[NETWORK] Wi-Fi offline.");
     } 
     else if (target == "bluetooth" || target == "bt") {
         logger.println("\n[NETWORK] Shutting down Bluetooth radio...");
         Config.BT_ACTIVE = false;
         ConfigSys.save();
-        // TODO: Call actual BT disconnect logic here
+        
+        RadioManager::disconnectBluetooth();
+        logger.println("[NETWORK] Bluetooth offline.");
     }
     else {
         logger.println("Usage: disconnect wifi OR disconnect bluetooth");
     }
+}
+
+void CommandProcessor::handleReboot(String varName, String dummyVal) {
+    logger.println("\n[SYSTEM] Rebooting in 3 seconds...");
+    delay(3000);
+    ESP.restart(); // Physically resets the ESP32!
 }

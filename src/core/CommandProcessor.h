@@ -39,6 +39,8 @@ private:
     void handleResetConfirm(String input);
     void printDefaults();
 
+    void handleReboot(String varName, String dummyVal); // NEW!
+
 public:
     CommandProcessor();
     

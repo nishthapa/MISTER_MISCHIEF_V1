@@ -66,11 +66,20 @@ public:
         
         preferences.putBool("BRAIN_ACT", currentSettings.BRAIN_ACTIVE);
 
-        preferences.putString("WIFI_SSID", currentSettings.WIFI_SSID);
-        preferences.putString("WIFI_PASS", currentSettings.WIFI_PASSWORD);
+        // ==========================================
+        // THE NVS EMPTY STRING GUARDRAILS
+        // ==========================================
+        if (currentSettings.WIFI_SSID == "") preferences.remove("WIFI_SSID");
+        else preferences.putString("WIFI_SSID", currentSettings.WIFI_SSID);
+
+        if (currentSettings.WIFI_PASSWORD == "") preferences.remove("WIFI_PASS");
+        else preferences.putString("WIFI_PASS", currentSettings.WIFI_PASSWORD);
+
+        if (currentSettings.BT_NAME == "") preferences.remove("BT_NAME");
+        else preferences.putString("BT_NAME", currentSettings.BT_NAME);
+        // ==========================================
+
         preferences.putBool("WIFI_ACT", currentSettings.WIFI_ACTIVE);
-        
-        preferences.putString("BT_NAME", currentSettings.BT_NAME);
         preferences.putBool("BT_ACT", currentSettings.BT_ACTIVE);
 
         preferences.putBool("DBG_MASTER", currentSettings.SERIAL_DEBUG_MASTER);

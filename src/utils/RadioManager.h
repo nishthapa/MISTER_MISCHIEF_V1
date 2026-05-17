@@ -1,12 +1,19 @@
 #pragma once
 #include <WiFi.h>
+#include <Arduino.h>
 
 class RadioManager {
 public:
-    // Boots whatever radios are requested in the Config files
+    // Boots radios on startup based on NVS Config
     static void initRadios();
     
-    // Allows any service (Logger, Web Server, App) to check if the pipes are open
+    // Status checks
     static bool isWiFiReady();
     static bool isBluetoothReady();
+
+    // Dynamic Command Line Controls
+    static void connectWiFi(String ssid, String password);
+    static void disconnectWiFi();
+    static void connectBluetooth(String name);
+    static void disconnectBluetooth();
 };
