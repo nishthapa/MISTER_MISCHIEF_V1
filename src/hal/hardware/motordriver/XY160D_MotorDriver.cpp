@@ -1,5 +1,6 @@
 #include "hal/hardware/motordriver/XY160D_MotorDriver.h"
 #include "config/MotorDriverConfig.h"
+#include "config/PinConfig.h" // For the default pin assignments
 
 // The Core 2.x API requires routing pins through specific hardware channels
 #include "config/ChannelRegistry.h" // --- ESP32 Hardware PWM Channels ---
@@ -17,17 +18,17 @@ XY160D_MotorDriver::XY160D_MotorDriver(int lf, int lr, int rf, int rr) {
 void XY160D_MotorDriver::init() {
     // 1. Configure the 4 hardware channels with your frequency and resolution
     // (These CH_ variables are still fine, they come from ChannelRegistry.h)
-    ledcSetup(CH_MOTOR_LEFT_FWD, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
-    ledcSetup(CH_MOTOR_LEFT_REV, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
-    ledcSetup(CH_MOTOR_RIGHT_FWD, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
-    ledcSetup(CH_MOTOR_RIGHT_REV, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
+    ledcSetup(ChannelRegistry::CH_MOTOR_LEFT_FWD, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
+    ledcSetup(ChannelRegistry::CH_MOTOR_LEFT_REV, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
+    ledcSetup(ChannelRegistry::CH_MOTOR_RIGHT_FWD, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
+    ledcSetup(ChannelRegistry::CH_MOTOR_RIGHT_REV, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
 
     // 2. Attach the internally stored pins to the channels
     // DO NOT use PIN_MOTOR_..., use the private variables!
-    ledcAttachPin(leftFwdPin, CH_MOTOR_LEFT_FWD);
-    ledcAttachPin(leftRevPin, CH_MOTOR_LEFT_REV);
-    ledcAttachPin(rightFwdPin, CH_MOTOR_RIGHT_FWD);
-    ledcAttachPin(rightRevPin, CH_MOTOR_RIGHT_REV);
+    ledcAttachPin(leftFwdPin, ChannelRegistry::CH_MOTOR_LEFT_FWD);
+    ledcAttachPin(leftRevPin, ChannelRegistry::CH_MOTOR_LEFT_REV);
+    ledcAttachPin(rightFwdPin, ChannelRegistry::CH_MOTOR_RIGHT_FWD);
+    ledcAttachPin(rightRevPin, ChannelRegistry::CH_MOTOR_RIGHT_REV);
     
     // Ensure motors are dead silent and locked on boot
     stop(); 
@@ -39,14 +40,14 @@ void XY160D_MotorDriver::setLeftSpeed(float speed) {
 
     // Note: Core 2.x ledcWrite targets the CHANNEL, not the physical PIN
     if (speed > 0) {
-        ledcWrite(CH_MOTOR_LEFT_FWD, pwmValue);
-        ledcWrite(CH_MOTOR_LEFT_REV, 0);       
+        ledcWrite(ChannelRegistry::CH_MOTOR_LEFT_FWD, pwmValue);
+        ledcWrite(ChannelRegistry::CH_MOTOR_LEFT_REV, 0);       
     } else if (speed < 0) {
-        ledcWrite(CH_MOTOR_LEFT_FWD, 0);       
-        ledcWrite(CH_MOTOR_LEFT_REV, pwmValue);
+        ledcWrite(ChannelRegistry::CH_MOTOR_LEFT_FWD, 0);       
+        ledcWrite(ChannelRegistry::CH_MOTOR_LEFT_REV, pwmValue);
     } else {
-        ledcWrite(CH_MOTOR_LEFT_FWD, 0);
-        ledcWrite(CH_MOTOR_LEFT_REV, 0);
+        ledcWrite(ChannelRegistry::CH_MOTOR_LEFT_FWD, 0);
+        ledcWrite(ChannelRegistry::CH_MOTOR_LEFT_REV, 0);
     }
 }
 
@@ -55,14 +56,14 @@ void XY160D_MotorDriver::setRightSpeed(float speed) {
     int pwmValue = map(abs(speed), 0, 100, 0, MotorDriverConfig::MAX_DUTY);
 
     if (speed > 0) {
-        ledcWrite(CH_MOTOR_RIGHT_FWD, pwmValue);
-        ledcWrite(CH_MOTOR_RIGHT_REV, 0);
+        ledcWrite(ChannelRegistry::CH_MOTOR_RIGHT_FWD, pwmValue);
+        ledcWrite(ChannelRegistry::CH_MOTOR_RIGHT_REV, 0);
     } else if (speed < 0) {
-        ledcWrite(CH_MOTOR_RIGHT_FWD, 0);
-        ledcWrite(CH_MOTOR_RIGHT_REV, pwmValue);
+        ledcWrite(ChannelRegistry::CH_MOTOR_RIGHT_FWD, 0);
+        ledcWrite(ChannelRegistry::CH_MOTOR_RIGHT_REV, pwmValue);
     } else {
-        ledcWrite(CH_MOTOR_RIGHT_FWD, 0);
-        ledcWrite(CH_MOTOR_RIGHT_REV, 0);
+        ledcWrite(ChannelRegistry::CH_MOTOR_RIGHT_FWD, 0);
+        ledcWrite(ChannelRegistry::CH_MOTOR_RIGHT_REV, 0);
     }
 }
 
