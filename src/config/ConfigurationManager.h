@@ -61,6 +61,28 @@ struct MasterSettings {
     float PID_OBSTACLE_ILIM = FactoryDefaults::PID_OBSTACLE_ILIM;
     float PID_OBSTACLE_DEAD = FactoryDefaults::PID_OBSTACLE_DEAD;
 
+    // --- Physics & Handing ---
+    float TILT_HANDLING_THRESHOLD = FactoryDefaults::TILT_HANDLING_THRESHOLD;
+    float GFORCE_LIFT_UP_THRESHOLD = FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD;
+    float GFORCE_LIFT_DOWN_THRESHOLD = FactoryDefaults::GFORCE_LIFT_DOWN_THRESHOLD;
+    float LIFT_ENERGY_SPIKE_THRESHOLD = FactoryDefaults::LIFT_ENERGY_SPIKE_THRESHOLD;
+    float UPRIGHT_ANGLE_TOLERANCE = FactoryDefaults::UPRIGHT_ANGLE_TOLERANCE;
+    float PERFECTLY_STILL_ENERGY = FactoryDefaults::PERFECTLY_STILL_ENERGY;
+    float STEADY_HOLD_ENERGY_MAX = FactoryDefaults::STEADY_HOLD_ENERGY_MAX;
+
+    // --- Dizzy & Energy ---
+    float DIZZY_ENERGY_DEADBAND = FactoryDefaults::DIZZY_ENERGY_DEADBAND;
+    float DIZZY_CHARGE_RATE = FactoryDefaults::DIZZY_CHARGE_RATE;
+    float DIZZY_DECAY_RATE = FactoryDefaults::DIZZY_DECAY_RATE;
+    float DIZZY_TRIGGER_THRESHOLD = FactoryDefaults::DIZZY_TRIGGER_THRESHOLD;
+    float ENERGY_EMA_ALPHA = FactoryDefaults::ENERGY_EMA_ALPHA;
+    float ENERGY_EMA_BETA = FactoryDefaults::ENERGY_EMA_BETA;
+
+    // --- Mood ---
+    float DISTANCE_HOLD_FRUSTRATION_LIMIT = FactoryDefaults::DISTANCE_HOLD_FRUSTRATION_LIMIT;
+    float FRUSTRATION_COOLDOWN_RATE = FactoryDefaults::FRUSTRATION_COOLDOWN_RATE;
+    float FRUSTRATION_HEATUP_RATE = FactoryDefaults::FRUSTRATION_HEATUP_RATE;
+
     // --- System & Network ---
     bool BRAIN_ACTIVE = FactoryDefaults::BRAIN_ACTIVE;
     String WIFI_SSID = FactoryDefaults::WIFI_SSID;
@@ -137,6 +159,23 @@ public:
         currentSettings.PID_OBSTACLE_ILIM = preferences.getFloat("P_OBS_ILM", FactoryDefaults::PID_OBSTACLE_ILIM);
         currentSettings.PID_OBSTACLE_DEAD = preferences.getFloat("P_OBS_DED", FactoryDefaults::PID_OBSTACLE_DEAD);
 
+        currentSettings.TILT_HANDLING_THRESHOLD = preferences.getFloat("TILT_HANDLING_THRESHOLD", FactoryDefaults::TILT_HANDLING_THRESHOLD);
+        currentSettings.GFORCE_LIFT_UP_THRESHOLD = preferences.getFloat("GFORCE_LIFT_UP_THRESHOLD", FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD);
+        currentSettings.GFORCE_LIFT_DOWN_THRESHOLD = preferences.getFloat("GFORCE_LIFT_DOWN_THRESHOLD", FactoryDefaults::GFORCE_LIFT_DOWN_THRESHOLD);
+        currentSettings.LIFT_ENERGY_SPIKE_THRESHOLD = preferences.getFloat("LIFT_ENERGY_SPIKE_THRESHOLD", FactoryDefaults::LIFT_ENERGY_SPIKE_THRESHOLD);
+        currentSettings.UPRIGHT_ANGLE_TOLERANCE = preferences.getFloat("UPRIGHT_ANGLE_TOLERANCE", FactoryDefaults::UPRIGHT_ANGLE_TOLERANCE);
+        currentSettings.PERFECTLY_STILL_ENERGY = preferences.getFloat("PERFECTLY_STILL_ENERGY", FactoryDefaults::PERFECTLY_STILL_ENERGY);
+        currentSettings.STEADY_HOLD_ENERGY_MAX = preferences.getFloat("STEADY_HOLD_ENERGY_MAX", FactoryDefaults::STEADY_HOLD_ENERGY_MAX);
+        currentSettings.DIZZY_ENERGY_DEADBAND = preferences.getFloat("DIZZY_ENERGY_DEADBAND", FactoryDefaults::DIZZY_ENERGY_DEADBAND);
+        currentSettings.DIZZY_CHARGE_RATE = preferences.getFloat("DIZZY_CHARGE_RATE", FactoryDefaults::DIZZY_CHARGE_RATE);
+        currentSettings.DIZZY_DECAY_RATE = preferences.getFloat("DIZZY_DECAY_RATE", FactoryDefaults::DIZZY_DECAY_RATE);
+        currentSettings.DIZZY_TRIGGER_THRESHOLD = preferences.getFloat("DIZZY_TRIGGER_THRESHOLD", FactoryDefaults::DIZZY_TRIGGER_THRESHOLD);
+        currentSettings.ENERGY_EMA_ALPHA = preferences.getFloat("ENERGY_EMA_ALPHA", FactoryDefaults::ENERGY_EMA_ALPHA);
+        currentSettings.ENERGY_EMA_BETA = preferences.getFloat("ENERGY_EMA_BETA", FactoryDefaults::ENERGY_EMA_BETA);
+        currentSettings.DISTANCE_HOLD_FRUSTRATION_LIMIT = preferences.getFloat("DISTANCE_HOLD_FRUSTRATION_LIMIT", FactoryDefaults::DISTANCE_HOLD_FRUSTRATION_LIMIT);
+        currentSettings.FRUSTRATION_COOLDOWN_RATE = preferences.getFloat("FRUSTRATION_COOLDOWN_RATE", FactoryDefaults::FRUSTRATION_COOLDOWN_RATE);
+        currentSettings.FRUSTRATION_HEATUP_RATE = preferences.getFloat("FRUSTRATION_HEATUP_RATE", FactoryDefaults::FRUSTRATION_HEATUP_RATE);
+                  
         currentSettings.BRAIN_ACTIVE = preferences.getBool("BRAIN_ACT", FactoryDefaults::BRAIN_ACTIVE);
         
         currentSettings.WIFI_SSID = preferences.getString("WIFI_SSID", FactoryDefaults::WIFI_SSID);
@@ -203,6 +242,23 @@ public:
         preferences.putFloat("P_OBS_ILM", currentSettings.PID_OBSTACLE_ILIM);
         preferences.putFloat("P_OBS_DED", currentSettings.PID_OBSTACLE_DEAD);
 
+        preferences.putFloat("TILT_HANDLING_THRESHOLD", currentSettings.TILT_HANDLING_THRESHOLD);
+        preferences.putFloat("GFORCE_LIFT_UP_THRESHOLD", currentSettings.GFORCE_LIFT_UP_THRESHOLD);
+        preferences.putFloat("GFORCE_LIFT_DOWN_THRESHOLD", currentSettings.GFORCE_LIFT_DOWN_THRESHOLD);
+        preferences.putFloat("LIFT_ENERGY_SPIKE_THRESHOLD", currentSettings.LIFT_ENERGY_SPIKE_THRESHOLD);
+        preferences.putFloat("UPRIGHT_ANGLE_TOLERANCE", currentSettings.UPRIGHT_ANGLE_TOLERANCE);
+        preferences.putFloat("PERFECTLY_STILL_ENERGY", currentSettings.PERFECTLY_STILL_ENERGY);
+        preferences.putFloat("STEADY_HOLD_ENERGY_MAX", currentSettings.STEADY_HOLD_ENERGY_MAX);
+        preferences.putFloat("DIZZY_ENERGY_DEADBAND", currentSettings.DIZZY_ENERGY_DEADBAND);
+        preferences.putFloat("DIZZY_CHARGE_RATE", currentSettings.DIZZY_CHARGE_RATE);
+        preferences.putFloat("DIZZY_DECAY_RATE", currentSettings.DIZZY_DECAY_RATE);
+        preferences.putFloat("DIZZY_TRIGGER_THRESHOLD", currentSettings.DIZZY_TRIGGER_THRESHOLD);
+        preferences.putFloat("ENERGY_EMA_ALPHA", currentSettings.ENERGY_EMA_ALPHA);
+        preferences.putFloat("ENERGY_EMA_BETA", currentSettings.ENERGY_EMA_BETA);
+        preferences.putFloat("DISTANCE_HOLD_FRUSTRATION_LIMIT", currentSettings.DISTANCE_HOLD_FRUSTRATION_LIMIT);
+        preferences.putFloat("FRUSTRATION_COOLDOWN_RATE", currentSettings.FRUSTRATION_COOLDOWN_RATE);
+        preferences.putFloat("FRUSTRATION_HEATUP_RATE", currentSettings.FRUSTRATION_HEATUP_RATE);
+        
         preferences.putBool("BRAIN_ACT", currentSettings.BRAIN_ACTIVE);
 
         if (currentSettings.WIFI_SSID == "") { if (preferences.isKey("WIFI_SSID")) preferences.remove("WIFI_SSID"); } 
@@ -288,6 +344,23 @@ public:
         else if (varName == "PID_OBSTACLE_LIM") { currentSettings.PID_OBSTACLE_LIM = FactoryDefaults::PID_OBSTACLE_LIM; }
         else if (varName == "PID_OBSTACLE_ILIM") { currentSettings.PID_OBSTACLE_ILIM = FactoryDefaults::PID_OBSTACLE_ILIM; }
         else if (varName == "PID_OBSTACLE_DEAD") { currentSettings.PID_OBSTACLE_DEAD = FactoryDefaults::PID_OBSTACLE_DEAD; }
+
+        else if (varName == "TILT_HANDLING_THRESHOLD") { currentSettings.TILT_HANDLING_THRESHOLD = FactoryDefaults::TILT_HANDLING_THRESHOLD; }
+        else if (varName == "GFORCE_LIFT_UP_THRESHOLD") { currentSettings.GFORCE_LIFT_UP_THRESHOLD = FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD; }
+        else if (varName == "GFORCE_LIFT_DOWN_THRESHOLD") { currentSettings.GFORCE_LIFT_DOWN_THRESHOLD = FactoryDefaults::GFORCE_LIFT_DOWN_THRESHOLD; }
+        else if (varName == "LIFT_ENERGY_SPIKE_THRESHOLD") { currentSettings.LIFT_ENERGY_SPIKE_THRESHOLD = FactoryDefaults::LIFT_ENERGY_SPIKE_THRESHOLD; }
+        else if (varName == "UPRIGHT_ANGLE_TOLERANCE") { currentSettings.UPRIGHT_ANGLE_TOLERANCE = FactoryDefaults::UPRIGHT_ANGLE_TOLERANCE; }
+        else if (varName == "PERFECTLY_STILL_ENERGY") { currentSettings.PERFECTLY_STILL_ENERGY = FactoryDefaults::PERFECTLY_STILL_ENERGY; }
+        else if (varName == "STEADY_HOLD_ENERGY_MAX") { currentSettings.STEADY_HOLD_ENERGY_MAX = FactoryDefaults::STEADY_HOLD_ENERGY_MAX; }
+        else if (varName == "DIZZY_ENERGY_DEADBAND") { currentSettings.DIZZY_ENERGY_DEADBAND = FactoryDefaults::DIZZY_ENERGY_DEADBAND; }
+        else if (varName == "DIZZY_CHARGE_RATE") { currentSettings.DIZZY_CHARGE_RATE = FactoryDefaults::DIZZY_CHARGE_RATE; }
+        else if (varName == "DIZZY_DECAY_RATE") { currentSettings.DIZZY_DECAY_RATE = FactoryDefaults::DIZZY_DECAY_RATE; }
+        else if (varName == "DIZZY_TRIGGER_THRESHOLD") { currentSettings.DIZZY_TRIGGER_THRESHOLD = FactoryDefaults::DIZZY_TRIGGER_THRESHOLD; }
+        else if (varName == "ENERGY_EMA_ALPHA") { currentSettings.ENERGY_EMA_ALPHA = FactoryDefaults::ENERGY_EMA_ALPHA; }
+        else if (varName == "ENERGY_EMA_BETA") { currentSettings.ENERGY_EMA_BETA = FactoryDefaults::ENERGY_EMA_BETA; }
+        else if (varName == "DISTANCE_HOLD_FRUSTRATION_LIMIT") { currentSettings.DISTANCE_HOLD_FRUSTRATION_LIMIT = FactoryDefaults::DISTANCE_HOLD_FRUSTRATION_LIMIT; }
+        else if (varName == "FRUSTRATION_COOLDOWN_RATE") { currentSettings.FRUSTRATION_COOLDOWN_RATE = FactoryDefaults::FRUSTRATION_COOLDOWN_RATE; }
+        else if (varName == "FRUSTRATION_HEATUP_RATE") { currentSettings.FRUSTRATION_HEATUP_RATE = FactoryDefaults::FRUSTRATION_HEATUP_RATE; }
 
         else if (varName == "BRAIN_ACTIVE") { currentSettings.BRAIN_ACTIVE = FactoryDefaults::BRAIN_ACTIVE; }
 

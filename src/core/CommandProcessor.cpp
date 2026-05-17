@@ -44,9 +44,13 @@ const char* autoDict[] = {
     "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
     "PID_OBSTACLE_P", "PID_OBSTACLE_I", "PID_OBSTACLE_D", "PID_OBSTACLE_LIM", "PID_OBSTACLE_ILIM", "PID_OBSTACLE_DEAD",
+    "TILT_HANDLING_THRESHOLD", "GFORCE_LIFT_UP_THRESHOLD", "GFORCE_LIFT_DOWN_THRESHOLD", "LIFT_ENERGY_SPIKE_THRESHOLD",
+    "UPRIGHT_ANGLE_TOLERANCE", "PERFECTLY_STILL_ENERGY", "STEADY_HOLD_ENERGY_MAX",
+    "DIZZY_ENERGY_DEADBAND", "DIZZY_CHARGE_RATE", "DIZZY_DECAY_RATE", "DIZZY_TRIGGER_THRESHOLD",
+    "ENERGY_EMA_ALPHA", "ENERGY_EMA_BETA",
+    "DISTANCE_HOLD_FRUSTRATION_LIMIT", "FRUSTRATION_COOLDOWN_RATE", "FRUSTRATION_HEATUP_RATE",
     "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", "SERIAL_DEBUG_IMU", "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER",
     "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE",
-    // -- The Static Variables --
     "PIN_MOTOR_LEFT_FWD", "PIN_MOTOR_LEFT_REV", "PIN_MOTOR_RIGHT_FWD", "PIN_MOTOR_RIGHT_REV",
     "PIN_SONAR_TRIG", "PIN_SONAR_ECHO", "PIN_I2C_SCL", "PIN_I2C_SDA", "PIN_IMU_INT",
     "I2C_ADDR_MPU6050", "CH_MOTOR_LEFT_FWD", "CH_MOTOR_RIGHT_FWD", "TELNET_PORT", "MAIN_LOOP_TICK_RATE_MS"
@@ -54,22 +58,6 @@ const char* autoDict[] = {
 
 const int dictSize = sizeof(autoDict) / sizeof(autoDict[0]);
 
-// THE NEW ARRAY: Just the variables for the "get ALL" loop!
-/*const char* sysVariables[] = {
-    "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DISTANCE_CM", "MOTOR_MIN_PWM",
-    "OBS_SWEEP_ANGLE", "OBS_SWEEP_SPEED", "OBS_SWEEP_PAUSE", "OBS_CLEAR_THRESH", "OBS_HYSTERESIS",
-    "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
-    "IMU_MADGWICK_BETA", "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
-    "PID_HEADING_P", "PID_HEADING_I", "PID_HEADING_D", "PID_HEADING_LIM", "PID_HEADING_ILIM", "PID_HEADING_DEAD",
-    "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
-    "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
-    "PID_OBSTACLE_P", "PID_OBSTACLE_I", "PID_OBSTACLE_D", "PID_OBSTACLE_LIM", "PID_OBSTACLE_ILIM", "PID_OBSTACLE_DEAD",
-    "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", "SERIAL_DEBUG_IMU", "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER",
-    "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE",
-    "PIN_MOTOR_L_PWM", "PIN_MOTOR_R_PWM", "PIN_SONAR_TRIG", "PIN_SONAR_ECHO", "I2C_ADDR_MPU6050", "SYS_TASK_CORE", "SYS_TELNET_PORT"
-};*/
-
-// Just the variables for the "get ALL" loop!
 const char* sysVariables[] = {
     "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DISTANCE_CM", "MOTOR_MIN_PWM",
     "OBS_SWEEP_ANGLE", "OBS_SWEEP_SPEED", "OBS_SWEEP_PAUSE", "OBS_CLEAR_THRESH", "OBS_HYSTERESIS",
@@ -79,13 +67,16 @@ const char* sysVariables[] = {
     "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
     "PID_OBSTACLE_P", "PID_OBSTACLE_I", "PID_OBSTACLE_D", "PID_OBSTACLE_LIM", "PID_OBSTACLE_ILIM", "PID_OBSTACLE_DEAD",
+    "TILT_HANDLING_THRESHOLD", "GFORCE_LIFT_UP_THRESHOLD", "GFORCE_LIFT_DOWN_THRESHOLD", "LIFT_ENERGY_SPIKE_THRESHOLD",
+    "UPRIGHT_ANGLE_TOLERANCE", "PERFECTLY_STILL_ENERGY", "STEADY_HOLD_ENERGY_MAX",
+    "DIZZY_ENERGY_DEADBAND", "DIZZY_CHARGE_RATE", "DIZZY_DECAY_RATE", "DIZZY_TRIGGER_THRESHOLD",
+    "ENERGY_EMA_ALPHA", "ENERGY_EMA_BETA",
+    "DISTANCE_HOLD_FRUSTRATION_LIMIT", "FRUSTRATION_COOLDOWN_RATE", "FRUSTRATION_HEATUP_RATE",
     "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", "SERIAL_DEBUG_IMU", "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER",
     "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE",
-    // read-only static variables so 'get ALL' dumps the hardware map too!
     "PIN_MOTOR_LEFT_FWD", "PIN_MOTOR_LEFT_REV", "PIN_MOTOR_RIGHT_FWD", "PIN_MOTOR_RIGHT_REV",
     "PIN_SONAR_TRIG", "PIN_SONAR_ECHO", "PIN_I2C_SCL", "PIN_I2C_SDA", "PIN_IMU_INT",
-    "I2C_ADDR_MPU6050", "CH_MOTOR_LEFT_FWD", "CH_MOTOR_LEFT_REV", "CH_MOTOR_RIGHT_FWD", "CH_MOTOR_RIGHT_REV",
-    "TELNET_PORT", "MAIN_LOOP_TICK_RATE_MS"
+    "I2C_ADDR_MPU6050", "CH_MOTOR_LEFT_FWD", "CH_MOTOR_RIGHT_FWD", "TELNET_PORT", "MAIN_LOOP_TICK_RATE_MS"
 };
 
 const int sysVarCount = sizeof(sysVariables) / sizeof(sysVariables[0]);
@@ -507,6 +498,23 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     else if (varName == "PID_OBSTACLE_ILIM") { Config.PID_OBSTACLE_ILIM = valStr.toFloat(); }
     else if (varName == "PID_OBSTACLE_DEAD") { Config.PID_OBSTACLE_DEAD = valStr.toFloat(); }
 
+    else if (varName == "TILT_HANDLING_THRESHOLD") { Config.TILT_HANDLING_THRESHOLD = valStr.toFloat(); }
+    else if (varName == "GFORCE_LIFT_UP_THRESHOLD") { Config.GFORCE_LIFT_UP_THRESHOLD = valStr.toFloat(); }
+    else if (varName == "GFORCE_LIFT_DOWN_THRESHOLD") { Config.GFORCE_LIFT_DOWN_THRESHOLD = valStr.toFloat(); }
+    else if (varName == "LIFT_ENERGY_SPIKE_THRESHOLD") { Config.LIFT_ENERGY_SPIKE_THRESHOLD = valStr.toFloat(); }
+    else if (varName == "UPRIGHT_ANGLE_TOLERANCE") { Config.UPRIGHT_ANGLE_TOLERANCE = valStr.toFloat(); }
+    else if (varName == "PERFECTLY_STILL_ENERGY") { Config.PERFECTLY_STILL_ENERGY = valStr.toFloat(); }
+    else if (varName == "STEADY_HOLD_ENERGY_MAX") { Config.STEADY_HOLD_ENERGY_MAX = valStr.toFloat(); }
+    else if (varName == "DIZZY_ENERGY_DEADBAND") { Config.DIZZY_ENERGY_DEADBAND = valStr.toFloat(); }
+    else if (varName == "DIZZY_CHARGE_RATE") { Config.DIZZY_CHARGE_RATE = valStr.toFloat(); }
+    else if (varName == "DIZZY_DECAY_RATE") { Config.DIZZY_DECAY_RATE = valStr.toFloat(); }
+    else if (varName == "DIZZY_TRIGGER_THRESHOLD") { Config.DIZZY_TRIGGER_THRESHOLD = valStr.toFloat(); }
+    else if (varName == "ENERGY_EMA_ALPHA") { Config.ENERGY_EMA_ALPHA = valStr.toFloat(); }
+    else if (varName == "ENERGY_EMA_BETA") { Config.ENERGY_EMA_BETA = valStr.toFloat(); }
+    else if (varName == "DISTANCE_HOLD_FRUSTRATION_LIMIT") { Config.DISTANCE_HOLD_FRUSTRATION_LIMIT = valStr.toInt(); }
+    else if (varName == "FRUSTRATION_COOLDOWN_RATE") { Config.FRUSTRATION_COOLDOWN_RATE = valStr.toFloat(); }
+    else if (varName == "FRUSTRATION_HEATUP_RATE") { Config.FRUSTRATION_HEATUP_RATE = valStr.toFloat(); }
+
     // --- NETWORK VARS ---
     else if (varName == "WIFI_SSID") { Config.WIFI_SSID = valStr; }
     else if (varName == "WIFI_PASSWORD") { Config.WIFI_PASSWORD = valStr; }
@@ -745,6 +753,72 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     else if (varName == "PID_OBSTACLE_DEAD") { 
         if (wantDefaultOnly) logger.printf("[PID_OBSTACLE_DEAD] Default: %.1f\n", FactoryDefaults::PID_OBSTACLE_DEAD);
         else logger.printf("[PID_OBSTACLE_DEAD] Current: %.1f | Default: %.1f\n", Config.PID_OBSTACLE_DEAD, FactoryDefaults::PID_OBSTACLE_DEAD);
+    }
+
+    // --- PHYSICS & HANDLING TUNING VARS ---
+    else if (varName == "TILT_HANDLING_THRESHOLD") { 
+        if (wantDefaultOnly) logger.printf("[TILT_HANDLING_THRESHOLD] Default: %.1f\n", FactoryDefaults::TILT_HANDLING_THRESHOLD);
+        else logger.printf("[TILT_HANDLING_THRESHOLD] Current: %.1f | Default: %.1f\n", Config.TILT_HANDLING_THRESHOLD, FactoryDefaults::TILT_HANDLING_THRESHOLD);
+    }
+    else if (varName == "GFORCE_LIFT_UP_THRESHOLD") { 
+        if (wantDefaultOnly) logger.printf("[GFORCE_LIFT_UP_THRESHOLD] Default: %.1f\n", FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD);
+        else logger.printf("[GFORCE_LIFT_UP_THRESHOLD] Current: %.1f | Default: %.1f\n", Config.GFORCE_LIFT_UP_THRESHOLD, FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD);
+    }
+    else if (varName == "GFORCE_LIFT_DOWN_THRESHOLD") { 
+        if (wantDefaultOnly) logger.printf("[GFORCE_LIFT_DOWN_THRESHOLD] Default: %.1f\n", FactoryDefaults::GFORCE_LIFT_DOWN_THRESHOLD);
+        else logger.printf("[GFORCE_LIFT_DOWN_THRESHOLD] Current: %.1f | Default: %.1f\n", Config.GFORCE_LIFT_DOWN_THRESHOLD, FactoryDefaults::GFORCE_LIFT_DOWN_THRESHOLD);
+    }
+    else if (varName == "LIFT_ENERGY_SPIKE_THRESHOLD") { 
+        if (wantDefaultOnly) logger.printf("[LIFT_ENERGY_SPIKE_THRESHOLD] Default: %.1f\n", FactoryDefaults::LIFT_ENERGY_SPIKE_THRESHOLD);
+        else logger.printf("[LIFT_ENERGY_SPIKE_THRESHOLD] Current: %.1f | Default: %.1f\n", Config.LIFT_ENERGY_SPIKE_THRESHOLD, FactoryDefaults::LIFT_ENERGY_SPIKE_THRESHOLD);
+    }
+    else if (varName == "UPRIGHT_ANGLE_TOLERANCE") { 
+        if (wantDefaultOnly) logger.printf("[UPRIGHT_ANGLE_TOLERANCE] Default: %.1f\n", FactoryDefaults::UPRIGHT_ANGLE_TOLERANCE);
+        else logger.printf("[UPRIGHT_ANGLE_TOLERANCE] Current: %.1f | Default: %.1f\n", Config.UPRIGHT_ANGLE_TOLERANCE, FactoryDefaults::UPRIGHT_ANGLE_TOLERANCE);
+    }
+    else if (varName == "PERFECTLY_STILL_ENERGY") { 
+        if (wantDefaultOnly) logger.printf("[PERFECTLY_STILL_ENERGY] Default: %.1f\n", FactoryDefaults::PERFECTLY_STILL_ENERGY);
+        else logger.printf("[PERFECTLY_STILL_ENERGY] Current: %.1f | Default: %.1f\n", Config.PERFECTLY_STILL_ENERGY, FactoryDefaults::PERFECTLY_STILL_ENERGY);
+    }
+    else if (varName == "STEADY_HOLD_ENERGY_MAX") { 
+        if (wantDefaultOnly) logger.printf("[STEADY_HOLD_ENERGY_MAX] Default: %.1f\n", FactoryDefaults::STEADY_HOLD_ENERGY_MAX);
+        else logger.printf("[STEADY_HOLD_ENERGY_MAX] Current: %.1f | Default: %.1f\n", Config.STEADY_HOLD_ENERGY_MAX, FactoryDefaults::STEADY_HOLD_ENERGY_MAX);
+    }
+    else if (varName == "DIZZY_ENERGY_DEADBAND") { 
+        if (wantDefaultOnly) logger.printf("[DIZZY_ENERGY_DEADBAND] Default: %.1f\n", FactoryDefaults::DIZZY_ENERGY_DEADBAND);
+        else logger.printf("[DIZZY_ENERGY_DEADBAND] Current: %.1f | Default: %.1f\n", Config.DIZZY_ENERGY_DEADBAND, FactoryDefaults::DIZZY_ENERGY_DEADBAND);
+    }
+    else if (varName == "DIZZY_CHARGE_RATE") { 
+        if (wantDefaultOnly) logger.printf("[DIZZY_CHARGE_RATE] Default: %.1f\n", FactoryDefaults::DIZZY_CHARGE_RATE);
+        else logger.printf("[DIZZY_CHARGE_RATE] Current: %.1f | Default: %.1f\n", Config.DIZZY_CHARGE_RATE, FactoryDefaults::DIZZY_CHARGE_RATE);
+    }
+    else if (varName == "DIZZY_DECAY_RATE") { 
+        if (wantDefaultOnly) logger.printf("[DIZZY_DECAY_RATE] Default: %.1f\n", FactoryDefaults::DIZZY_DECAY_RATE);
+        else logger.printf("[DIZZY_DECAY_RATE] Current: %.1f | Default: %.1f\n", Config.DIZZY_DECAY_RATE, FactoryDefaults::DIZZY_DECAY_RATE);
+    }
+    else if (varName == "DIZZY_TRIGGER_THRESHOLD") { 
+        if (wantDefaultOnly) logger.printf("[DIZZY_TRIGGER_THRESHOLD] Default: %.1f\n", FactoryDefaults::DIZZY_TRIGGER_THRESHOLD);
+        else logger.printf("[DIZZY_TRIGGER_THRESHOLD] Current: %.1f | Default: %.1f\n", Config.DIZZY_TRIGGER_THRESHOLD, FactoryDefaults::DIZZY_TRIGGER_THRESHOLD);
+    }
+    else if (varName == "ENERGY_EMA_ALPHA") { 
+        if (wantDefaultOnly) logger.printf("[ENERGY_EMA_ALPHA] Default: %.2f\n", FactoryDefaults::ENERGY_EMA_ALPHA);
+        else logger.printf("[ENERGY_EMA_ALPHA] Current: %.2f | Default: %.2f\n", Config.ENERGY_EMA_ALPHA, FactoryDefaults::ENERGY_EMA_ALPHA);
+    }
+    else if (varName == "ENERGY_EMA_BETA") { 
+        if (wantDefaultOnly) logger.printf("[ENERGY_EMA_BETA] Default: %.2f\n", FactoryDefaults::ENERGY_EMA_BETA);
+        else logger.printf("[ENERGY_EMA_BETA] Current: %.2f | Default: %.2f\n", Config.ENERGY_EMA_BETA, FactoryDefaults::ENERGY_EMA_BETA);
+    }
+    else if (varName == "DISTANCE_HOLD_FRUSTRATION_LIMIT") { 
+        if (wantDefaultOnly) logger.printf("[DISTANCE_HOLD_FRUSTRATION_LIMIT] Default: %d\n", FactoryDefaults::DISTANCE_HOLD_FRUSTRATION_LIMIT);
+        else logger.printf("[DISTANCE_HOLD_FRUSTRATION_LIMIT] Current: %d | Default: %d\n", Config.DISTANCE_HOLD_FRUSTRATION_LIMIT, FactoryDefaults::DISTANCE_HOLD_FRUSTRATION_LIMIT);
+    }
+    else if (varName == "FRUSTRATION_COOLDOWN_RATE") { 
+        if (wantDefaultOnly) logger.printf("[FRUSTRATION_COOLDOWN_RATE] Default: %.2f\n", FactoryDefaults::FRUSTRATION_COOLDOWN_RATE);
+        else logger.printf("[FRUSTRATION_COOLDOWN_RATE] Current: %.2f | Default: %.2f\n", Config.FRUSTRATION_COOLDOWN_RATE, FactoryDefaults::FRUSTRATION_COOLDOWN_RATE);
+    }
+    else if (varName == "FRUSTRATION_HEATUP_RATE") { 
+        if (wantDefaultOnly) logger.printf("[FRUSTRATION_HEATUP_RATE] Default: %.2f\n", FactoryDefaults::FRUSTRATION_HEATUP_RATE);
+        else logger.printf("[FRUSTRATION_HEATUP_RATE] Current: %.2f | Default: %.2f\n", Config.FRUSTRATION_HEATUP_RATE, FactoryDefaults::FRUSTRATION_HEATUP_RATE);
     }
 
     // --- NETWORK VARS ---
