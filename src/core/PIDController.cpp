@@ -12,12 +12,6 @@ PIDController::PIDController(float p, float i, float d, float max_i, float max_o
     reset(); // Initialize memory to zero
 }
 
-void PIDController::reset() {
-    integral = 0.0f;
-    previousMeasurement = 0.0f;
-    previousFilteredDTerm = 0.0f;
-}
-
 float PIDController::compute(float setpoint, float measuredValue, float dt) {
     // Safety check to prevent divide-by-zero if loop runs too fast
     if (dt <= 0.0f) return 0.0f; 
@@ -64,4 +58,18 @@ float PIDController::compute(float setpoint, float measuredValue, float dt) {
     else if (output < -maxOutput) output = -maxOutput;
 
     return output;
+}
+
+void PIDController::setTunings(float p, float i, float d, float max_i, float max_out) {
+    kp = p;
+    ki = i;
+    kd = d;
+    maxIntegral = max_i;
+    maxOutput = max_out;
+}
+
+void PIDController::reset() {
+    integral = 0.0f;
+    previousMeasurement = 0.0f;
+    previousFilteredDTerm = 0.0f;
 }

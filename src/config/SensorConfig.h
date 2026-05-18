@@ -64,6 +64,8 @@ namespace IMUConfig {
     // --- Calibration ---
     constexpr uint8_t AUTO_CALIBRATION_SAMPLES = 6;
     constexpr int16_t DEFAULT_ZACCEL_OFFSET = 1688;
+    constexpr int16_t GYRO_CALIBRATION_SAMPLES = 500; // Number of samples to take when calibrating gyro offsets
+    constexpr int16_t ACCEL_CALIBRATION_SAMPLES = 500;
 
     // ==========================================
     // COMPASS SETTINGS

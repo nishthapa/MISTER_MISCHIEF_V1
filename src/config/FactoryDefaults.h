@@ -3,10 +3,15 @@
 namespace FactoryDefaults {
 
     // ==========================================
+    // SERIAL COMMS BAUD RATE
+    // ==========================================
+    constexpr unsigned long SERIAL_BAUD_RATE = 115200;
+
+    // ==========================================
     // PERSONALITY SETTINGS
     // ==========================================
     // Range: 10.0 to 100.0 (Base movement speed)
-    constexpr float CRUISING_SPEED = 30.0f;
+    constexpr float CRUISING_SPEED = 40.0f;
     // Range: 10.0 to 150.0 (When to start worrying about a wall)
     constexpr float OBSTACLE_TRIGGER_CM = 30.0f;
     // Range: 5.0 to 50.0 (How far to stay from the target in follow mode)
@@ -19,8 +24,9 @@ namespace FactoryDefaults {
     constexpr int MOTOR_MIN_PWM = 60; 
 
     // ==========================================
-    // OBSTACLE AVOIDANCE TUNING
+    // OBSTACLE AVOIDANCE ESCAPE SEQUENCE TUNING
     // ==========================================
+    // PART 1: The Radar Sweep
     // Range: 10.0 to 90.0 (Degrees to turn head left/right)
     constexpr float OBS_SWEEP_ANGLE = 45.0f;   
     // Range: 30.0 to 150.0 (Rotation speed during scan)
@@ -30,7 +36,23 @@ namespace FactoryDefaults {
     // Range: 20.0 to 200.0 (Distance required to declare a path "clear")
     constexpr float OBS_CLEAR_THRESH = 40.0f; 
     // Range: 1.0 to 15.0 (Buffer to prevent rapid left/right jitter)
-    constexpr float OBS_HYSTERESIS = 5.0f;          
+    constexpr float OBS_HYSTERESIS = 5.0f;
+    
+    // PART 2: The Escape Maneuver (Backing Up, Spinning, and Driving Forward)
+    // RANGE: 30.0f TO 100.0f // The baseline motor speed used during the escape maneuvers
+    constexpr float OBSTACLE_ESCAPE_BASE_SPEED = 30.0f;
+    // RANGE: 500 TO 2000 // How long he blindly backs up after hitting a wall
+    constexpr unsigned long OBSTACLE_BACKUP_DURATION_MS = 1000;
+    // RANGE: 90.0f TO 360.0f // How far the robot physically turns while scanning
+    constexpr float OBSTACLE_SWEEP_ANGLE_DEG = 160.0f;
+    // RANGE: 2000 TO 5000 // Max time allowed to spin tracks in the air during radar sweep
+    constexpr unsigned long OBSTACLE_SWEEP_TIMEOUT_MS = 3000;
+    // RANGE: 2000 TO 6000 // Max time allowed to try aligning to the escape heading (Infinite Loop Fix)
+    constexpr unsigned long OBSTACLE_ALIGN_TIMEOUT_MS = 4000;
+    // RANGE: 2.0f TO 10.0f // How accurate the alignment must be before driving forward
+    constexpr float OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG = 5.0f;
+    // RANGE: 500 TO 2000 // How long he drives forward to escape the obstacle
+    constexpr unsigned long OBSTACLE_ESCAPE_DURATION_MS = 1000;
 
     // ==========================================
     // BEHAVIOURAL TIMERS AND LIMITS
@@ -45,16 +67,17 @@ namespace FactoryDefaults {
     constexpr int   SLEEP_TIMEOUT_MS = 10000; 
     // Range: 1.1 to 2.5 (G-Force threshold to wake up on pickup)
     constexpr float SLEEP_WAKE_G = 1.2f;
-    
-    
     // RANGE: 5000 TO 20000  // Time the robot spends wandering blindly after a violent shake
     constexpr unsigned long DIZZY_DURATION_MS = 10000;
     
+    
     // RANGE: 1000 TO 5000   // Wait time in hands before engaging Compass Lock (filters out active play)
-    constexpr unsigned long COMPASS_ENTRY_SETTLE_MS = 3000;
+    constexpr unsigned long COMPASS_LOCK_ENTRY_SETTLE_MS = 3000;
     
     // RANGE: 1000 TO 5000   // Wait time on a flat surface before disengaging Compass Lock
-    constexpr unsigned long COMPASS_EXIT_SETTLE_MS = 3000;
+    constexpr unsigned long COMPASS_LOCK_EXIT_SETTLE_MS = 3000;
+
+
 
     // --- Handling & Lift Detection (The Pickup Sensitivity) ---
     // RANGE: 15.0f TO 35.0f // Degrees of tilt required to definitively say "a human grabbed me"
@@ -177,4 +200,19 @@ namespace FactoryDefaults {
     constexpr bool SERIAL_DEBUG_IMU = true;
     constexpr bool SERIAL_DEBUG_SONAR = true;
     constexpr bool SERIAL_DEBUG_MOTOR_DRIVER = true;
+
+
+    // 1. Define the Bitmask Values (Powers of 2)
+    constexpr uint8_t DEBUG_ACTIVE       = 0;       // 00000000
+    constexpr uint8_t DEBUG_USB       = 1 << 0;  // 00000001 (Decimal 1)
+    constexpr uint8_t DEBUG_WIFI      = 1 << 1;  // 00000010 (Decimal 2)
+    constexpr uint8_t DEBUG_BLUETOOTH = 1 << 2;  // 00000100 (Decimal 4)
+
+    // ========================================================
+    // 2. THE MASTER DEBUG SWITCH
+    // Combine modes using the '|' (OR) operator.
+    // Example: DEBUG_USB | DEBUG_WIFI
+    // To disable everything, just use: DEBUG_OFF
+    // ========================================================
+    constexpr uint8_t ACTIVE_DEBUG_MODE = DEBUG_USB | DEBUG_WIFI | DEBUG_BLUETOOTH; // Auto selects the enabled debug outputs based on active comms.
 }

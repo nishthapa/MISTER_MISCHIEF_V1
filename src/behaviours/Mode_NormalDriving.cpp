@@ -1,6 +1,6 @@
 #include "config/ConfigurationManager.h"
 #include "behaviours/Mode_NormalDriving.h"
-#include "config/PersonalityConfig.h" 
+// #include "config/PersonalityConfig.h" // Safe to DELETE since we're now pulling these values from the NVS-backed ConfigurationManager
 #include "config/SystemConfig.h"
 #include "utils/RemoteLogger.h" 
 #include <Arduino.h>

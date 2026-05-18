@@ -1,7 +1,8 @@
 #include "behaviours/Mode_ObstacleAvoidance.h"
 #include <Arduino.h>
 #include "utils/RemoteLogger.h" // For logging the radar sweep results and chosen escape path
-#include "config/ObstacleAvoidanceConfig.h"
+// #include "config/ObstacleAvoidanceConfig.h" // Safe to DELETE since we're now pulling these values from the NVS-backed ConfigurationManager
+#include "config/ConfigurationManager.h"
 
 Mode_ObstacleAvoidance::Mode_ObstacleAvoidance(I_MotorDriver* m, I_DistanceSensor* s, I_IMU* i, PIDController* p) {
     motors = m; sonar = s; imu = i; alignPID = p;
@@ -30,12 +31,15 @@ void Mode_ObstacleAvoidance::onEnter() {
 
 void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
     unsigned long elapsed = millis() - stateStartTime;
-    float speed = ObstacleConfig::BASE_SPEED * currentMood.speedMultiplier; 
+    
+    //float speed = ObstacleConfig::BASE_SPEED * currentMood.speedMultiplier;
+    
+    float speed = Config.CRUISING_SPEED * currentMood.speedMultiplier;
 
     switch (currentState) {
         case BACKING_UP:
             motors->drive(-speed, -speed);
-            if (elapsed > ObstacleConfig::BACKUP_DURATION_MS) changeState(RADAR_SWEEP);
+            if (elapsed > Config.OBSTACLE_BACKUP_DURATION_MS) changeState(RADAR_SWEEP);
             break;
 
         case RADAR_SWEEP:
@@ -50,8 +54,8 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
 
             // 2. IMU-DRIVEN SWEEP: Stop sweeping exactly when we have turned 160 degrees. 
             // (Timeout added just in case the robot gets physically stuck)
-            if (abs(getShortestAngle(imu->getAngles().yaw, entryHeading)) >= ObstacleConfig::SWEEP_ANGLE_DEG || 
-                elapsed > ObstacleConfig::SWEEP_TIMEOUT_MS) {
+            if (abs(getShortestAngle(imu->getAngles().yaw, entryHeading)) >= Config.OBSTACLE_SWEEP_ANGLE_DEG || 
+                elapsed > Config.OBSTACLE_SWEEP_TIMEOUT_MS) {
                 changeState(CALCULATING);
             }
             break;
@@ -100,8 +104,8 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
                 motors->drive(finalCorrection, -finalCorrection);
 
                 // ADDED: The infinite loop timeout fix we discussed earlier
-                if (abs(error) < ObstacleConfig::ALIGN_SUCCESS_TOLERANCE_DEG || 
-                    elapsed > ObstacleConfig::ALIGN_TIMEOUT_MS) {
+                if (abs(error) < Config.OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG || 
+                    elapsed > Config.OBSTACLE_ALIGN_TIMEOUT_MS) {
                     changeState(ESCAPE);
                 }
             }
@@ -109,7 +113,7 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
 
         case ESCAPE:
             motors->drive(speed, speed);
-            if (elapsed > ObstacleConfig::ESCAPE_DURATION_MS) changeState(FINISHED); 
+            if (elapsed > Config.OBSTACLE_ESCAPE_DURATION_MS) changeState(FINISHED); 
             break;
 
         case FINISHED:

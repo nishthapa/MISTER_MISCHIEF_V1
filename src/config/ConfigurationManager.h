@@ -1,9 +1,11 @@
 #pragma once
+
 #include <Arduino.h>
 #include <Preferences.h>
 #include "config/FactoryDefaults.h" // <-- Include our new master defaults
 
 struct MasterSettings {
+    unsigned long SERIAL_BAUD_RATE = FactoryDefaults::SERIAL_BAUD_RATE;
     // --- Base Settings ---
     float CRUISING_SPEED = FactoryDefaults::CRUISING_SPEED;
     float OBSTACLE_TRIGGER_CM = FactoryDefaults::OBSTACLE_TRIGGER_CM;
@@ -17,12 +19,25 @@ struct MasterSettings {
     float OBS_CLEAR_THRESH = FactoryDefaults::OBS_CLEAR_THRESH;
     float OBS_HYSTERESIS = FactoryDefaults::OBS_HYSTERESIS;
 
+    // --- Obstacle Escape Settings ---
+    float OBSTACLE_ESCAPE_BASE_SPEED = FactoryDefaults::OBSTACLE_ESCAPE_BASE_SPEED;
+    unsigned long OBSTACLE_BACKUP_DURATION_MS = FactoryDefaults::OBSTACLE_BACKUP_DURATION_MS;
+    float OBSTACLE_SWEEP_ANGLE_DEG = FactoryDefaults::OBSTACLE_SWEEP_ANGLE_DEG;
+    unsigned long OBSTACLE_SWEEP_TIMEOUT_MS = FactoryDefaults::OBSTACLE_SWEEP_TIMEOUT_MS;
+    unsigned long OBSTACLE_ALIGN_TIMEOUT_MS = FactoryDefaults::OBSTACLE_ALIGN_TIMEOUT_MS;
+    float OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG = FactoryDefaults::OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG;
+    unsigned long OBSTACLE_ESCAPE_DURATION_MS = FactoryDefaults::OBSTACLE_ESCAPE_DURATION_MS;
+
     // --- Timers ---
     int DIZZY_SPIN_PWM = FactoryDefaults::DIZZY_SPIN_PWM;
     int DIZZY_SPIN_TIME = FactoryDefaults::DIZZY_SPIN_TIME;
     int DIZZY_COOLDOWN = FactoryDefaults::DIZZY_COOLDOWN;
     int SLEEP_TIMEOUT_MS = FactoryDefaults::SLEEP_TIMEOUT_MS;
     float SLEEP_WAKE_G = FactoryDefaults::SLEEP_WAKE_G;
+
+    // --- Compass Lock Settings
+    unsigned long COMPASS_LOCK_ENTRY_SETTLE_MS = FactoryDefaults::COMPASS_LOCK_ENTRY_SETTLE_MS;
+    unsigned long COMPASS_LOCK_EXIT_SETTLE_MS = FactoryDefaults::COMPASS_LOCK_EXIT_SETTLE_MS;
 
     // --- Sensors ---
     float IMU_MADGWICK_BETA = FactoryDefaults::IMU_MADGWICK_BETA;
@@ -37,7 +52,7 @@ struct MasterSettings {
     float PID_HEADING_ILIM = FactoryDefaults::PID_HEADING_ILIM;
     float PID_HEADING_DEAD = FactoryDefaults::PID_HEADING_DEAD;
 
-    // --- PID: Compass ---
+    // --- PID: Compass Lock ---
     float PID_COMPASS_P = FactoryDefaults::PID_COMPASS_P;
     float PID_COMPASS_I = FactoryDefaults::PID_COMPASS_I;
     float PID_COMPASS_D = FactoryDefaults::PID_COMPASS_D;
@@ -77,6 +92,7 @@ struct MasterSettings {
     float DIZZY_TRIGGER_THRESHOLD = FactoryDefaults::DIZZY_TRIGGER_THRESHOLD;
     float ENERGY_EMA_ALPHA = FactoryDefaults::ENERGY_EMA_ALPHA;
     float ENERGY_EMA_BETA = FactoryDefaults::ENERGY_EMA_BETA;
+    unsigned long DIZZY_DURATION_MS = FactoryDefaults::DIZZY_DURATION_MS;
 
     // --- Mood ---
     float DISTANCE_HOLD_FRUSTRATION_LIMIT = FactoryDefaults::DISTANCE_HOLD_FRUSTRATION_LIMIT;
@@ -94,105 +110,151 @@ struct MasterSettings {
     bool SERIAL_DEBUG_MASTER = FactoryDefaults::SERIAL_DEBUG_MASTER;
     bool SERIAL_DEBUG_IMU = FactoryDefaults::SERIAL_DEBUG_IMU;   
     bool SERIAL_DEBUG_SONAR = FactoryDefaults::SERIAL_DEBUG_SONAR; 
-    bool SERIAL_DEBUG_MOTOR_DRIVER = FactoryDefaults::SERIAL_DEBUG_MOTOR_DRIVER; 
+    bool SERIAL_DEBUG_MOTOR_DRIVER = FactoryDefaults::SERIAL_DEBUG_MOTOR_DRIVER;
+
+    uint8_t DEBUG_ACTIVE = FactoryDefaults::DEBUG_ACTIVE;
+    uint8_t DEBUG_USB = FactoryDefaults::DEBUG_USB;
+    uint8_t DEBUG_WIFI = FactoryDefaults::DEBUG_WIFI;
+    uint8_t DEBUG_BLUETOOTH = FactoryDefaults::DEBUG_BLUETOOTH;
+    uint8_t ACTIVE_DEBUG_MODE = FactoryDefaults::ACTIVE_DEBUG_MODE;
 };
 
 class ConfigurationManager {
-private:
-    Preferences preferences;
-    MasterSettings currentSettings;
+    private:
+        Preferences preferences;
+        MasterSettings currentSettings;
 
-public:
-    static ConfigurationManager& getInstance() {
-        static ConfigurationManager instance;
-        return instance;
-    }
+    public:
+        static ConfigurationManager& getInstance() {
+            static ConfigurationManager instance;
+            return instance;
+        }
 
+    // KEYS (E.G. "CRUISE_SPD") SHOULD BE LESS THAN 15 CHARACTERS TO FIT IN PREFERENCES STORAGE
     void init() {
         preferences.begin("mischief", false);
+
+        currentSettings.SERIAL_BAUD_RATE = preferences.getULong("SERIAL_BAUD", FactoryDefaults::SERIAL_BAUD_RATE);
+
+        // --- Base Settings ---
         currentSettings.CRUISING_SPEED = preferences.getFloat("CRUISE_SPD", FactoryDefaults::CRUISING_SPEED);
         currentSettings.OBSTACLE_TRIGGER_CM = preferences.getFloat("OBS_TRIG_CM", FactoryDefaults::OBSTACLE_TRIGGER_CM);
         currentSettings.MAINTAIN_DISTANCE_CM = preferences.getFloat("MAINT_DIST_CM", FactoryDefaults::MAINTAIN_DISTANCE_CM);
         currentSettings.MOTOR_MIN_PWM = preferences.getInt("MOT_MIN", FactoryDefaults::MOTOR_MIN_PWM);
 
+        // --- Obstacle Logic ---
         currentSettings.OBS_SWEEP_ANGLE = preferences.getFloat("OBS_ANG", FactoryDefaults::OBS_SWEEP_ANGLE);
         currentSettings.OBS_SWEEP_SPEED = preferences.getFloat("OBS_SPD", FactoryDefaults::OBS_SWEEP_SPEED);
         currentSettings.OBS_SWEEP_PAUSE = preferences.getInt("OBS_PAUSE", FactoryDefaults::OBS_SWEEP_PAUSE);
         currentSettings.OBS_CLEAR_THRESH = preferences.getFloat("OBS_CLR", FactoryDefaults::OBS_CLEAR_THRESH);
         currentSettings.OBS_HYSTERESIS = preferences.getFloat("OBS_HYST", FactoryDefaults::OBS_HYSTERESIS);
 
-        currentSettings.DIZZY_SPIN_PWM = preferences.getInt("DIZ_PWM", FactoryDefaults::DIZZY_SPIN_PWM);
-        currentSettings.DIZZY_SPIN_TIME = preferences.getInt("DIZ_TIME", FactoryDefaults::DIZZY_SPIN_TIME);
-        currentSettings.DIZZY_COOLDOWN = preferences.getInt("DIZ_COOL", FactoryDefaults::DIZZY_COOLDOWN);
+        // --- Obstacle Escape & Path Scan Sweep ---
+        currentSettings.OBSTACLE_ESCAPE_BASE_SPEED = preferences.getFloat("OBS_ESC_SPD", FactoryDefaults::OBSTACLE_ESCAPE_BASE_SPEED);
+        currentSettings.OBSTACLE_BACKUP_DURATION_MS = preferences.getInt("OBS_BKP_DUR", FactoryDefaults::OBSTACLE_BACKUP_DURATION_MS);
+        currentSettings.OBSTACLE_SWEEP_ANGLE_DEG = preferences.getFloat("OBS_SWP_ANG", FactoryDefaults::OBSTACLE_SWEEP_ANGLE_DEG);
+        currentSettings.OBSTACLE_SWEEP_TIMEOUT_MS = preferences.getInt("OBS_SWP_TO", FactoryDefaults::OBSTACLE_SWEEP_TIMEOUT_MS);
+        currentSettings.OBSTACLE_ALIGN_TIMEOUT_MS = preferences.getInt("OBS_ALN_TO", FactoryDefaults::OBSTACLE_ALIGN_TIMEOUT_MS);
+        currentSettings.OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG = preferences.getFloat("OBS_ALN_TOL", FactoryDefaults::OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG);
+        currentSettings.OBSTACLE_ESCAPE_DURATION_MS = preferences.getInt("OBS_ESC_DUR", FactoryDefaults::OBSTACLE_ESCAPE_DURATION_MS);
+
+        // --- Timers ---
+        currentSettings.DIZZY_SPIN_PWM = preferences.getInt("DZZY_PWM", FactoryDefaults::DIZZY_SPIN_PWM);
+        currentSettings.DIZZY_SPIN_TIME = preferences.getInt("DZZY_TIME", FactoryDefaults::DIZZY_SPIN_TIME);
+        currentSettings.DIZZY_COOLDOWN = preferences.getInt("DZZY_COOL", FactoryDefaults::DIZZY_COOLDOWN);
         currentSettings.SLEEP_TIMEOUT_MS = preferences.getInt("SLP_TIME", FactoryDefaults::SLEEP_TIMEOUT_MS);
         currentSettings.SLEEP_WAKE_G = preferences.getFloat("SLP_WAKE", FactoryDefaults::SLEEP_WAKE_G);
 
+        // --- Compass Lock Settings
+        currentSettings.COMPASS_LOCK_ENTRY_SETTLE_MS = preferences.getInt("CMP_LCK_ENT_TO", FactoryDefaults::COMPASS_LOCK_ENTRY_SETTLE_MS);
+        currentSettings.COMPASS_LOCK_EXIT_SETTLE_MS = preferences.getInt("CMP_LCK_EXT_TO", FactoryDefaults::COMPASS_LOCK_EXIT_SETTLE_MS);
+
+        // --- Sensors ---
         currentSettings.IMU_MADGWICK_BETA = preferences.getFloat("IMU_BETA", FactoryDefaults::IMU_MADGWICK_BETA);
         currentSettings.IMU_GYRO_DEADBAND = preferences.getFloat("IMU_DEAD", FactoryDefaults::IMU_GYRO_DEADBAND);
         currentSettings.SONAR_MAX_DIST = preferences.getFloat("SNR_MAX", FactoryDefaults::SONAR_MAX_DIST);
 
-        currentSettings.PID_HEADING_P = preferences.getFloat("P_HDG_P", FactoryDefaults::PID_HEADING_P);
-        currentSettings.PID_HEADING_I = preferences.getFloat("P_HDG_I", FactoryDefaults::PID_HEADING_I);
-        currentSettings.PID_HEADING_D = preferences.getFloat("P_HDG_D", FactoryDefaults::PID_HEADING_D);
-        currentSettings.PID_HEADING_LIM = preferences.getFloat("P_HDG_LIM", FactoryDefaults::PID_HEADING_LIM);
-        currentSettings.PID_HEADING_ILIM = preferences.getFloat("P_HDG_ILM", FactoryDefaults::PID_HEADING_ILIM);
-        currentSettings.PID_HEADING_DEAD = preferences.getFloat("P_HDG_DED", FactoryDefaults::PID_HEADING_DEAD);
+        // --- PID: Heading ---
+        currentSettings.PID_HEADING_P = preferences.getFloat("PID_HDG_P", FactoryDefaults::PID_HEADING_P);
+        currentSettings.PID_HEADING_I = preferences.getFloat("PID_HDG_I", FactoryDefaults::PID_HEADING_I);
+        currentSettings.PID_HEADING_D = preferences.getFloat("PID_HDG_D", FactoryDefaults::PID_HEADING_D);
+        currentSettings.PID_HEADING_LIM = preferences.getFloat("PID_HDG_LIM", FactoryDefaults::PID_HEADING_LIM);
+        currentSettings.PID_HEADING_ILIM = preferences.getFloat("PID_HDG_ILM", FactoryDefaults::PID_HEADING_ILIM);
+        currentSettings.PID_HEADING_DEAD = preferences.getFloat("PID_HDG_DED", FactoryDefaults::PID_HEADING_DEAD);
 
-        currentSettings.PID_COMPASS_P = preferences.getFloat("P_CMP_P", FactoryDefaults::PID_COMPASS_P);
-        currentSettings.PID_COMPASS_I = preferences.getFloat("P_CMP_I", FactoryDefaults::PID_COMPASS_I);
-        currentSettings.PID_COMPASS_D = preferences.getFloat("P_CMP_D", FactoryDefaults::PID_COMPASS_D);
-        currentSettings.PID_COMPASS_LIM = preferences.getFloat("P_CMP_LIM", FactoryDefaults::PID_COMPASS_LIM);
-        currentSettings.PID_COMPASS_ILIM = preferences.getFloat("P_CMP_ILM", FactoryDefaults::PID_COMPASS_ILIM);
-        currentSettings.PID_COMPASS_DEAD = preferences.getFloat("P_CMP_DED", FactoryDefaults::PID_COMPASS_DEAD);
+        // --- PID: Compass Lock ---
+        currentSettings.PID_COMPASS_P = preferences.getFloat("PID_CMP_P", FactoryDefaults::PID_COMPASS_P);
+        currentSettings.PID_COMPASS_I = preferences.getFloat("PID_CMP_I", FactoryDefaults::PID_COMPASS_I);
+        currentSettings.PID_COMPASS_D = preferences.getFloat("PID_CMP_D", FactoryDefaults::PID_COMPASS_D);
+        currentSettings.PID_COMPASS_LIM = preferences.getFloat("PID_CMP_LIM", FactoryDefaults::PID_COMPASS_LIM);
+        currentSettings.PID_COMPASS_ILIM = preferences.getFloat("PID_CMP_ILM", FactoryDefaults::PID_COMPASS_ILIM);
+        currentSettings.PID_COMPASS_DEAD = preferences.getFloat("PID_CMP_DED", FactoryDefaults::PID_COMPASS_DEAD);
 
-        currentSettings.PID_DIST_P = preferences.getFloat("P_DST_P", FactoryDefaults::PID_DIST_P);
-        currentSettings.PID_DIST_I = preferences.getFloat("P_DST_I", FactoryDefaults::PID_DIST_I);
-        currentSettings.PID_DIST_D = preferences.getFloat("P_DST_D", FactoryDefaults::PID_DIST_D);
-        currentSettings.PID_DIST_LIM = preferences.getFloat("P_DST_LIM", FactoryDefaults::PID_DIST_LIM);
-        currentSettings.PID_DIST_ILIM = preferences.getFloat("P_DST_ILM", FactoryDefaults::PID_DIST_ILIM);
-        currentSettings.PID_DIST_DEAD = preferences.getFloat("P_DST_DED", FactoryDefaults::PID_DIST_DEAD);
+        // --- PID: Distance ---
+        currentSettings.PID_DIST_P = preferences.getFloat("PID_DST_P", FactoryDefaults::PID_DIST_P);
+        currentSettings.PID_DIST_I = preferences.getFloat("PID_DST_I", FactoryDefaults::PID_DIST_I);
+        currentSettings.PID_DIST_D = preferences.getFloat("PID_DST_D", FactoryDefaults::PID_DIST_D);
+        currentSettings.PID_DIST_LIM = preferences.getFloat("PID_DST_LIM", FactoryDefaults::PID_DIST_LIM);
+        currentSettings.PID_DIST_ILIM = preferences.getFloat("PID_DST_ILM", FactoryDefaults::PID_DIST_ILIM);
+        currentSettings.PID_DIST_DEAD = preferences.getFloat("PID_DST_DED", FactoryDefaults::PID_DIST_DEAD);
 
-        currentSettings.PID_OBSTACLE_P = preferences.getFloat("P_OBS_P", FactoryDefaults::PID_OBSTACLE_P);
-        currentSettings.PID_OBSTACLE_I = preferences.getFloat("P_OBS_I", FactoryDefaults::PID_OBSTACLE_I);
-        currentSettings.PID_OBSTACLE_D = preferences.getFloat("P_OBS_D", FactoryDefaults::PID_OBSTACLE_D);
-        currentSettings.PID_OBSTACLE_LIM = preferences.getFloat("P_OBS_LIM", FactoryDefaults::PID_OBSTACLE_LIM);
-        currentSettings.PID_OBSTACLE_ILIM = preferences.getFloat("P_OBS_ILM", FactoryDefaults::PID_OBSTACLE_ILIM);
-        currentSettings.PID_OBSTACLE_DEAD = preferences.getFloat("P_OBS_DED", FactoryDefaults::PID_OBSTACLE_DEAD);
+        // --- PID: Obstacle ---
+        currentSettings.PID_OBSTACLE_P = preferences.getFloat("PID_OBS_P", FactoryDefaults::PID_OBSTACLE_P);
+        currentSettings.PID_OBSTACLE_I = preferences.getFloat("PID_OBS_I", FactoryDefaults::PID_OBSTACLE_I);
+        currentSettings.PID_OBSTACLE_D = preferences.getFloat("PID_OBS_D", FactoryDefaults::PID_OBSTACLE_D);
+        currentSettings.PID_OBSTACLE_LIM = preferences.getFloat("PID_OBS_LIM", FactoryDefaults::PID_OBSTACLE_LIM);
+        currentSettings.PID_OBSTACLE_ILIM = preferences.getFloat("PID_OBS_ILM", FactoryDefaults::PID_OBSTACLE_ILIM);
+        currentSettings.PID_OBSTACLE_DEAD = preferences.getFloat("PID_OBS_DED", FactoryDefaults::PID_OBSTACLE_DEAD);
 
-        currentSettings.TILT_HANDLING_THRESHOLD = preferences.getFloat("TILT_HANDLING_THRESHOLD", FactoryDefaults::TILT_HANDLING_THRESHOLD);
-        currentSettings.GFORCE_LIFT_UP_THRESHOLD = preferences.getFloat("GFORCE_LIFT_UP_THRESHOLD", FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD);
-        currentSettings.GFORCE_LIFT_DOWN_THRESHOLD = preferences.getFloat("GFORCE_LIFT_DOWN_THRESHOLD", FactoryDefaults::GFORCE_LIFT_DOWN_THRESHOLD);
-        currentSettings.LIFT_ENERGY_SPIKE_THRESHOLD = preferences.getFloat("LIFT_ENERGY_SPIKE_THRESHOLD", FactoryDefaults::LIFT_ENERGY_SPIKE_THRESHOLD);
-        currentSettings.UPRIGHT_ANGLE_TOLERANCE = preferences.getFloat("UPRIGHT_ANGLE_TOLERANCE", FactoryDefaults::UPRIGHT_ANGLE_TOLERANCE);
-        currentSettings.PERFECTLY_STILL_ENERGY = preferences.getFloat("PERFECTLY_STILL_ENERGY", FactoryDefaults::PERFECTLY_STILL_ENERGY);
-        currentSettings.STEADY_HOLD_ENERGY_MAX = preferences.getFloat("STEADY_HOLD_ENERGY_MAX", FactoryDefaults::STEADY_HOLD_ENERGY_MAX);
-        currentSettings.DIZZY_ENERGY_DEADBAND = preferences.getFloat("DIZZY_ENERGY_DEADBAND", FactoryDefaults::DIZZY_ENERGY_DEADBAND);
-        currentSettings.DIZZY_CHARGE_RATE = preferences.getFloat("DIZZY_CHARGE_RATE", FactoryDefaults::DIZZY_CHARGE_RATE);
-        currentSettings.DIZZY_DECAY_RATE = preferences.getFloat("DIZZY_DECAY_RATE", FactoryDefaults::DIZZY_DECAY_RATE);
-        currentSettings.DIZZY_TRIGGER_THRESHOLD = preferences.getFloat("DIZZY_TRIGGER_THRESHOLD", FactoryDefaults::DIZZY_TRIGGER_THRESHOLD);
-        currentSettings.ENERGY_EMA_ALPHA = preferences.getFloat("ENERGY_EMA_ALPHA", FactoryDefaults::ENERGY_EMA_ALPHA);
-        currentSettings.ENERGY_EMA_BETA = preferences.getFloat("ENERGY_EMA_BETA", FactoryDefaults::ENERGY_EMA_BETA);
-        currentSettings.DISTANCE_HOLD_FRUSTRATION_LIMIT = preferences.getFloat("DISTANCE_HOLD_FRUSTRATION_LIMIT", FactoryDefaults::DISTANCE_HOLD_FRUSTRATION_LIMIT);
-        currentSettings.FRUSTRATION_COOLDOWN_RATE = preferences.getFloat("FRUSTRATION_COOLDOWN_RATE", FactoryDefaults::FRUSTRATION_COOLDOWN_RATE);
-        currentSettings.FRUSTRATION_HEATUP_RATE = preferences.getFloat("FRUSTRATION_HEATUP_RATE", FactoryDefaults::FRUSTRATION_HEATUP_RATE);
-                  
+        // --- Physics & Handing ---
+        currentSettings.TILT_HANDLING_THRESHOLD = preferences.getFloat("TLT_HNDL_THRS", FactoryDefaults::TILT_HANDLING_THRESHOLD);
+        currentSettings.GFORCE_LIFT_UP_THRESHOLD = preferences.getFloat("GF_LFT_UP_THRS", FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD);
+        currentSettings.GFORCE_LIFT_DOWN_THRESHOLD = preferences.getFloat("GF_LFT_DN_THRS", FactoryDefaults::GFORCE_LIFT_DOWN_THRESHOLD);
+        currentSettings.LIFT_ENERGY_SPIKE_THRESHOLD = preferences.getFloat("LFT_E_SPK_THRS", FactoryDefaults::LIFT_ENERGY_SPIKE_THRESHOLD);
+        currentSettings.UPRIGHT_ANGLE_TOLERANCE = preferences.getFloat("UPRT_ANGL_TOL", FactoryDefaults::UPRIGHT_ANGLE_TOLERANCE);
+        currentSettings.PERFECTLY_STILL_ENERGY = preferences.getFloat("PERF_STILL_E", FactoryDefaults::PERFECTLY_STILL_ENERGY);
+        currentSettings.STEADY_HOLD_ENERGY_MAX = preferences.getFloat("STD_HOLD_E_MAX", FactoryDefaults::STEADY_HOLD_ENERGY_MAX);
+
+        // --- Dizzy & Energy---
+        currentSettings.DIZZY_ENERGY_DEADBAND = preferences.getFloat("DZZY_E_DEADB", FactoryDefaults::DIZZY_ENERGY_DEADBAND);
+        currentSettings.DIZZY_CHARGE_RATE = preferences.getFloat("DZZY_CHG_RATE", FactoryDefaults::DIZZY_CHARGE_RATE);
+        currentSettings.DIZZY_DECAY_RATE = preferences.getFloat("DZZY_DEC_RATE", FactoryDefaults::DIZZY_DECAY_RATE);
+        currentSettings.DIZZY_TRIGGER_THRESHOLD = preferences.getFloat("DZZY_TRIG_THRS", FactoryDefaults::DIZZY_TRIGGER_THRESHOLD);
+        currentSettings.ENERGY_EMA_ALPHA = preferences.getFloat("E_EMA_ALPHA", FactoryDefaults::ENERGY_EMA_ALPHA);
+        currentSettings.ENERGY_EMA_BETA = preferences.getFloat("E_EMA_BETA", FactoryDefaults::ENERGY_EMA_BETA);
+        currentSettings.DIZZY_DURATION_MS = preferences.getInt("DZZY_DUR", FactoryDefaults::DIZZY_DURATION_MS);
+
+        // --- Mood ---
+        currentSettings.DISTANCE_HOLD_FRUSTRATION_LIMIT = preferences.getFloat("DST_HLD_FRST_L", FactoryDefaults::DISTANCE_HOLD_FRUSTRATION_LIMIT);
+        currentSettings.FRUSTRATION_COOLDOWN_RATE = preferences.getFloat("FRST_COOL_RATE", FactoryDefaults::FRUSTRATION_COOLDOWN_RATE);
+        currentSettings.FRUSTRATION_HEATUP_RATE = preferences.getFloat("FRST_HEAT_RATE", FactoryDefaults::FRUSTRATION_HEATUP_RATE);
+        
+        // --- System & Network ---
         currentSettings.BRAIN_ACTIVE = preferences.getBool("BRAIN_ACT", FactoryDefaults::BRAIN_ACTIVE);
         
         currentSettings.WIFI_SSID = preferences.getString("WIFI_SSID", FactoryDefaults::WIFI_SSID);
         currentSettings.WIFI_PASSWORD = preferences.getString("WIFI_PASS", FactoryDefaults::WIFI_PASSWORD);
-        currentSettings.WIFI_ACTIVE = preferences.getBool("WIFI_ACT", FactoryDefaults::WIFI_ACTIVE);
         currentSettings.BT_NAME = preferences.getString("BT_NAME", FactoryDefaults::BT_NAME);
+
+        currentSettings.WIFI_ACTIVE = preferences.getBool("WIFI_ACT", FactoryDefaults::WIFI_ACTIVE);
         currentSettings.BT_ACTIVE = preferences.getBool("BT_ACT", FactoryDefaults::BT_ACTIVE);
         
         currentSettings.SERIAL_DEBUG_MASTER = preferences.getBool("DBG_MASTER", FactoryDefaults::SERIAL_DEBUG_MASTER);
         currentSettings.SERIAL_DEBUG_IMU = preferences.getBool("DBG_IMU", FactoryDefaults::SERIAL_DEBUG_IMU);
         currentSettings.SERIAL_DEBUG_SONAR = preferences.getBool("DBG_SONAR", FactoryDefaults::SERIAL_DEBUG_SONAR);
         currentSettings.SERIAL_DEBUG_MOTOR_DRIVER = preferences.getBool("DBG_MOTOR", FactoryDefaults::SERIAL_DEBUG_MOTOR_DRIVER);
+        
+        currentSettings.ACTIVE_DEBUG_MODE = preferences.getUInt("DBG_ACTIVE", FactoryDefaults::DEBUG_ACTIVE);
+        currentSettings.ACTIVE_DEBUG_MODE = preferences.getUInt("DBG_USB", FactoryDefaults::DEBUG_USB);
+        currentSettings.ACTIVE_DEBUG_MODE = preferences.getUInt("DBG_WIFI", FactoryDefaults::DEBUG_WIFI);
+        currentSettings.ACTIVE_DEBUG_MODE = preferences.getUInt("DBG_BLUETOOTH", FactoryDefaults::DEBUG_BLUETOOTH);
+        currentSettings.ACTIVE_DEBUG_MODE = preferences.getUInt("ACT_DBG_MODE", FactoryDefaults::ACTIVE_DEBUG_MODE);
     }
 
     MasterSettings& get() { return currentSettings; }
 
     void save() {
+        preferences.putULong("SERIAL_BAUD", currentSettings.SERIAL_BAUD_RATE);
         preferences.putFloat("CRUISE_SPD", currentSettings.CRUISING_SPEED);
         preferences.putFloat("OBS_TRIG_CM", currentSettings.OBSTACLE_TRIGGER_CM);
         preferences.putFloat("MAINT_DIST_CM", currentSettings.MAINTAIN_DISTANCE_CM);
@@ -204,60 +266,71 @@ public:
         preferences.putFloat("OBS_CLR", currentSettings.OBS_CLEAR_THRESH);
         preferences.putFloat("OBS_HYST", currentSettings.OBS_HYSTERESIS);
 
-        preferences.putInt("DIZ_PWM", currentSettings.DIZZY_SPIN_PWM);
-        preferences.putInt("DIZ_TIME", currentSettings.DIZZY_SPIN_TIME);
-        preferences.putInt("DIZ_COOL", currentSettings.DIZZY_COOLDOWN);
+        preferences.putFloat("OBS_ESC_SPD", currentSettings.OBSTACLE_ESCAPE_BASE_SPEED);
+        preferences.putInt("OBS_BKP_DUR", currentSettings.OBSTACLE_BACKUP_DURATION_MS);
+        preferences.putFloat("OBS_SWP_ANG", currentSettings.OBSTACLE_SWEEP_ANGLE_DEG);
+        preferences.putInt("OBS_SWP_TO", currentSettings.OBSTACLE_SWEEP_TIMEOUT_MS);
+        preferences.putInt("OBS_ALN_TO", currentSettings.OBSTACLE_ALIGN_TIMEOUT_MS);
+        preferences.putFloat("OBS_ALN_TOL", currentSettings.OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG);
+        preferences.putInt("OBS_ESC_DUR", currentSettings.OBSTACLE_ESCAPE_DURATION_MS);
+
+        preferences.putInt("DZZY_PWM", currentSettings.DIZZY_SPIN_PWM);
+        preferences.putInt("DZZY_TIME", currentSettings.DIZZY_SPIN_TIME);
+        preferences.putInt("DZZY_COOL", currentSettings.DIZZY_COOLDOWN);
         preferences.putInt("SLP_TIME", currentSettings.SLEEP_TIMEOUT_MS);
         preferences.putFloat("SLP_WAKE", currentSettings.SLEEP_WAKE_G);
+
+        preferences.putInt("CMP_LCK_ENT_TO", currentSettings.COMPASS_LOCK_ENTRY_SETTLE_MS);
+        preferences.putInt("CMP_LCK_EXT_TO", currentSettings.COMPASS_LOCK_EXIT_SETTLE_MS);
 
         preferences.putFloat("IMU_BETA", currentSettings.IMU_MADGWICK_BETA);
         preferences.putFloat("IMU_DEAD", currentSettings.IMU_GYRO_DEADBAND);
         preferences.putFloat("SNR_MAX", currentSettings.SONAR_MAX_DIST);
 
-        preferences.putFloat("P_HDG_P", currentSettings.PID_HEADING_P);
-        preferences.putFloat("P_HDG_I", currentSettings.PID_HEADING_I);
-        preferences.putFloat("P_HDG_D", currentSettings.PID_HEADING_D);
-        preferences.putFloat("P_HDG_LIM", currentSettings.PID_HEADING_LIM);
-        preferences.putFloat("P_HDG_ILM", currentSettings.PID_HEADING_ILIM);
-        preferences.putFloat("P_HDG_DED", currentSettings.PID_HEADING_DEAD);
+        preferences.putFloat("PID_HDG_P", currentSettings.PID_HEADING_P);
+        preferences.putFloat("PID_HDG_I", currentSettings.PID_HEADING_I);
+        preferences.putFloat("PID_HDG_D", currentSettings.PID_HEADING_D);
+        preferences.putFloat("PID_HDG_LIM", currentSettings.PID_HEADING_LIM);
+        preferences.putFloat("PID_HDG_ILIM", currentSettings.PID_HEADING_ILIM);
+        preferences.putFloat("PID_HDG_DED", currentSettings.PID_HEADING_DEAD);
 
-        preferences.putFloat("P_CMP_P", currentSettings.PID_COMPASS_P);
-        preferences.putFloat("P_CMP_I", currentSettings.PID_COMPASS_I);
-        preferences.putFloat("P_CMP_D", currentSettings.PID_COMPASS_D);
-        preferences.putFloat("P_CMP_LIM", currentSettings.PID_COMPASS_LIM);
-        preferences.putFloat("P_CMP_ILM", currentSettings.PID_COMPASS_ILIM);
-        preferences.putFloat("P_CMP_DED", currentSettings.PID_COMPASS_DEAD);
+        preferences.putFloat("PID_CMP_P", currentSettings.PID_COMPASS_P);
+        preferences.putFloat("PID_CMP_I", currentSettings.PID_COMPASS_I);
+        preferences.putFloat("PID_CMP_D", currentSettings.PID_COMPASS_D);
+        preferences.putFloat("PID_CMP_LIM", currentSettings.PID_COMPASS_LIM);
+        preferences.putFloat("PID_CMP_ILIM", currentSettings.PID_COMPASS_ILIM);
+        preferences.putFloat("PID_CMP_DED", currentSettings.PID_COMPASS_DEAD);
 
-        preferences.putFloat("P_DST_P", currentSettings.PID_DIST_P);
-        preferences.putFloat("P_DST_I", currentSettings.PID_DIST_I);
-        preferences.putFloat("P_DST_D", currentSettings.PID_DIST_D);
-        preferences.putFloat("P_DST_LIM", currentSettings.PID_DIST_LIM);
-        preferences.putFloat("P_DST_ILM", currentSettings.PID_DIST_ILIM);
-        preferences.putFloat("P_DST_DED", currentSettings.PID_DIST_DEAD);
+        preferences.putFloat("PID_DST_P", currentSettings.PID_DIST_P);
+        preferences.putFloat("PID_DST_I", currentSettings.PID_DIST_I);
+        preferences.putFloat("PID_DST_D", currentSettings.PID_DIST_D);
+        preferences.putFloat("PID_DST_LIM", currentSettings.PID_DIST_LIM);
+        preferences.putFloat("PID_DST_ILIM", currentSettings.PID_DIST_ILIM);
+        preferences.putFloat("PID_DST_DED", currentSettings.PID_DIST_DEAD);
 
-        preferences.putFloat("P_OBS_P", currentSettings.PID_OBSTACLE_P);
-        preferences.putFloat("P_OBS_I", currentSettings.PID_OBSTACLE_I);
-        preferences.putFloat("P_OBS_D", currentSettings.PID_OBSTACLE_D);
-        preferences.putFloat("P_OBS_LIM", currentSettings.PID_OBSTACLE_LIM);
-        preferences.putFloat("P_OBS_ILM", currentSettings.PID_OBSTACLE_ILIM);
-        preferences.putFloat("P_OBS_DED", currentSettings.PID_OBSTACLE_DEAD);
+        preferences.putFloat("PID_OBS_P", currentSettings.PID_OBSTACLE_P);
+        preferences.putFloat("PID_OBS_I", currentSettings.PID_OBSTACLE_I);
+        preferences.putFloat("PID_OBS_D", currentSettings.PID_OBSTACLE_D);
+        preferences.putFloat("PID_OBS_LIM", currentSettings.PID_OBSTACLE_LIM);
+        preferences.putFloat("PID_OBS_ILIM", currentSettings.PID_OBSTACLE_ILIM);
+        preferences.putFloat("PID_OBS_DED", currentSettings.PID_OBSTACLE_DEAD);
 
-        preferences.putFloat("TILT_HANDLING_THRESHOLD", currentSettings.TILT_HANDLING_THRESHOLD);
-        preferences.putFloat("GFORCE_LIFT_UP_THRESHOLD", currentSettings.GFORCE_LIFT_UP_THRESHOLD);
-        preferences.putFloat("GFORCE_LIFT_DOWN_THRESHOLD", currentSettings.GFORCE_LIFT_DOWN_THRESHOLD);
-        preferences.putFloat("LIFT_ENERGY_SPIKE_THRESHOLD", currentSettings.LIFT_ENERGY_SPIKE_THRESHOLD);
-        preferences.putFloat("UPRIGHT_ANGLE_TOLERANCE", currentSettings.UPRIGHT_ANGLE_TOLERANCE);
-        preferences.putFloat("PERFECTLY_STILL_ENERGY", currentSettings.PERFECTLY_STILL_ENERGY);
-        preferences.putFloat("STEADY_HOLD_ENERGY_MAX", currentSettings.STEADY_HOLD_ENERGY_MAX);
-        preferences.putFloat("DIZZY_ENERGY_DEADBAND", currentSettings.DIZZY_ENERGY_DEADBAND);
-        preferences.putFloat("DIZZY_CHARGE_RATE", currentSettings.DIZZY_CHARGE_RATE);
-        preferences.putFloat("DIZZY_DECAY_RATE", currentSettings.DIZZY_DECAY_RATE);
-        preferences.putFloat("DIZZY_TRIGGER_THRESHOLD", currentSettings.DIZZY_TRIGGER_THRESHOLD);
-        preferences.putFloat("ENERGY_EMA_ALPHA", currentSettings.ENERGY_EMA_ALPHA);
-        preferences.putFloat("ENERGY_EMA_BETA", currentSettings.ENERGY_EMA_BETA);
-        preferences.putFloat("DISTANCE_HOLD_FRUSTRATION_LIMIT", currentSettings.DISTANCE_HOLD_FRUSTRATION_LIMIT);
-        preferences.putFloat("FRUSTRATION_COOLDOWN_RATE", currentSettings.FRUSTRATION_COOLDOWN_RATE);
-        preferences.putFloat("FRUSTRATION_HEATUP_RATE", currentSettings.FRUSTRATION_HEATUP_RATE);
+        preferences.putFloat("TLT_HNDL_THRS", currentSettings.TILT_HANDLING_THRESHOLD);
+        preferences.putFloat("GF_LFT_UP_THRS", currentSettings.GFORCE_LIFT_UP_THRESHOLD);
+        preferences.putFloat("GF_LFT_DN_THRS", currentSettings.GFORCE_LIFT_DOWN_THRESHOLD);
+        preferences.putFloat("LFT_E_SPK_THRS", currentSettings.LIFT_ENERGY_SPIKE_THRESHOLD);
+        preferences.putFloat("UPRT_ANGL_TOL", currentSettings.UPRIGHT_ANGLE_TOLERANCE);
+        preferences.putFloat("PERF_STILL_E", currentSettings.PERFECTLY_STILL_ENERGY);
+        preferences.putFloat("STD_HOLD_E_MAX", currentSettings.STEADY_HOLD_ENERGY_MAX);
+        preferences.putFloat("DZZY_E_DEADB", currentSettings.DIZZY_ENERGY_DEADBAND);
+        preferences.putFloat("DZZY_CHG_RATE", currentSettings.DIZZY_CHARGE_RATE);
+        preferences.putFloat("DZZY_DEC_RATE", currentSettings.DIZZY_DECAY_RATE);
+        preferences.putFloat("DZZY_TRIG_THRS", currentSettings.DIZZY_TRIGGER_THRESHOLD);
+        preferences.putFloat("E_EMA_ALPHA", currentSettings.ENERGY_EMA_ALPHA);
+        preferences.putFloat("E_EMA_BETA", currentSettings.ENERGY_EMA_BETA);
+        preferences.putFloat("DST_HLD_FRST_L", currentSettings.DISTANCE_HOLD_FRUSTRATION_LIMIT);
+        preferences.putFloat("FRST_COOL_RATE", currentSettings.FRUSTRATION_COOLDOWN_RATE);
+        preferences.putFloat("FRST_HEAT_RATE", currentSettings.FRUSTRATION_HEATUP_RATE);
         
         preferences.putBool("BRAIN_ACT", currentSettings.BRAIN_ACTIVE);
 
@@ -275,6 +348,12 @@ public:
         preferences.putBool("DBG_IMU", currentSettings.SERIAL_DEBUG_IMU);
         preferences.putBool("DBG_SONAR", currentSettings.SERIAL_DEBUG_SONAR);
         preferences.putBool("DBG_MOTOR", currentSettings.SERIAL_DEBUG_MOTOR_DRIVER);
+
+        preferences.putUInt("DBG_ACTIVE", FactoryDefaults::DEBUG_ACTIVE);
+        preferences.putUInt("DBG_USB", FactoryDefaults::DEBUG_USB);
+        preferences.putUInt("DBG_WIFI", FactoryDefaults::DEBUG_WIFI);
+        preferences.putUInt("DBG_BLUETOOTH", FactoryDefaults::DEBUG_BLUETOOTH);
+        preferences.putUInt("ACT_DBG_MODE", currentSettings.ACTIVE_DEBUG_MODE);
     }
 
     // --- NEW: Granular Reset ---
@@ -293,10 +372,11 @@ public:
         else if (varName == "BT_NAME") { currentSettings.BT_NAME = FactoryDefaults::BT_NAME; }
         else if (varName == "BT_ACTIVE") { currentSettings.BT_ACTIVE = FactoryDefaults::BT_ACTIVE; }
 
-        else if (varName == "SERIAL_DEBUG_MASTER") { currentSettings.SERIAL_DEBUG_MASTER = FactoryDefaults::SERIAL_DEBUG_MASTER; }*/
+        else if (varName == "SERIAL_DEBUG_MASTER") { currentSettings.SERIAL_DEBUG_MASTER = FactoryDefaults::SERIAL_DEBUG_MASTER; }
+        else if (varName == "ACTIVE_DEBUG_MODE") { currentSettings.ACTIVE_DEBUG_MODE = FactoryDefaults::ACTIVE_DEBUG_MODE; }*/
 
-
-        if (varName == "CRUISING_SPEED") { currentSettings.CRUISING_SPEED = FactoryDefaults::CRUISING_SPEED; }
+        if (varName == "SERIAL_BAUD_RATE") { currentSettings.SERIAL_BAUD_RATE = FactoryDefaults::SERIAL_BAUD_RATE; }
+        else if (varName == "CRUISING_SPEED") { currentSettings.CRUISING_SPEED = FactoryDefaults::CRUISING_SPEED; }
         else if (varName == "OBSTACLE_TRIGGER_CM") { currentSettings.OBSTACLE_TRIGGER_CM = FactoryDefaults::OBSTACLE_TRIGGER_CM; }
         else if (varName == "MAINTAIN_DISTANCE_CM") { currentSettings.MAINTAIN_DISTANCE_CM = FactoryDefaults::MAINTAIN_DISTANCE_CM; }
         else if (varName == "MOTOR_MIN_PWM") { currentSettings.MOTOR_MIN_PWM = FactoryDefaults::MOTOR_MIN_PWM; }
@@ -306,6 +386,14 @@ public:
         else if (varName == "OBS_SWEEP_PAUSE") { currentSettings.OBS_SWEEP_PAUSE = FactoryDefaults::OBS_SWEEP_PAUSE; }
         else if (varName == "OBS_CLEAR_THRESH") { currentSettings.OBS_CLEAR_THRESH = FactoryDefaults::OBS_CLEAR_THRESH; }
         else if (varName == "OBS_HYSTERESIS") { currentSettings.OBS_HYSTERESIS = FactoryDefaults::OBS_HYSTERESIS; }
+
+        else if (varName == "OBSTACLE_ESCAPE_BASE_SPEED") { currentSettings.OBSTACLE_ESCAPE_BASE_SPEED = FactoryDefaults::OBSTACLE_ESCAPE_BASE_SPEED; }
+        else if (varName == "OBSTACLE_BACKUP_DURATION_MS") { currentSettings.OBSTACLE_BACKUP_DURATION_MS = FactoryDefaults::OBSTACLE_BACKUP_DURATION_MS; }
+        else if (varName == "OBSTACLE_SWEEP_ANGLE_DEG") { currentSettings.OBSTACLE_SWEEP_ANGLE_DEG = FactoryDefaults::OBSTACLE_SWEEP_ANGLE_DEG; }
+        else if (varName == "OBSTACLE_SWEEP_TIMEOUT_MS") { currentSettings.OBSTACLE_SWEEP_TIMEOUT_MS = FactoryDefaults::OBSTACLE_SWEEP_TIMEOUT_MS; }
+        else if (varName == "OBSTACLE_ALIGN_TIMEOUT_MS") { currentSettings.OBSTACLE_ALIGN_TIMEOUT_MS = FactoryDefaults::OBSTACLE_ALIGN_TIMEOUT_MS; }
+        else if (varName == "OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG") { currentSettings.OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG = FactoryDefaults::OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG; }
+        else if (varName == "OBSTACLE_ESCAPE_DURATION_MS") { currentSettings.OBSTACLE_ESCAPE_DURATION_MS = FactoryDefaults::OBSTACLE_ESCAPE_DURATION_MS; }
 
         else if (varName == "DIZZY_SPIN_PWM") { currentSettings.DIZZY_SPIN_PWM = FactoryDefaults::DIZZY_SPIN_PWM; }
         else if (varName == "DIZZY_SPIN_TIME") { currentSettings.DIZZY_SPIN_TIME = FactoryDefaults::DIZZY_SPIN_TIME; }
@@ -374,6 +462,17 @@ public:
         else if (varName == "SERIAL_DEBUG_IMU") { currentSettings.SERIAL_DEBUG_IMU = FactoryDefaults::SERIAL_DEBUG_IMU; }
         else if (varName == "SERIAL_DEBUG_SONAR") { currentSettings.SERIAL_DEBUG_SONAR = FactoryDefaults::SERIAL_DEBUG_SONAR; }
         else if (varName == "SERIAL_DEBUG_MOTOR_DRIVER") { currentSettings.SERIAL_DEBUG_MOTOR_DRIVER = FactoryDefaults::SERIAL_DEBUG_MOTOR_DRIVER; }
+
+        else if (varName == "DEBUG_ACTIVE") { preferences.putUInt("DBG_ACTIVE", FactoryDefaults::DEBUG_ACTIVE); }
+        else if (varName == "DEBUG_USB") { preferences.putUInt("DBG_USB", FactoryDefaults::DEBUG_USB); }
+        else if (varName == "DEBUG_WIFI") { preferences.putUInt("DBG_WIFI", FactoryDefaults::DEBUG_WIFI); }
+        else if (varName == "DEBUG_BLUETOOTH") { preferences.putUInt("DBG_BLUETOOTH", FactoryDefaults::DEBUG_BLUETOOTH); }
+
+        else if (varName == "DEBUG_ACTIVE") { currentSettings.DEBUG_ACTIVE = FactoryDefaults::DEBUG_ACTIVE; }
+        else if (varName == "DEBUG_USB") { currentSettings.DEBUG_USB = FactoryDefaults::DEBUG_USB; }
+        else if (varName == "DEBUG_WIFI") { currentSettings.DEBUG_WIFI = FactoryDefaults::DEBUG_WIFI; }
+        else if (varName == "DEBUG_BLUETOOTH") { currentSettings.DEBUG_BLUETOOTH = FactoryDefaults::DEBUG_BLUETOOTH; }
+        else if (varName == "ACTIVE_DEBUG_MODE") { currentSettings.ACTIVE_DEBUG_MODE = FactoryDefaults::ACTIVE_DEBUG_MODE; }
 
         else { return false; } // Variable not found
         save();

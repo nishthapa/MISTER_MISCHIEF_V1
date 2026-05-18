@@ -188,13 +188,13 @@ FusedAngles MPU6050_IMU::getAngles() {
             sumAccelX += ax; sumAccelY += ay; sumAccelZ += az;
             accelCalibSamples++;
             
-            if (accelCalibSamples >= 500) {
-                accelBiasX = (float)sumAccelX / 500.0f;
-                accelBiasY = (float)sumAccelY / 500.0f;
+            if (accelCalibSamples >= IMUConfig::ACCEL_CALIBRATION_SAMPLES) {
+                accelBiasX = (float)sumAccelX / (float)IMUConfig::ACCEL_CALIBRATION_SAMPLES;
+                accelBiasY = (float)sumAccelY / (float)IMUConfig::ACCEL_CALIBRATION_SAMPLES;
                 
                 // Gravity Math: Z-axis should be experiencing exactly 1.0G. 
                 // We subtract 1.0G from the average to find the true sensor error/bias!
-                accelBiasZ = ((float)sumAccelZ / 500.0f) - IMUConfig::ACCEL_SCALE_FACTOR;
+                accelBiasZ = ((float)sumAccelZ / (float)IMUConfig::ACCEL_CALIBRATION_SAMPLES) - IMUConfig::ACCEL_SCALE_FACTOR;
                 
                 calibratingAccel = false;
                 logger.printf("[IMU] Accel Calibrated! Biases: X:%.1f Y:%.1f Z:%.1f\n", accelBiasX, accelBiasY, accelBiasZ);
@@ -210,10 +210,11 @@ FusedAngles MPU6050_IMU::getAngles() {
             sumX += gx; sumY += gy; sumZ += gz;
             calibrationSamples++;
             
-            if (calibrationSamples >= 500) {
-                gyroBiasX = (float)sumX / 500.0f;
-                gyroBiasY = (float)sumY / 500.0f;
-                gyroBiasZ = (float)sumZ / 500.0f;
+            //if (calibrationSamples >= 500) {
+            if (calibrationSamples >= IMUConfig::GYRO_CALIBRATION_SAMPLES) {
+                gyroBiasX = (float)sumX / (float)IMUConfig::GYRO_CALIBRATION_SAMPLES;
+                gyroBiasY = (float)sumY / (float)IMUConfig::GYRO_CALIBRATION_SAMPLES;
+                gyroBiasZ = (float)sumZ / (float)IMUConfig::GYRO_CALIBRATION_SAMPLES;
                 calibratingGyro = false;
                 logger.printf("[IMU] Gyro Calibrated! Biases: X:%.1f Y:%.1f Z:%.1f\n", gyroBiasX, gyroBiasY, gyroBiasZ);
                 lastUpdateTime = micros();

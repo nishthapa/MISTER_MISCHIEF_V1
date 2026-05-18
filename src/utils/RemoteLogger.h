@@ -1,4 +1,5 @@
 #pragma once
+
 #include <WiFi.h>
 #include <stdarg.h>
 #include <stdint.h> // For the uint8_t type

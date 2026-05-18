@@ -15,7 +15,7 @@
 #include "core/BehaviourEngine.h"
 #include "utils/RadioManager.h"
 #include "utils/RemoteLogger.h"
-#include "config/DebugConfig.h" 
+// #include "config/DebugConfig.h" 
 #include "config/CommandRegistry.h" 
 #include "core/CommandProcessor.h"
 #include "config/SystemConfig.h"
@@ -170,6 +170,14 @@ void setup() {
   logger.beginSerial();
   RadioManager::initRadios();
   logger.bindRadios();
+
+  // Inject the loaded NVS variables into the running PID objects
+  headingPID.setTunings(Config.PID_HEADING_P, Config.PID_HEADING_I, Config.PID_HEADING_D, Config.PID_HEADING_ILIM, Config.PID_HEADING_LIM);
+  compassPID.setTunings(Config.PID_COMPASS_P, Config.PID_COMPASS_I, Config.PID_COMPASS_D, Config.PID_COMPASS_ILIM, Config.PID_COMPASS_LIM);
+  distancePID.setTunings(Config.PID_DIST_P, Config.PID_DIST_I, Config.PID_DIST_D, Config.PID_DIST_ILIM, Config.PID_DIST_LIM);
+  obstacleAvoidancePID.setTunings(Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D, Config.PID_OBSTACLE_ILIM, Config.PID_OBSTACLE_LIM);
+  // ---------------------------
+
   logger.println("Configuration Manager loaded from permanent memory.");
 
 // ==========================================

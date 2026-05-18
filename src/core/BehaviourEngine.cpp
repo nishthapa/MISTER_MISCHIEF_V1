@@ -1,6 +1,6 @@
 #include "core/BehaviourEngine.h"
-#include "config/PersonalityConfig.h"
-#include "config/BehaviourEngineConfig.h" // <-- The Tuning Dashboard!
+//#include "config/PersonalityConfig.h" // Safe to DELETE since we're now pulling these values from the NVS-backed ConfigurationManager
+// #include "config/BehaviourEngineConfig.h" // <-- The Tuning Dashboard!
 #include <Arduino.h>
 
 // ==========================================
@@ -12,6 +12,7 @@
 #include "behaviours/Mode_MaintainDistance.h"
 #include "behaviours/Mode_Dizzy.h"
 #include "behaviours/Mode_DeepSleep.h"
+#include "config/ConfigurationManager.h" // <-- For the master clock and personality parameters
 
 BehaviourEngine::BehaviourEngine(I_IMU* i, I_DistanceSensor* s, 
                                  Mode_ObstacleAvoidance* obs, Mode_NormalDriving* norm, 
@@ -83,7 +84,7 @@ void BehaviourEngine::update() {
     float rawRollEnergy = abs(getShortestAngleDelta(currentAngles.roll, lastAngles.roll)) / 0.01f;
     
     float totalRawEnergy = rawYawEnergy + rawPitchEnergy + rawRollEnergy;
-    smoothedTotalEnergy = (BehaviourConfig::ENERGY_EMA_ALPHA * totalRawEnergy) + (BehaviourConfig::ENERGY_EMA_BETA * smoothedTotalEnergy);
+    smoothedTotalEnergy = (Config.ENERGY_EMA_ALPHA * totalRawEnergy) + (Config.ENERGY_EMA_BETA * smoothedTotalEnergy);
 
     // ==========================================
     // THE PHYSICS LATCH FIX
@@ -91,20 +92,20 @@ void BehaviourEngine::update() {
     // ONLY check for lift G-forces if he isn't already being handled!
     float currentGForce = currentAngles.gForce;
     if (!isHandling) {
-        if (currentGForce > BehaviourConfig::GFORCE_LIFT_UP_THRESHOLD || 
-            currentGForce < BehaviourConfig::GFORCE_LIFT_DOWN_THRESHOLD || 
-            totalRawEnergy > BehaviourConfig::LIFT_ENERGY_SPIKE_THRESHOLD) {
+        if (currentGForce > Config.GFORCE_LIFT_UP_THRESHOLD || 
+            currentGForce < Config.GFORCE_LIFT_DOWN_THRESHOLD || 
+            totalRawEnergy > Config.LIFT_ENERGY_SPIKE_THRESHOLD) {
             hasExperiencedLift = true;
         }
     }
 
-    float effectiveYawEnergy = (rawYawEnergy > BehaviourConfig::DIZZY_ENERGY_DEADBAND) ? rawYawEnergy : 0.0f;
-    float effectivePitchEnergy = (rawPitchEnergy > BehaviourConfig::DIZZY_ENERGY_DEADBAND) ? rawPitchEnergy : 0.0f;
-    float effectiveRollEnergy = (rawRollEnergy > BehaviourConfig::DIZZY_ENERGY_DEADBAND) ? rawRollEnergy : 0.0f;
+    float effectiveYawEnergy = (rawYawEnergy > Config.DIZZY_ENERGY_DEADBAND) ? rawYawEnergy : 0.0f;
+    float effectivePitchEnergy = (rawPitchEnergy > Config.DIZZY_ENERGY_DEADBAND) ? rawPitchEnergy : 0.0f;
+    float effectiveRollEnergy = (rawRollEnergy > Config.DIZZY_ENERGY_DEADBAND) ? rawRollEnergy : 0.0f;
     
-    dizzyBarYaw = (BehaviourConfig::DIZZY_CHARGE_RATE * effectiveYawEnergy) + (BehaviourConfig::DIZZY_DECAY_RATE * dizzyBarYaw);
-    dizzyBarPitch = (BehaviourConfig::DIZZY_CHARGE_RATE * effectivePitchEnergy) + (BehaviourConfig::DIZZY_DECAY_RATE * dizzyBarPitch);
-    dizzyBarRoll = (BehaviourConfig::DIZZY_CHARGE_RATE * effectiveRollEnergy) + (BehaviourConfig::DIZZY_DECAY_RATE * dizzyBarRoll);
+    dizzyBarYaw = (Config.DIZZY_CHARGE_RATE * effectiveYawEnergy) + (Config.DIZZY_DECAY_RATE * dizzyBarYaw);
+    dizzyBarPitch = (Config.DIZZY_CHARGE_RATE * effectivePitchEnergy) + (Config.DIZZY_DECAY_RATE * dizzyBarPitch);
+    dizzyBarRoll = (Config.DIZZY_CHARGE_RATE * effectiveRollEnergy) + (Config.DIZZY_DECAY_RATE * dizzyBarRoll);
 
     lastAngles = currentAngles;
     
@@ -123,23 +124,23 @@ void BehaviourEngine::update() {
             activeMode = obstacleMode;
         }
     }
-    else if (distance > 0 && distance < PersonalityConfig::OBSTACLE_TRIGGER_DISTANCE_CM) {
+    else if (distance > 0 && distance < Config.OBSTACLE_TRIGGER_CM) {
         if (activeMode == distanceMode) activeMode = distanceMode;
         else if (distanceDelta < -15.0f) { activeMode = distanceMode; isDizzy = false; }
         else { activeMode = obstacleMode; isDizzy = false; }
     } 
-    else if (activeMode == distanceMode && distance > 0 && distance < (PersonalityConfig::OBSTACLE_TRIGGER_DISTANCE_CM + 15.0f)) {
+    else if (activeMode == distanceMode && distance > 0 && distance < (Config.OBSTACLE_TRIGGER_CM + 15.0f)) {
         activeMode = distanceMode;
     }
-    else if ((dizzyBarYaw > BehaviourConfig::DIZZY_TRIGGER_THRESHOLD || 
-              dizzyBarPitch > BehaviourConfig::DIZZY_TRIGGER_THRESHOLD || 
-              dizzyBarRoll > BehaviourConfig::DIZZY_TRIGGER_THRESHOLD) && !isDizzy) {
+    else if ((dizzyBarYaw > Config.DIZZY_TRIGGER_THRESHOLD || 
+              dizzyBarPitch > Config.DIZZY_TRIGGER_THRESHOLD || 
+              dizzyBarRoll > Config.DIZZY_TRIGGER_THRESHOLD) && !isDizzy) {
         isDizzy = true;
         dizzyStartTime = millis(); activeMode = dizzyMode;
         dizzyBarYaw = 0.0f; dizzyBarPitch = 0.0f; dizzyBarRoll = 0.0f;
     }
     else if (isDizzy) {
-        if (millis() - dizzyStartTime > BehaviourConfig::DIZZY_DURATION_MS) {
+        if (millis() - dizzyStartTime > Config.DIZZY_DURATION_MS) {
             isDizzy = false;
             isHandling = false; hasExperiencedLift = false; 
             isLowering = false; hasLanded = false; // Reset gravity sequence memory!
@@ -151,25 +152,25 @@ void BehaviourEngine::update() {
     }
     else {
         // THE HANDLING LATCH
-        if (abs(currentAngles.pitch) > BehaviourConfig::TILT_HANDLING_THRESHOLD || 
-            abs(currentAngles.roll) > BehaviourConfig::TILT_HANDLING_THRESHOLD) {
+        if (abs(currentAngles.pitch) > Config.TILT_HANDLING_THRESHOLD || 
+            abs(currentAngles.roll) > Config.TILT_HANDLING_THRESHOLD) {
             if (hasExperiencedLift) isHandling = true;
         }
 
-        bool isUpright = (abs(currentAngles.pitch) < BehaviourConfig::UPRIGHT_ANGLE_TOLERANCE && 
-                          abs(currentAngles.roll) < BehaviourConfig::UPRIGHT_ANGLE_TOLERANCE);
+        bool isUpright = (abs(currentAngles.pitch) < Config.UPRIGHT_ANGLE_TOLERANCE && 
+                          abs(currentAngles.roll) < Config.UPRIGHT_ANGLE_TOLERANCE);
                           
         // Restored to the correct math boundary so he actually knows when he is put down!
-        if (isUpright && smoothedTotalEnergy < BehaviourConfig::PERFECTLY_STILL_ENERGY) {
+        if (isUpright && smoothedTotalEnergy < Config.PERFECTLY_STILL_ENERGY) {
             isHandling = false;
         }
 
         if (activeMode != compassMode) {
             if (isHandling) {
-                if (totalRawEnergy < BehaviourConfig::STEADY_HOLD_ENERGY_MAX) {
+                if (totalRawEnergy < Config.STEADY_HOLD_ENERGY_MAX) {
                     if (!pickupTimerActive) {
                         pickupTimerActive = true; pickupStartTime = millis();
-                    } else if (millis() - pickupStartTime >= BehaviourConfig::COMPASS_ENTRY_SETTLE_MS) {
+                    } else if (millis() - pickupStartTime >= Config.COMPASS_LOCK_ENTRY_SETTLE_MS) {
                         activeMode = compassMode;
                         pickupTimerActive = false; 
                         settlingTimerActive = false; 
@@ -184,25 +185,25 @@ void BehaviourEngine::update() {
             // ========================================================
             
             // 1. Detect lowering (Partial Freefall)
-            if (currentGForce < BehaviourConfig::GFORCE_LIFT_DOWN_THRESHOLD) {
+            if (currentGForce < Config.GFORCE_LIFT_DOWN_THRESHOLD) {
                 isLowering = true;
                 hasLanded = false;
                 settlingTimerActive = false;
             }
             
             // 2. Detect Impact (High G or Energy Spike) while lowering
-            if (isLowering && (currentGForce > BehaviourConfig::GFORCE_LIFT_UP_THRESHOLD || totalRawEnergy > BehaviourConfig::STEADY_HOLD_ENERGY_MAX)) {
+            if (isLowering && (currentGForce > Config.GFORCE_LIFT_UP_THRESHOLD || totalRawEnergy > Config.STEADY_HOLD_ENERGY_MAX)) {
                 hasLanded = true;
                 isLowering = false;
             }
 
             // 3. The Table Test (Has Landed OR Gently Placed down with math satisfaction)
-            if (hasLanded || (!isHandling && smoothedTotalEnergy < BehaviourConfig::PERFECTLY_STILL_ENERGY)) {
-                if (isUpright && smoothedTotalEnergy < BehaviourConfig::PERFECTLY_STILL_ENERGY) {
+            if (hasLanded || (!isHandling && smoothedTotalEnergy < Config.PERFECTLY_STILL_ENERGY)) {
+                if (isUpright && smoothedTotalEnergy < Config.PERFECTLY_STILL_ENERGY) {
                     if (!settlingTimerActive) {
                         settlingTimerActive = true;
                         settlingStartTime = millis();
-                    } else if (millis() - settlingStartTime >= BehaviourConfig::COMPASS_EXIT_SETTLE_MS) {
+                    } else if (millis() - settlingStartTime >= Config.COMPASS_LOCK_EXIT_SETTLE_MS) {
                         // Success! Safely on the ground.
                         activeMode = normalMode;
                         isHandling = false;
@@ -226,15 +227,15 @@ void BehaviourEngine::update() {
     // ==========================================
     // THE MOOD ENGINE
     // ==========================================
-    if (activeMode == distanceMode) frustrationLevel += PersonalityConfig::FRUSTRATION_HEATUP_RATE;
-    else frustrationLevel -= PersonalityConfig::FRUSTRATION_COOLDOWN_RATE; 
+    if (activeMode == distanceMode) frustrationLevel += Config.FRUSTRATION_HEATUP_RATE;
+    else frustrationLevel -= Config.FRUSTRATION_COOLDOWN_RATE; 
 
     if (frustrationLevel < 0.0f) frustrationLevel = 0.0f;
-    if (frustrationLevel > PersonalityConfig::DISTANCE_HOLD_FRUSTRATION_LIMIT + 50.0f) {
-        frustrationLevel = PersonalityConfig::DISTANCE_HOLD_FRUSTRATION_LIMIT + 50.0f;
+    if (frustrationLevel > Config.DISTANCE_HOLD_FRUSTRATION_LIMIT + 50.0f) {
+        frustrationLevel = Config.DISTANCE_HOLD_FRUSTRATION_LIMIT + 50.0f;
     }
 
-    if (frustrationLevel >= PersonalityConfig::DISTANCE_HOLD_FRUSTRATION_LIMIT) activeMood = Moods::ANGRY;
+    if (frustrationLevel >= Config.DISTANCE_HOLD_FRUSTRATION_LIMIT) activeMood = Moods::ANGRY;
     else activeMood = Moods::HAPPY;
     
     if (isGroggyPhase) {

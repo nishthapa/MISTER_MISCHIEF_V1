@@ -36,9 +36,12 @@ CommandProcessor::CommandProcessor() {
 const char* autoDict[] = {
     "set", "get", "reset", "calib", "default", "ALL",
     "connect", "disconnect", "reboot", "wifi", "bluetooth",
-    "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DISTANCE_CM", "MOTOR_MIN_PWM",
+    "SERIAL_BAUD_RATE", "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DISTANCE_CM", "MOTOR_MIN_PWM",
     "OBS_SWEEP_ANGLE", "OBS_SWEEP_SPEED", "OBS_SWEEP_PAUSE", "OBS_CLEAR_THRESH", "OBS_HYSTERESIS",
+    "OBSTACLE_ESCAPE_BASE_SPEED", "OBSTACLE_BACKUP_DURATION_MS", "OBSTACLE_SWEEP_ANGLE_DEG", "OBSTACLE_SWEEP_TIMEOUT_MS",
+    "OBSTACLE_ALIGN_TIMEOUT_MS", "OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG", "OBSTACLE_ESCAPE_DURATION_MS",
     "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
+    "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
     "IMU_MADGWICK_BETA", "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
     "PID_HEADING_P", "PID_HEADING_I", "PID_HEADING_D", "PID_HEADING_LIM", "PID_HEADING_ILIM", "PID_HEADING_DEAD",
     "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
@@ -50,6 +53,7 @@ const char* autoDict[] = {
     "ENERGY_EMA_ALPHA", "ENERGY_EMA_BETA",
     "DISTANCE_HOLD_FRUSTRATION_LIMIT", "FRUSTRATION_COOLDOWN_RATE", "FRUSTRATION_HEATUP_RATE",
     "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", "SERIAL_DEBUG_IMU", "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER",
+    "DEBUG_ACTIVE", "DEBUG_USB", "DEBUG_WIFI", "DEBUG_BLUETOOTH", "ACTIVE_DEBUG_MODE",
     "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE",
     "PIN_MOTOR_LEFT_FWD", "PIN_MOTOR_LEFT_REV", "PIN_MOTOR_RIGHT_FWD", "PIN_MOTOR_RIGHT_REV",
     "PIN_SONAR_TRIG", "PIN_SONAR_ECHO", "PIN_I2C_SCL", "PIN_I2C_SDA", "PIN_IMU_INT",
@@ -59,9 +63,12 @@ const char* autoDict[] = {
 const int dictSize = sizeof(autoDict) / sizeof(autoDict[0]);
 
 const char* sysVariables[] = {
-    "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DISTANCE_CM", "MOTOR_MIN_PWM",
+    "SERIAL_BAUD_RATE", "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DISTANCE_CM", "MOTOR_MIN_PWM",
     "OBS_SWEEP_ANGLE", "OBS_SWEEP_SPEED", "OBS_SWEEP_PAUSE", "OBS_CLEAR_THRESH", "OBS_HYSTERESIS",
+    "OBSTACLE_ESCAPE_BASE_SPEED", "OBSTACLE_BACKUP_DURATION_MS", "OBSTACLE_SWEEP_ANGLE_DEG", "OBSTACLE_SWEEP_TIMEOUT_MS",
+    "OBSTACLE_ALIGN_TIMEOUT_MS", "OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG", "OBSTACLE_ESCAPE_DURATION_MS",
     "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
+    "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
     "IMU_MADGWICK_BETA", "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
     "PID_HEADING_P", "PID_HEADING_I", "PID_HEADING_D", "PID_HEADING_LIM", "PID_HEADING_ILIM", "PID_HEADING_DEAD",
     "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
@@ -73,7 +80,9 @@ const char* sysVariables[] = {
     "ENERGY_EMA_ALPHA", "ENERGY_EMA_BETA",
     "DISTANCE_HOLD_FRUSTRATION_LIMIT", "FRUSTRATION_COOLDOWN_RATE", "FRUSTRATION_HEATUP_RATE",
     "BRAIN_ACTIVE", "SERIAL_DEBUG_MASTER", "SERIAL_DEBUG_IMU", "SERIAL_DEBUG_SONAR", "SERIAL_DEBUG_MOTOR_DRIVER",
+    "DEBUG_ACTIVE", "DEBUG_USB", "DEBUG_WIFI", "DEBUG_BLUETOOTH", "ACTIVE_DEBUG_MODE",
     "WIFI_SSID", "WIFI_PASSWORD", "WIFI_ACTIVE", "BT_NAME", "BT_ACTIVE",
+    // Hardware specific static variables that we want to be able to read but not write through the CLI:
     "PIN_MOTOR_LEFT_FWD", "PIN_MOTOR_LEFT_REV", "PIN_MOTOR_RIGHT_FWD", "PIN_MOTOR_RIGHT_REV",
     "PIN_SONAR_TRIG", "PIN_SONAR_ECHO", "PIN_I2C_SCL", "PIN_I2C_SDA", "PIN_IMU_INT",
     "I2C_ADDR_MPU6050", "CH_MOTOR_LEFT_FWD", "CH_MOTOR_RIGHT_FWD", "TELNET_PORT", "MAIN_LOOP_TICK_RATE_MS"
@@ -443,19 +452,29 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     // ==========================================
     // VARIABLE ASSIGNMENT & TYPE CONVERSION
     // ==========================================
+    if (varName == "SERIAL_BAUD_RATE") { Config.SERIAL_BAUD_RATE = valStr.toInt(); }
 
     // --- MOVEMENT TUNING VARS ---
-    if (varName == "CRUISING_SPEED") { Config.CRUISING_SPEED = valStr.toFloat(); }
+    else if (varName == "CRUISING_SPEED") { Config.CRUISING_SPEED = valStr.toFloat(); }
     else if (varName == "OBSTACLE_TRIGGER_CM") { Config.OBSTACLE_TRIGGER_CM = valStr.toFloat(); }
     else if (varName == "MAINTAIN_DISTANCE_CM") { Config.MAINTAIN_DISTANCE_CM = valStr.toFloat(); }
     else if (varName == "MOTOR_MIN_PWM") { Config.MOTOR_MIN_PWM = valStr.toInt(); }
 
-    // --- OBSTACLE AVOIDANCE TUNING VARS ---
+    // --- OBSTACLE AVOIDANCE TUNING VARS PART 1 ---
     else if (varName == "OBS_SWEEP_ANGLE") { Config.OBS_SWEEP_ANGLE = valStr.toFloat(); }
     else if (varName == "OBS_SWEEP_SPEED") { Config.OBS_SWEEP_SPEED = valStr.toFloat(); }
     else if (varName == "OBS_SWEEP_PAUSE") { Config.OBS_SWEEP_PAUSE = valStr.toInt(); }
     else if (varName == "OBS_CLEAR_THRESH") { Config.OBS_CLEAR_THRESH = valStr.toFloat(); }
     else if (varName == "OBS_HYSTERESIS") { Config.OBS_HYSTERESIS = valStr.toFloat(); }
+
+    // --- OBSTACLE AVOIDANCE TUNING VARS PART 2 ---
+    else if (varName == "OBSTACLE_ESCAPE_BASE_SPEED") { Config.OBSTACLE_ESCAPE_BASE_SPEED = valStr.toFloat(); }
+    else if (varName == "OBSTACLE_BACKUP_DURATION_MS") { Config.OBSTACLE_BACKUP_DURATION_MS = valStr.toInt(); }
+    else if (varName == "OBSTACLE_SWEEP_ANGLE_DEG") { Config.OBSTACLE_SWEEP_ANGLE_DEG = valStr.toFloat(); }
+    else if (varName == "OBSTACLE_SWEEP_TIMEOUT_MS") { Config.OBSTACLE_SWEEP_TIMEOUT_MS = valStr.toInt(); }
+    else if (varName == "OBSTACLE_ALIGN_TIMEOUT_MS") { Config.OBSTACLE_ALIGN_TIMEOUT_MS = valStr.toInt(); }
+    else if (varName == "OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG") { Config.OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG = valStr.toFloat(); }
+    else if (varName == "OBSTACLE_ESCAPE_DURATION_MS") { Config.OBSTACLE_ESCAPE_DURATION_MS = valStr.toInt(); }
 
     // --- MODE TUNING VARS ---
     else if (varName == "DIZZY_SPIN_PWM") { Config.DIZZY_SPIN_PWM = valStr.toInt(); }
@@ -463,6 +482,10 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     else if (varName == "DIZZY_COOLDOWN") { Config.DIZZY_COOLDOWN = valStr.toInt(); }
     else if (varName == "SLEEP_TIMEOUT_MS") { Config.SLEEP_TIMEOUT_MS = valStr.toInt(); }
     else if (varName == "SLEEP_WAKE_G") { Config.SLEEP_WAKE_G = valStr.toFloat(); }
+
+    // --- COMPASS LOCK ENTRY & EXIT SETTLING VARS ---
+    else if (varName == "COMPASS_LOCK_ENTRY_SETTLE_MS") { Config.COMPASS_LOCK_ENTRY_SETTLE_MS = valStr.toInt(); }
+    else if (varName == "COMPASS_LOCK_EXIT_SETTLE_MS") { Config.COMPASS_LOCK_EXIT_SETTLE_MS = valStr.toInt(); }
 
     // --- SENSOR TUNING VARS ---
     else if (varName == "IMU_MADGWICK_BETA") { Config.IMU_MADGWICK_BETA = valStr.toFloat(); }
@@ -525,6 +548,31 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     // --- SYSTEM VARS ---
     else if (varName == "BRAIN_ACTIVE") { Config.BRAIN_ACTIVE = (valStr == "on" || valStr == "1" || valStr == "true"); }
     else if (varName == "SERIAL_DEBUG_MASTER") { Config.SERIAL_DEBUG_MASTER = (valStr == "on" || valStr == "1" || valStr == "true"); }
+
+    else if (varName == "DEBUG_ACTIVE") { 
+        valStr.toLowerCase();
+        bool debugOn = (valStr == "on" || valStr == "1" || valStr == "true");
+        Config.DEBUG_ACTIVE = debugOn;
+        if (debugOn) {
+            Config.DEBUG_USB = false;
+            Config.DEBUG_WIFI = false;
+            Config.DEBUG_BLUETOOTH = false;
+        }
+    }
+    else if (varName == "DEBUG_USB") { 
+        valStr.toLowerCase();
+        Config.DEBUG_USB = (valStr == "on" || valStr == "1" || valStr == "true"); 
+    }
+    else if (varName == "DEBUG_WIFI") { 
+        valStr.toLowerCase();
+        Config.DEBUG_WIFI = (valStr == "on" || valStr == "1" || valStr == "true"); 
+    }
+    else if (varName == "DEBUG_BLUETOOTH") { 
+        valStr.toLowerCase();
+        Config.DEBUG_BLUETOOTH = (valStr == "on" || valStr == "1" || valStr == "true"); 
+    }
+
+    else if (varName == "ACTIVE_DEBUG_MODE") { Config.ACTIVE_DEBUG_MODE = (valStr == "on" || valStr == "1" || valStr == "true"); }
     
     /* FOR LATER: Granular debug controls for each subsystem!
     else if (varName == "SERIAL_DEBUG_IMU") { 
@@ -579,7 +627,12 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     }
 
     // 2. The Elegant Formatter
-    if (varName == "CRUISING_SPEED") { 
+    if (varName == "SERIAL_BAUD_RATE") { 
+        if (wantDefaultOnly) logger.printf("[SERIAL_BAUD_RATE] Default: %d\n", FactoryDefaults::SERIAL_BAUD_RATE);
+        else logger.printf("[SERIAL_BAUD_RATE] Current: %d | Default: %d\n", Config.SERIAL_BAUD_RATE, FactoryDefaults::SERIAL_BAUD_RATE);
+    }
+    
+    else if (varName == "CRUISING_SPEED") { 
         if (wantDefaultOnly) logger.printf("[CRUISING_SPEED] Default: %.1f\n", FactoryDefaults::CRUISING_SPEED);
         else logger.printf("[CRUISING_SPEED] Current: %.1f | Default: %.1f\n", Config.CRUISING_SPEED, FactoryDefaults::CRUISING_SPEED);
     }
@@ -596,7 +649,7 @@ void CommandProcessor::handleGet(String varName, String valStr) {
         else logger.printf("[MOTOR_MIN_PWM] Current: %d | Default: %d\n", Config.MOTOR_MIN_PWM, FactoryDefaults::MOTOR_MIN_PWM);
     }
 
-    // --- OBSTACLE AVOIDANCE TUNING VARS ---
+    // --- OBSTACLE AVOIDANCE TUNING VARS PART 1---
     else if (varName == "OBS_SWEEP_ANGLE") { 
         if (wantDefaultOnly) logger.printf("[OBS_SWEEP_ANGLE] Default: %.1f\n", FactoryDefaults::OBS_SWEEP_ANGLE);
         else logger.printf("[OBS_SWEEP_ANGLE] Current: %.1f | Default: %.1f\n", Config.OBS_SWEEP_ANGLE, FactoryDefaults::OBS_SWEEP_ANGLE);
@@ -616,6 +669,36 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     else if (varName == "OBS_HYSTERESIS") { 
         if (wantDefaultOnly) logger.printf("[OBS_HYSTERESIS] Default: %.1f\n", FactoryDefaults::OBS_HYSTERESIS);
         else logger.printf("[OBS_HYSTERESIS] Current: %.1f | Default: %.1f\n", Config.OBS_HYSTERESIS, FactoryDefaults::OBS_HYSTERESIS);
+    }
+
+    // --- OBSTACLE AVOIDANCE TUNING VARS PART 2 ---
+    else if (varName == "OBSTACLE_ESCAPE_BASE_SPEED") { 
+        if (wantDefaultOnly) logger.printf("[OBSTACLE_ESCAPE_BASE_SPEED] Default: %.1f\n", FactoryDefaults::OBSTACLE_ESCAPE_BASE_SPEED);
+        else logger.printf("[OBSTACLE_ESCAPE_BASE_SPEED] Current: %.1f | Default: %.1f\n", Config.OBSTACLE_ESCAPE_BASE_SPEED, FactoryDefaults::OBSTACLE_ESCAPE_BASE_SPEED);
+    }
+    else if (varName == "OBSTACLE_BACKUP_DURATION_MS") { 
+        if (wantDefaultOnly) logger.printf("[OBSTACLE_BACKUP_DURATION_MS] Default: %lu\n", FactoryDefaults::OBSTACLE_BACKUP_DURATION_MS);
+        else logger.printf("[OBSTACLE_BACKUP_DURATION_MS] Current: %lu | Default: %lu\n", Config.OBSTACLE_BACKUP_DURATION_MS, FactoryDefaults::OBSTACLE_BACKUP_DURATION_MS);
+    }
+    else if (varName == "OBSTACLE_SWEEP_ANGLE_DEG") { 
+        if (wantDefaultOnly) logger.printf("[OBSTACLE_SWEEP_ANGLE_DEG] Default: %.1f\n", FactoryDefaults::OBSTACLE_SWEEP_ANGLE_DEG);
+        else logger.printf("[OBSTACLE_SWEEP_ANGLE_DEG] Current: %.1f | Default: %.1f\n", Config.OBSTACLE_SWEEP_ANGLE_DEG, FactoryDefaults::OBSTACLE_SWEEP_ANGLE_DEG);
+    }
+    else if (varName == "OBSTACLE_SWEEP_TIMEOUT_MS") { 
+        if (wantDefaultOnly) logger.printf("[OBSTACLE_SWEEP_TIMEOUT_MS] Default: %lu\n", FactoryDefaults::OBSTACLE_SWEEP_TIMEOUT_MS);
+        else logger.printf("[OBSTACLE_SWEEP_TIMEOUT_MS] Current: %lu | Default: %lu\n", Config.OBSTACLE_SWEEP_TIMEOUT_MS, FactoryDefaults::OBSTACLE_SWEEP_TIMEOUT_MS);
+    }
+    else if (varName == "OBSTACLE_ALIGN_TIMEOUT_MS") { 
+        if (wantDefaultOnly) logger.printf("[OBSTACLE_ALIGN_TIMEOUT_MS] Default: %lu\n", FactoryDefaults::OBSTACLE_ALIGN_TIMEOUT_MS);
+        else logger.printf("[OBSTACLE_ALIGN_TIMEOUT_MS] Current: %lu | Default: %lu\n", Config.OBSTACLE_ALIGN_TIMEOUT_MS, FactoryDefaults::OBSTACLE_ALIGN_TIMEOUT_MS);
+    }
+    else if (varName == "OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG") { 
+        if (wantDefaultOnly) logger.printf("[OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG] Default: %.1f\n", FactoryDefaults::OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG);
+        else logger.printf("[OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG] Current: %.1f | Default: %.1f\n", Config.OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG, FactoryDefaults::OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG);
+    }
+    else if (varName == "OBSTACLE_ESCAPE_DURATION_MS") { 
+        if (wantDefaultOnly) logger.printf("[OBSTACLE_ESCAPE_DURATION_MS] Default: %lu\n", FactoryDefaults::OBSTACLE_ESCAPE_DURATION_MS);
+        else logger.printf("[OBSTACLE_ESCAPE_DURATION_MS] Current: %lu | Default: %lu\n", Config.OBSTACLE_ESCAPE_DURATION_MS, FactoryDefaults::OBSTACLE_ESCAPE_DURATION_MS);
     }
 
     // --- MODE TUNING VARS ---
@@ -638,6 +721,16 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     else if (varName == "SLEEP_WAKE_G") { 
         if (wantDefaultOnly) logger.printf("[SLEEP_WAKE_G] Default: %.1f\n", FactoryDefaults::SLEEP_WAKE_G);
         else logger.printf("[SLEEP_WAKE_G] Current: %.1f | Default: %.1f\n", Config.SLEEP_WAKE_G, FactoryDefaults::SLEEP_WAKE_G);
+    }
+
+    // --- COMPASS LOCK ENTRY & EXIT SETTLING VARS ---
+    else if (varName == "COMPASS_LOCK_ENTRY_SETTLE_MS") { 
+        if (wantDefaultOnly) logger.printf("[COMPASS_LOCK_ENTRY_SETTLE_MS] Default: %d\n", FactoryDefaults::COMPASS_LOCK_ENTRY_SETTLE_MS);
+        else logger.printf("[COMPASS_LOCK_ENTRY_SETTLE_MS] Current: %d | Default: %d\n", Config.COMPASS_LOCK_ENTRY_SETTLE_MS, FactoryDefaults::COMPASS_LOCK_ENTRY_SETTLE_MS);
+    }
+    else if (varName == "COMPASS_LOCK_EXIT_SETTLE_MS") { 
+        if (wantDefaultOnly) logger.printf("[COMPASS_LOCK_EXIT_SETTLE_MS] Default: %d\n", FactoryDefaults::COMPASS_LOCK_EXIT_SETTLE_MS);
+        else logger.printf("[COMPASS_LOCK_EXIT_SETTLE_MS] Current: %d | Default: %d\n", Config.COMPASS_LOCK_EXIT_SETTLE_MS, FactoryDefaults::COMPASS_LOCK_EXIT_SETTLE_MS);
     }
 
     // --- SENSOR TUNING VARS ---
@@ -853,6 +946,27 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     else if (varName == "SERIAL_DEBUG_MASTER") { 
         if (wantDefaultOnly) logger.printf("[SERIAL_DEBUG_MASTER] Default: %s\n", FactoryDefaults::SERIAL_DEBUG_MASTER ? "ON" : "OFF");
         else logger.printf("[SERIAL_DEBUG_MASTER] Current: %s | Default: %s\n", Config.SERIAL_DEBUG_MASTER ? "ON" : "OFF", FactoryDefaults::SERIAL_DEBUG_MASTER ? "ON" : "OFF");
+    }
+
+    else if (varName == "DEBUG_MODE") { 
+        if (wantDefaultOnly) logger.printf("[DEBUG_MODE] Default: %s\n", FactoryDefaults::DEBUG_ACTIVE ? "ON" : "OFF");
+        else logger.printf("[DEBUG_MODE] Current: %s | Default: %s\n", Config.DEBUG_ACTIVE ? "ON" : "OFF", FactoryDefaults::DEBUG_ACTIVE ? "ON" : "OFF");
+    }
+    else if (varName == "DEBUG_USB") { 
+        if (wantDefaultOnly) logger.printf("[DEBUG_USB] Default: %s\n", FactoryDefaults::DEBUG_USB ? "ON" : "OFF");
+        else logger.printf("[DEBUG_USB] Current: %s | Default: %s\n", Config.DEBUG_USB ? "ON" : "OFF", FactoryDefaults::DEBUG_USB ? "ON" : "OFF");
+    }
+    else if (varName == "DEBUG_WIFI") { 
+        if (wantDefaultOnly) logger.printf("[DEBUG_WIFI] Default: %s\n", FactoryDefaults::DEBUG_WIFI ? "ON" : "OFF");
+        else logger.printf("[DEBUG_WIFI] Current: %s | Default: %s\n", Config.DEBUG_WIFI ? "ON" : "OFF", FactoryDefaults::DEBUG_WIFI ? "ON" : "OFF");
+    }
+    else if (varName == "DEBUG_BLUETOOTH") { 
+        if (wantDefaultOnly) logger.printf("[DEBUG_BLUETOOTH] Default: %s\n", FactoryDefaults::DEBUG_BLUETOOTH ? "ON" : "OFF");
+        else logger.printf("[DEBUG_BLUETOOTH] Current: %s | Default: %s\n", Config.DEBUG_BLUETOOTH ? "ON" : "OFF", FactoryDefaults::DEBUG_BLUETOOTH ? "ON" : "OFF");
+    }
+    else if (varName == "ACTIVE_DEBUG_MODE") { 
+        if (wantDefaultOnly) logger.printf("[ACTIVE_DEBUG_MODE] Default: %s\n", FactoryDefaults::ACTIVE_DEBUG_MODE? "ON" : "OFF");
+        else logger.printf("[ACTIVE_DEBUG_MODE] Current: %s | Default: %s\n", Config.ACTIVE_DEBUG_MODE ? "ON" : "OFF", FactoryDefaults::ACTIVE_DEBUG_MODE ? "ON" : "OFF");
     }
 
     else if (varName == "") {

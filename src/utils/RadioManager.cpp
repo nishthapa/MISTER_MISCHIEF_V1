@@ -1,9 +1,9 @@
 #include "utils/RadioManager.h" 
-#include "config/DebugConfig.h" 
+//#include "config/DebugConfig.h" 
 #include "config/ConfigurationManager.h" // The new NVS Hook!
 
 void RadioManager::initRadios() {
-    bool printLogs = (DebugConfig::ACTIVE_DEBUG_MODE & DebugConfig::DEBUG_USB);
+    bool printLogs = (Config.ACTIVE_DEBUG_MODE & Config.DEBUG_USB);
 
     if (printLogs) {
         Serial.println("\n=== RADIO INFRASTRUCTURE BOOT ===");
@@ -59,7 +59,7 @@ void RadioManager::initRadios() {
 // --- NEW DYNAMIC COMMAND LINE CONTROLS ---
 
 void RadioManager::connectWiFi(String ssid, String password) {
-    bool printLogs = (DebugConfig::ACTIVE_DEBUG_MODE & DebugConfig::DEBUG_USB);
+    bool printLogs = (Config.ACTIVE_DEBUG_MODE & Config.DEBUG_USB);
     if (ssid == "") return;
     
     // Disconnect if already connected before trying new credentials

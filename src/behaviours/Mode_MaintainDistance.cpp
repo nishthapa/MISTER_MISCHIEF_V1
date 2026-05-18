@@ -1,7 +1,8 @@
 #include "behaviours/Mode_MaintainDistance.h"
 #include "utils/RemoteLogger.h"
-#include "config/PersonalityConfig.h" // <-- For the distance target
+// #include "config/PersonalityConfig.h" // Safe to DELETE since we're now pulling these values from the NVS-backed ConfigurationManager
 #include "config/SystemConfig.h"      // <-- For the master clock
+#include "config/ConfigurationManager.h"
 
 Mode_MaintainDistance::Mode_MaintainDistance(I_DistanceSensor* s, I_MotorDriver* m, PIDController* p) {
     sonar = s; motors = m; pid = p;
@@ -18,8 +19,8 @@ void Mode_MaintainDistance::update(const RobotMood& currentMood) {
     float dt = SystemConfig::MAIN_LOOP_TICK_RATE_MS / 1000.0f;
     
     // Target distance to maintain is defined in PersonalityConfig
-    float correction = pid->compute(PersonalityConfig::MAINTAIN_DISTANCE_TARGET_CM, currentDistance, dt); 
-    
+    // float correction = pid->compute(PersonalityConfig::MAINTAIN_DISTANCE_TARGET_CM, currentDistance, dt); 
+    float correction = pid->compute(Config.MAINTAIN_DISTANCE_CM, currentDistance, dt);
     float finalSpeed = correction * currentMood.speedMultiplier;
     motors->drive(-finalSpeed, -finalSpeed); 
 }
