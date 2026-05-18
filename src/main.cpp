@@ -166,11 +166,11 @@ TaskHandle_t ControlLoopTaskHandle;
 void setup() {
   // === BOOT THE ESP32 NVS HARD DRIVE ===
   ConfigSys.init(); 
-  logger.println("Configuration Manager loaded from permanent memory.");
-
+  
   logger.beginSerial();
   RadioManager::initRadios();
   logger.bindRadios();
+  logger.println("Configuration Manager loaded from permanent memory.");
 
 // ==========================================
   // THE TELNET WAITING ROOM
