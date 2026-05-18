@@ -8,9 +8,17 @@
 #include "utils/RemoteLogger.h"
 #include "utils/RadioManager.h"
 #include "hal/interfaces/I_IMU.h" // for calibration commands
+#include "core/PIDController.h"
+
 
 extern RemoteLogger logger;
 extern I_IMU* imu; // Reaches into main.cpp to grab the global IMU!
+
+// --- All the PID controllers for live-tuning access in the CLI ---
+extern PIDController headingPID;
+extern PIDController compassPID;
+extern PIDController distancePID;
+extern PIDController obstacleAvoidancePID;
 
 CommandProcessor::CommandProcessor() {
     // ==========================================
@@ -42,7 +50,7 @@ const char* autoDict[] = {
     "OBSTACLE_ALIGN_TIMEOUT_MS", "OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG", "OBSTACLE_ESCAPE_DURATION_MS",
     "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
     "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
-    "IMU_MADGWICK_BETA", "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
+    "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
     "MADGWICK_FILTER_BETA",
     "PID_HEADING_P", "PID_HEADING_I", "PID_HEADING_D", "PID_HEADING_LIM", "PID_HEADING_ILIM", "PID_HEADING_DEAD",
     "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
@@ -70,7 +78,7 @@ const char* sysVariables[] = {
     "OBSTACLE_ALIGN_TIMEOUT_MS", "OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG", "OBSTACLE_ESCAPE_DURATION_MS",
     "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
     "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
-    "IMU_MADGWICK_BETA", "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
+    "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
     "MADGWICK_FILTER_BETA",
     "PID_HEADING_P", "PID_HEADING_I", "PID_HEADING_D", "PID_HEADING_LIM", "PID_HEADING_ILIM", "PID_HEADING_DEAD",
     "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
@@ -490,11 +498,14 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     else if (varName == "COMPASS_LOCK_EXIT_SETTLE_MS") { Config.COMPASS_LOCK_EXIT_SETTLE_MS = valStr.toInt(); }
 
     // --- SENSOR TUNING VARS ---
-    else if (varName == "IMU_MADGWICK_BETA") { Config.IMU_MADGWICK_BETA = valStr.toFloat(); }
     else if (varName == "IMU_GYRO_DEADBAND") { Config.IMU_GYRO_DEADBAND = valStr.toFloat(); }
     else if (varName == "SONAR_MAX_DIST") { Config.SONAR_MAX_DIST = valStr.toFloat(); }
 
-    else if (varName == "MADGWICK_FILTER_BETA") { Config.MADGWICK_FILTER_BETA = valStr.toFloat(); }
+    // APPLY THE NEW MADGWICK FILTER AS WELL AS SAVE IT IN THE NVS
+    else if (varName == "MADGWICK_FILTER_BETA") {
+        Config.MADGWICK_FILTER_BETA = valStr.toFloat();
+        imu->setFilterBeta(Config.MADGWICK_FILTER_BETA);
+    }
 
     // --- PID TUNING VARS ---
     else if (varName == "PID_HEADING_P") { Config.PID_HEADING_P = valStr.toFloat(); }
@@ -599,8 +610,33 @@ void CommandProcessor::handleSet(String varName, String valStr) {
 
     ConfigSys.save();
     logger.printf("Successfully set %s to %s\n", varName.c_str(), valStr.c_str());
-}
 
+    // ==========================================
+    // THE ELEGANT IMMEDIATE PID UPDATER CHECK
+    // ==========================================
+    // If the user just modified a PID value, push the whole updated 
+    // profile into the active memory of the running PID object immediately!
+    // SUPER CLEVER WORKAROUND OF APPLYING ALL PIDS OF A MODE IN ONE GO BY CHECKING THE PREFIX OF THE VARIABLE NAME!
+    // OTHERWISE, WE'D NEED TO WRITE A TON OF REDUNDANT CODE TO CHECK FOR EACH INDIVIDUAL PID VARIABLE AND THEN RE-APPLY THE TUNINGS,
+    // WHICH WOULD BE ANNOYING TO MAINTAIN AND EASY TO SCREW UP BY FORGETTING ONE!
+    
+    if (varName.startsWith("PID_HEADING")) {
+        headingPID.setTunings(Config.PID_HEADING_P, Config.PID_HEADING_I, Config.PID_HEADING_D, Config.PID_HEADING_ILIM, Config.PID_HEADING_LIM);
+        logger.printf("UPDATED HEADING PID. NEW TUNINGS: P = %.2f | I = %.2f | D=%.2f\n", Config.PID_HEADING_P, Config.PID_HEADING_I, Config.PID_HEADING_D);
+    }
+    else if (varName.startsWith("PID_COMPASS")) {
+        compassPID.setTunings(Config.PID_COMPASS_P, Config.PID_COMPASS_I, Config.PID_COMPASS_D, Config.PID_COMPASS_ILIM, Config.PID_COMPASS_LIM);
+        logger.printf("UPDATED COMPASS PID. NEW TUNINGS: P = %.2f | I = %.2f | D=%.2f\n", Config.PID_COMPASS_P, Config.PID_COMPASS_I, Config.PID_COMPASS_D);
+    }
+    else if (varName.startsWith("PID_DIST")) {
+        distancePID.setTunings(Config.PID_DIST_P, Config.PID_DIST_I, Config.PID_DIST_D, Config.PID_DIST_ILIM, Config.PID_DIST_LIM);
+        logger.printf("UPDATED DISTANCE PID. NEW TUNINGS: P = %.2f | I = %.2f | D=%.2f\n", Config.PID_DIST_P, Config.PID_DIST_I, Config.PID_DIST_D);
+    }
+    else if (varName.startsWith("PID_OBSTACLE")) {
+        obstacleAvoidancePID.setTunings(Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D, Config.PID_OBSTACLE_ILIM, Config.PID_OBSTACLE_LIM);
+        logger.printf("UPDATED OBSTACLE PID. NEW TUNINGS: P = %.2f | I = %.2f | D=%.2f\n", Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D);
+    }
+}
 
 void CommandProcessor::handleGet(String varName, String valStr) {
     // 1. Did the user type "get default <variable>"?
@@ -738,10 +774,6 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     }
 
     // --- SENSOR TUNING VARS ---
-    else if (varName == "IMU_MADGWICK_BETA") { 
-        if (wantDefaultOnly) logger.printf("[IMU_MADGWICK_BETA] Default: %.1f\n", FactoryDefaults::IMU_MADGWICK_BETA);
-        else logger.printf("[IMU_MADGWICK_BETA] Current: %.1f | Default: %.1f\n", Config.IMU_MADGWICK_BETA, FactoryDefaults::IMU_MADGWICK_BETA);
-    }
     else if (varName == "IMU_GYRO_DEADBAND") { 
         if (wantDefaultOnly) logger.printf("[IMU_GYRO_DEADBAND] Default: %.1f\n", FactoryDefaults::IMU_GYRO_DEADBAND);
         else logger.printf("[IMU_GYRO_DEADBAND] Current: %.1f | Default: %.1f\n", Config.IMU_GYRO_DEADBAND, FactoryDefaults::IMU_GYRO_DEADBAND);
@@ -752,14 +784,87 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     }
 
     else if (varName == "MADGWICK_FILTER_BETA") { 
-        if (wantDefaultOnly) logger.printf("[MADGWICK_FILTER_BETA] Default: %.1f\n", FactoryDefaults::MADGWICK_FILTER_BETA);
-        else logger.printf("[MADGWICK_FILTER_BETA] Current: %.1f | Default: %.1f\n", Config.MADGWICK_FILTER_BETA, FactoryDefaults::MADGWICK_FILTER_BETA);
+        if (wantDefaultOnly) logger.printf("[MADGWICK_FILTER_BETA] Default: %.4f\n", FactoryDefaults::MADGWICK_FILTER_BETA);
+        else logger.printf("[MADGWICK_FILTER_BETA] Current: %.4f | Default: %.4f\n", Config.MADGWICK_FILTER_BETA, FactoryDefaults::MADGWICK_FILTER_BETA);
     }
 
+    //experimental elegant "get all PID tunings at once" check by prefix!
+    else if (varName.startsWith("PID_HEADING")){
+        if (wantDefaultOnly) {
+            logger.printf("\t\t\t\t\t --- [PID_HEADING] ---\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("\t  PID_HEADING_P | PID_HEADING_I | PID_HEADING_D | PID_HEADING_LIM | PID_HEADING_ILIM | PID_HEADING_DEAD\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("DEFAULT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", FactoryDefaults::PID_HEADING_P, FactoryDefaults::PID_HEADING_I, FactoryDefaults::PID_HEADING_D, FactoryDefaults::PID_HEADING_LIM, FactoryDefaults::PID_HEADING_ILIM, FactoryDefaults::PID_HEADING_DEAD);
+        }
+        else {
+            logger.printf("\t\t\t\t\t --- [PID_HEADING] ---\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("\t  PID_HEADING_P | PID_HEADING_I | PID_HEADING_D | PID_HEADING_LIM | PID_HEADING_ILIM | PID_HEADING_DEAD\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("DEFAULT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", FactoryDefaults::PID_HEADING_P, FactoryDefaults::PID_HEADING_I, FactoryDefaults::PID_HEADING_D, FactoryDefaults::PID_HEADING_LIM, FactoryDefaults::PID_HEADING_ILIM, FactoryDefaults::PID_HEADING_DEAD);
+            logger.printf("CURRENT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", Config.PID_HEADING_P, Config.PID_HEADING_I, Config.PID_HEADING_D, Config.PID_HEADING_LIM, Config.PID_HEADING_ILIM, Config.PID_HEADING_DEAD);
+        }
+    }
+    else if (varName.startsWith("PID_COMPASS")){
+        if (wantDefaultOnly) {
+            logger.printf("\t\t\t\t\t --- [PID_COMPASS] ---\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("\t  PID_COMPASS_P | PID_COMPASS_I | PID_COMPASS_D | PID_COMPASS_LIM | PID_COMPASS_ILIM | PID_COMPASS_DEAD\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("DEFAULT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", FactoryDefaults::PID_COMPASS_P, FactoryDefaults::PID_COMPASS_I, FactoryDefaults::PID_COMPASS_D, FactoryDefaults::PID_COMPASS_LIM, FactoryDefaults::PID_COMPASS_ILIM, FactoryDefaults::PID_COMPASS_DEAD);
+        }
+        else {
+            logger.printf("\t\t\t\t\t --- [PID_COMPASS] ---\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("\t  PID_COMPASS_P | PID_COMPASS_I | PID_COMPASS_D | PID_COMPASS_LIM | PID_COMPASS_ILIM | PID_COMPASS_DEAD\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("DEFAULT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", FactoryDefaults::PID_COMPASS_P, FactoryDefaults::PID_COMPASS_I, FactoryDefaults::PID_COMPASS_D, FactoryDefaults::PID_COMPASS_LIM, FactoryDefaults::PID_COMPASS_ILIM, FactoryDefaults::PID_COMPASS_DEAD);
+            logger.printf("CURRENT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", Config.PID_COMPASS_P, Config.PID_COMPASS_I, Config.PID_COMPASS_D, Config.PID_COMPASS_LIM, Config.PID_COMPASS_ILIM, Config.PID_COMPASS_DEAD);
+        }
+    }
+    else if (varName.startsWith("PID_DIST")){
+        if (wantDefaultOnly) {
+            logger.printf("\t\t\t\t\t --- [PID_DIST] ---\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("\t  PID_DIST_P | PID_DIST_I | PID_DIST_D | PID_DIST_LIM | PID_DIST_ILIM | PID_DIST_DEAD\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("DEFAULT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", FactoryDefaults::PID_DIST_P, FactoryDefaults::PID_DIST_I, FactoryDefaults::PID_DIST_D, FactoryDefaults::PID_DIST_LIM, FactoryDefaults::PID_DIST_ILIM, FactoryDefaults::PID_DIST_DEAD);
+        }
+        else {
+            logger.printf("\t\t\t\t\t --- [PID_DIST] ---\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("\t  PID_DIST_P | PID_DIST_I | PID_DIST_D | PID_DIST_LIM | PID_DIST_ILIM | PID_DIST_DEAD\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("DEFAULT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", FactoryDefaults::PID_DIST_P, FactoryDefaults::PID_DIST_I, FactoryDefaults::PID_DIST_D, FactoryDefaults::PID_DIST_LIM, FactoryDefaults::PID_DIST_ILIM, FactoryDefaults::PID_DIST_DEAD);
+            logger.printf("CURRENT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", Config.PID_DIST_P, Config.PID_DIST_I, Config.PID_DIST_D, Config.PID_DIST_LIM, Config.PID_DIST_ILIM, Config.PID_DIST_DEAD);
+        }
+    }
+    else if (varName.startsWith("PID_OBSTACLE")){
+        if (wantDefaultOnly) {
+            logger.printf("\t\t\t\t\t --- [PID_OBSTACLE] ---\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("\t  PID_OBSTACLE_P | PID_OBSTACLE_I | PID_OBSTACLE_D | PID_OBSTACLE_LIM | PID_OBSTACLE_ILIM | PID_OBSTACLE_DEAD\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("DEFAULT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", FactoryDefaults::PID_OBSTACLE_P, FactoryDefaults::PID_OBSTACLE_I, FactoryDefaults::PID_OBSTACLE_D, FactoryDefaults::PID_OBSTACLE_LIM, FactoryDefaults::PID_OBSTACLE_ILIM, FactoryDefaults::PID_OBSTACLE_DEAD);
+        }
+        else {
+            logger.printf("\t\t\t\t\t --- [PID_OBSTACLE] ---\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("\t  PID_OBSTACLE_P | PID_OBSTACLE_I | PID_OBSTACLE_D | PID_OBSTACLE_LIM | PID_OBSTACLE_ILIM | PID_OBSTACLE_DEAD\n");
+            logger.printf("------------------------------------------------------------------------------------------------------------------------\n");
+            logger.printf("DEFAULT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", FactoryDefaults::PID_OBSTACLE_P, FactoryDefaults::PID_OBSTACLE_I, FactoryDefaults::PID_OBSTACLE_D, FactoryDefaults::PID_OBSTACLE_LIM, FactoryDefaults::PID_OBSTACLE_ILIM, FactoryDefaults::PID_OBSTACLE_DEAD);
+            logger.printf("CURRENT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D, Config.PID_OBSTACLE_LIM, Config.PID_OBSTACLE_ILIM, Config.PID_OBSTACLE_DEAD);
+        }
+    }
+    
+
+    
     // --- PID TUNING VARS ---
+    /*
     else if (varName == "PID_HEADING_P") { 
-        if (wantDefaultOnly) logger.printf("[PID_HEADING_P] Default: %.1f\n", FactoryDefaults::PID_HEADING_P);
-        else logger.printf("[PID_HEADING_P] Current: %.1f | Default: %.1f\n", Config.PID_HEADING_P, FactoryDefaults::PID_HEADING_P);
+        if (wantDefaultOnly) logger.printf("[PID_HEADING_P] Default: %.4f\n", FactoryDefaults::PID_HEADING_P);
+        else logger.printf("[PID_HEADING_P] Current: %.4f | Default: %.4f\n", Config.PID_HEADING_P, FactoryDefaults::PID_HEADING_P);
     }
     else if (varName == "PID_HEADING_I") { 
         if (wantDefaultOnly) logger.printf("[PID_HEADING_I] Default: %.1f\n", FactoryDefaults::PID_HEADING_I);
@@ -855,7 +960,7 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     else if (varName == "PID_OBSTACLE_DEAD") { 
         if (wantDefaultOnly) logger.printf("[PID_OBSTACLE_DEAD] Default: %.1f\n", FactoryDefaults::PID_OBSTACLE_DEAD);
         else logger.printf("[PID_OBSTACLE_DEAD] Current: %.1f | Default: %.1f\n", Config.PID_OBSTACLE_DEAD, FactoryDefaults::PID_OBSTACLE_DEAD);
-    }
+    }*/
 
     // --- PHYSICS & HANDLING TUNING VARS ---
     else if (varName == "TILT_HANDLING_THRESHOLD") { 
@@ -957,9 +1062,9 @@ void CommandProcessor::handleGet(String varName, String valStr) {
         else logger.printf("[SERIAL_DEBUG_MASTER] Current: %s | Default: %s\n", Config.SERIAL_DEBUG_MASTER ? "ON" : "OFF", FactoryDefaults::SERIAL_DEBUG_MASTER ? "ON" : "OFF");
     }
 
-    else if (varName == "DEBUG_MODE") { 
-        if (wantDefaultOnly) logger.printf("[DEBUG_MODE] Default: %s\n", FactoryDefaults::DEBUG_ACTIVE ? "ON" : "OFF");
-        else logger.printf("[DEBUG_MODE] Current: %s | Default: %s\n", Config.DEBUG_ACTIVE ? "ON" : "OFF", FactoryDefaults::DEBUG_ACTIVE ? "ON" : "OFF");
+    else if (varName == "DEBUG_ACTIVE") { 
+        if (wantDefaultOnly) logger.printf("[DEBUG_ACTIVE] Default: %s\n", FactoryDefaults::DEBUG_ACTIVE ? "ON" : "OFF");
+        else logger.printf("[DEBUG_ACTIVE] Current: %s | Default: %s\n", Config.DEBUG_ACTIVE ? "ON" : "OFF", FactoryDefaults::DEBUG_ACTIVE ? "ON" : "OFF");
     }
     else if (varName == "DEBUG_USB") { 
         if (wantDefaultOnly) logger.printf("[DEBUG_USB] Default: %s\n", FactoryDefaults::DEBUG_USB ? "ON" : "OFF");

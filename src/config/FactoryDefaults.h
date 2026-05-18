@@ -131,9 +131,8 @@ namespace FactoryDefaults {
 
     // ==========================================
     // SENSOR TUNING
-    // ==========================================
-    // Range: 0.01 to 0.5 (Lower = less drift but slower response)
-    constexpr float IMU_MADGWICK_BETA = 0.05f; 
+    // ==========================================  
+    //constexpr float IMU_MADGWICK_BETA = 0.05f; 
     // Range: 0.01 to 0.10 (Rad/s to ignore mechanical chassis vibration)
     constexpr float IMU_GYRO_DEADBAND = 0.02f; 
     // Range: 50.0 to 400.0 (Max trusted range of HC-SR04)
@@ -142,6 +141,7 @@ namespace FactoryDefaults {
     // ==========================================
     // MADGWICK FILTER TUNING
     // ==========================================
+    // Range: 0.01 to 0.5 (Lower = less drift but slower response)
     constexpr float MADGWICK_FILTER_BETA = 0.04f; // governs how much to trust the accelerometer // Lowered to kill the twitching!
 
     // ==========================================

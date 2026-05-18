@@ -40,7 +40,6 @@ struct MasterSettings {
     unsigned long COMPASS_LOCK_EXIT_SETTLE_MS = FactoryDefaults::COMPASS_LOCK_EXIT_SETTLE_MS;
 
     // --- Sensors ---
-    float IMU_MADGWICK_BETA = FactoryDefaults::IMU_MADGWICK_BETA;
     float IMU_GYRO_DEADBAND = FactoryDefaults::IMU_GYRO_DEADBAND;
     float SONAR_MAX_DIST = FactoryDefaults::SONAR_MAX_DIST;
 
@@ -173,7 +172,6 @@ class ConfigurationManager {
         currentSettings.COMPASS_LOCK_EXIT_SETTLE_MS = preferences.getInt("CMP_LCK_EXT_TO", FactoryDefaults::COMPASS_LOCK_EXIT_SETTLE_MS);
 
         // --- Sensors ---
-        currentSettings.IMU_MADGWICK_BETA = preferences.getFloat("IMU_BETA", FactoryDefaults::IMU_MADGWICK_BETA);
         currentSettings.IMU_GYRO_DEADBAND = preferences.getFloat("IMU_DEAD", FactoryDefaults::IMU_GYRO_DEADBAND);
         currentSettings.SONAR_MAX_DIST = preferences.getFloat("SNR_MAX", FactoryDefaults::SONAR_MAX_DIST);
 
@@ -250,10 +248,10 @@ class ConfigurationManager {
         currentSettings.SERIAL_DEBUG_SONAR = preferences.getBool("DBG_SONAR", FactoryDefaults::SERIAL_DEBUG_SONAR);
         currentSettings.SERIAL_DEBUG_MOTOR_DRIVER = preferences.getBool("DBG_MOTOR", FactoryDefaults::SERIAL_DEBUG_MOTOR_DRIVER);
         
-        currentSettings.ACTIVE_DEBUG_MODE = preferences.getUInt("DBG_ACTIVE", FactoryDefaults::DEBUG_ACTIVE);
-        currentSettings.ACTIVE_DEBUG_MODE = preferences.getUInt("DBG_USB", FactoryDefaults::DEBUG_USB);
-        currentSettings.ACTIVE_DEBUG_MODE = preferences.getUInt("DBG_WIFI", FactoryDefaults::DEBUG_WIFI);
-        currentSettings.ACTIVE_DEBUG_MODE = preferences.getUInt("DBG_BLUETOOTH", FactoryDefaults::DEBUG_BLUETOOTH);
+        currentSettings.DEBUG_ACTIVE = preferences.getUInt("DBG_ACTIVE", FactoryDefaults::DEBUG_ACTIVE);
+        currentSettings.DEBUG_USB = preferences.getUInt("DBG_USB", FactoryDefaults::DEBUG_USB);
+        currentSettings.DEBUG_WIFI = preferences.getUInt("DBG_WIFI", FactoryDefaults::DEBUG_WIFI);
+        currentSettings.DEBUG_BLUETOOTH = preferences.getUInt("DBG_BLUETOOTH", FactoryDefaults::DEBUG_BLUETOOTH);
         currentSettings.ACTIVE_DEBUG_MODE = preferences.getUInt("ACT_DBG_MODE", FactoryDefaults::ACTIVE_DEBUG_MODE);
     }
 
@@ -289,7 +287,6 @@ class ConfigurationManager {
         preferences.putInt("CMP_LCK_ENT_TO", currentSettings.COMPASS_LOCK_ENTRY_SETTLE_MS);
         preferences.putInt("CMP_LCK_EXT_TO", currentSettings.COMPASS_LOCK_EXIT_SETTLE_MS);
 
-        preferences.putFloat("IMU_BETA", currentSettings.IMU_MADGWICK_BETA);
         preferences.putFloat("IMU_DEAD", currentSettings.IMU_GYRO_DEADBAND);
         preferences.putFloat("SNR_MAX", currentSettings.SONAR_MAX_DIST);
 
@@ -409,7 +406,9 @@ class ConfigurationManager {
         else if (varName == "SLEEP_TIMEOUT_MS") { currentSettings.SLEEP_TIMEOUT_MS = FactoryDefaults::SLEEP_TIMEOUT_MS; }
         else if (varName == "SLEEP_WAKE_G") { currentSettings.SLEEP_WAKE_G = FactoryDefaults::SLEEP_WAKE_G; }
 
-        else if (varName == "IMU_MADGWICK_BETA") { currentSettings.IMU_MADGWICK_BETA = FactoryDefaults::IMU_MADGWICK_BETA; }
+        else if (varName == "COMPASS_LOCK_ENTRY_SETTLE_MS") { currentSettings.COMPASS_LOCK_ENTRY_SETTLE_MS = FactoryDefaults::COMPASS_LOCK_ENTRY_SETTLE_MS; }
+        else if (varName == "COMPASS_LOCK_EXIT_SETTLE_MS") { currentSettings.COMPASS_LOCK_EXIT_SETTLE_MS = FactoryDefaults::COMPASS_LOCK_EXIT_SETTLE_MS; }
+
         else if (varName == "IMU_GYRO_DEADBAND") { currentSettings.IMU_GYRO_DEADBAND = FactoryDefaults::IMU_GYRO_DEADBAND; }
         else if (varName == "SONAR_MAX_DIST") { currentSettings.SONAR_MAX_DIST = FactoryDefaults::SONAR_MAX_DIST; }
 
@@ -472,11 +471,6 @@ class ConfigurationManager {
         else if (varName == "SERIAL_DEBUG_IMU") { currentSettings.SERIAL_DEBUG_IMU = FactoryDefaults::SERIAL_DEBUG_IMU; }
         else if (varName == "SERIAL_DEBUG_SONAR") { currentSettings.SERIAL_DEBUG_SONAR = FactoryDefaults::SERIAL_DEBUG_SONAR; }
         else if (varName == "SERIAL_DEBUG_MOTOR_DRIVER") { currentSettings.SERIAL_DEBUG_MOTOR_DRIVER = FactoryDefaults::SERIAL_DEBUG_MOTOR_DRIVER; }
-
-        else if (varName == "DEBUG_ACTIVE") { preferences.putUInt("DBG_ACTIVE", FactoryDefaults::DEBUG_ACTIVE); }
-        else if (varName == "DEBUG_USB") { preferences.putUInt("DBG_USB", FactoryDefaults::DEBUG_USB); }
-        else if (varName == "DEBUG_WIFI") { preferences.putUInt("DBG_WIFI", FactoryDefaults::DEBUG_WIFI); }
-        else if (varName == "DEBUG_BLUETOOTH") { preferences.putUInt("DBG_BLUETOOTH", FactoryDefaults::DEBUG_BLUETOOTH); }
 
         else if (varName == "DEBUG_ACTIVE") { currentSettings.DEBUG_ACTIVE = FactoryDefaults::DEBUG_ACTIVE; }
         else if (varName == "DEBUG_USB") { currentSettings.DEBUG_USB = FactoryDefaults::DEBUG_USB; }

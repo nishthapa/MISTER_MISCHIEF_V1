@@ -15,7 +15,7 @@ namespace SystemConfig {
     
     // --- Loop Rates ---
     constexpr unsigned long MAIN_LOOP_TICK_RATE_MS = 10;  // 10ms = 100Hz (The Physics Engine metronome)
-    constexpr unsigned long TELEMETRY_PING_DELAY_MS = 50; // 50ms = 20Hz (How fast the Mouth talks)
+    constexpr unsigned long TELEMETRY_PING_DELAY_MS = 80; // 80ms = 12.5Hz (How fast the Mouth talks)
 
     // ==========================================
     // BOOT SEQUENCE & HARDWARE TIMINGS

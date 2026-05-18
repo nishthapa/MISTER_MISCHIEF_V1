@@ -29,6 +29,11 @@ public:
     MPU6050_IMU(int sda, int scl, int interruptPin, uint8_t address);
 
     bool init() override;
+
+    void setFilterBeta(float beta) override { 
+        if (filter) filter->updateBeta(beta); 
+    }
+    
     FusedAngles getAngles() override;
     
     // Satisfy the interface

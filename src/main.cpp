@@ -178,6 +178,10 @@ void setup() {
   obstacleAvoidancePID.setTunings(Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D, Config.PID_OBSTACLE_ILIM, Config.PID_OBSTACLE_LIM);
   // ---------------------------
 
+  // Inject Madgwick Filter Beta from NVS into the IMU immediately so it's active on boot without needing a CLI command!
+  imu->setFilterBeta(Config.MADGWICK_FILTER_BETA);
+  // ---------------------------
+  
   logger.println("Configuration Manager loaded from permanent memory.");
 
 // ==========================================
