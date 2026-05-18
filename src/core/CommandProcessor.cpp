@@ -564,16 +564,46 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     else if (varName == "BRAIN_ACTIVE") { Config.BRAIN_ACTIVE = (valStr == "on" || valStr == "1" || valStr == "true"); }
     else if (varName == "SERIAL_DEBUG_MASTER") { Config.SERIAL_DEBUG_MASTER = (valStr == "on" || valStr == "1" || valStr == "true"); }
 
+    // ==========================================
+    // BITMASK TELEMETRY SWITCHING
+    // ==========================================
     else if (varName == "DEBUG_ACTIVE") { 
         valStr.toLowerCase();
         bool debugOn = (valStr == "on" || valStr == "1" || valStr == "true");
-        Config.DEBUG_ACTIVE = debugOn;
-        if (debugOn) {
-            Config.DEBUG_USB = false;
-            Config.DEBUG_WIFI = false;
-            Config.DEBUG_BLUETOOTH = false;
+        if (!debugOn) {
+            // Master Kill Switch: Wipe all bits to 0
+            Config.ACTIVE_DEBUG_MODE = 0; 
+        } else {
+            // Master On: Restore default outputs
+            Config.ACTIVE_DEBUG_MODE = FactoryDefaults::ACTIVE_DEBUG_MODE; 
         }
     }
+    else if (varName == "DEBUG_USB") { 
+        valStr.toLowerCase();
+        if (valStr == "on" || valStr == "1" || valStr == "true") {
+            Config.ACTIVE_DEBUG_MODE |= FactoryDefaults::DEBUG_USB; // OR operator (Turns bit ON)
+        } else {
+            Config.ACTIVE_DEBUG_MODE &= ~FactoryDefaults::DEBUG_USB; // AND NOT operator (Turns bit OFF)
+        }
+    }
+    else if (varName == "DEBUG_WIFI") { 
+        valStr.toLowerCase();
+        if (valStr == "on" || valStr == "1" || valStr == "true") {
+            Config.ACTIVE_DEBUG_MODE |= FactoryDefaults::DEBUG_WIFI; 
+        } else {
+            Config.ACTIVE_DEBUG_MODE &= ~FactoryDefaults::DEBUG_WIFI; 
+        }
+    }
+    else if (varName == "DEBUG_BLUETOOTH") { 
+        valStr.toLowerCase();
+        if (valStr == "on" || valStr == "1" || valStr == "true") {
+            Config.ACTIVE_DEBUG_MODE |= FactoryDefaults::DEBUG_BLUETOOTH; 
+        } else {
+            Config.ACTIVE_DEBUG_MODE &= ~FactoryDefaults::DEBUG_BLUETOOTH; 
+        }
+    }
+    //////////////////////////////////////
+
     else if (varName == "DEBUG_USB") { 
         valStr.toLowerCase();
         Config.DEBUG_USB = (valStr == "on" || valStr == "1" || valStr == "true"); 
@@ -636,6 +666,11 @@ void CommandProcessor::handleSet(String varName, String valStr) {
         obstacleAvoidancePID.setTunings(Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D, Config.PID_OBSTACLE_ILIM, Config.PID_OBSTACLE_LIM);
         logger.printf("UPDATED OBSTACLE PID. NEW TUNINGS: P = %.2f | I = %.2f | D=%.2f\n", Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D);
     }
+
+    // SMART DEBUG MODE (MEDIUM) SWITCHER
+    else if (varName.startsWith("DEBUG_") || varName == "ACTIVE_DEBUG_MODE") {
+    logger.setMode(Config.ACTIVE_DEBUG_MODE);
+}
 }
 
 void CommandProcessor::handleGet(String varName, String valStr) {

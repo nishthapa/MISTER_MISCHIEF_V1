@@ -27,5 +27,5 @@ namespace MotorDriverConfig {
     // 3. PHYSICAL FRICTION DEAD-BAND
     // ==========================================
     // RANGE: 0.0f TO 30.0f // The minimum requested speed required to overcome the gearbox friction. 
-    constexpr float DRIVER_DEADBAND = 10.0f;
+    //constexpr float DRIVER_DEADBAND = 10.0f; // Moved to our Dynamic ConfigurationManager and FactoryDefaults
 }

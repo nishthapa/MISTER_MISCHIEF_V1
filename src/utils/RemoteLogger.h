@@ -26,6 +26,9 @@ public:
     
     // Checks for new incoming PC/Phone connections
     void handleClient();
+
+    // For turning on/off from the command line
+    void setMode(uint8_t newMode) { currentMode = newMode; }
     
     // The drop-in replacements for Serial.print
     void print(const char* message);

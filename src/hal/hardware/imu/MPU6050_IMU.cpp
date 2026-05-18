@@ -233,7 +233,7 @@ FusedAngles MPU6050_IMU::getAngles() {
         float gy_rad = ((float)gy - gyroBiasY) * (M_PI / (180.0f * IMUConfig::GYRO_SCALE_FACTOR));
         float gz_rad = ((float)gz - gyroBiasZ) * (M_PI / (180.0f * IMUConfig::GYRO_SCALE_FACTOR));
         
-        if (abs(gz_rad) < IMUConfig::GYRO_DEADBAND_RAD_S) gz_rad = 0.0f; 
+        if (abs(gz_rad) < Config.IMU_GYRO_DEADBAND) gz_rad = 0.0f; 
 
         // 3. Subtract Accel Bias
         float ax_cal = (float)ax - accelBiasX;
