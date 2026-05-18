@@ -15,6 +15,8 @@ public:
     // The Unified Interface: Give it everything. It will auto-route based on the hasCompass flag!
     void compute(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz, float dt, bool hasCompass);
 
+    void updateBeta(float newBeta) { beta = newBeta; }
+
     float getRoll();
     float getPitch();
     float getYaw();

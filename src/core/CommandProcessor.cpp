@@ -43,6 +43,7 @@ const char* autoDict[] = {
     "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
     "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
     "IMU_MADGWICK_BETA", "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
+    "MADGWICK_FILTER_BETA",
     "PID_HEADING_P", "PID_HEADING_I", "PID_HEADING_D", "PID_HEADING_LIM", "PID_HEADING_ILIM", "PID_HEADING_DEAD",
     "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
@@ -70,6 +71,7 @@ const char* sysVariables[] = {
     "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
     "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
     "IMU_MADGWICK_BETA", "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
+    "MADGWICK_FILTER_BETA",
     "PID_HEADING_P", "PID_HEADING_I", "PID_HEADING_D", "PID_HEADING_LIM", "PID_HEADING_ILIM", "PID_HEADING_DEAD",
     "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
@@ -492,6 +494,8 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     else if (varName == "IMU_GYRO_DEADBAND") { Config.IMU_GYRO_DEADBAND = valStr.toFloat(); }
     else if (varName == "SONAR_MAX_DIST") { Config.SONAR_MAX_DIST = valStr.toFloat(); }
 
+    else if (varName == "MADGWICK_FILTER_BETA") { Config.MADGWICK_FILTER_BETA = valStr.toFloat(); }
+
     // --- PID TUNING VARS ---
     else if (varName == "PID_HEADING_P") { Config.PID_HEADING_P = valStr.toFloat(); }
     else if (varName == "PID_HEADING_I") { Config.PID_HEADING_I = valStr.toFloat(); }
@@ -745,6 +749,11 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     else if (varName == "SONAR_MAX_DIST") { 
         if (wantDefaultOnly) logger.printf("[SONAR_MAX_DIST] Default: %.1f\n", FactoryDefaults::SONAR_MAX_DIST);
         else logger.printf("[SONAR_MAX_DIST] Current: %.1f | Default: %.1f\n", Config.SONAR_MAX_DIST, FactoryDefaults::SONAR_MAX_DIST);
+    }
+
+    else if (varName == "MADGWICK_FILTER_BETA") { 
+        if (wantDefaultOnly) logger.printf("[MADGWICK_FILTER_BETA] Default: %.1f\n", FactoryDefaults::MADGWICK_FILTER_BETA);
+        else logger.printf("[MADGWICK_FILTER_BETA] Current: %.1f | Default: %.1f\n", Config.MADGWICK_FILTER_BETA, FactoryDefaults::MADGWICK_FILTER_BETA);
     }
 
     // --- PID TUNING VARS ---

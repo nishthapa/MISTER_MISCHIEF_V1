@@ -15,6 +15,10 @@ void MadgwickFilter::compute(float gx, float gy, float gz, float ax, float ay, f
     }
 }
 
+void MadgwickFilter::updateBeta(float newBeta) {
+    beta = newBeta;
+}
+
 void MadgwickFilter::compute6DOF(float gx, float gy, float gz, float ax, float ay, float az, float dt) {
     float recipNorm;
     float s0, s1, s2, s3;

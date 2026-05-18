@@ -76,5 +76,6 @@ namespace IMUConfig {
     // ==========================================
     // 4. SOFTWARE FILTER TUNING (Raw Data Mode)
     // ==========================================
+    // To-do: Move to Configurable Parameters in EEPROM for real-time tuning without code changes!
     constexpr float MADGWICK_BETA = 0.04f; // governs how much to trust the accelerometer // Lowered to kill the twitching!
 }

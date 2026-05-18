@@ -44,6 +44,9 @@ struct MasterSettings {
     float IMU_GYRO_DEADBAND = FactoryDefaults::IMU_GYRO_DEADBAND;
     float SONAR_MAX_DIST = FactoryDefaults::SONAR_MAX_DIST;
 
+    // --- Madgwick Filter ---
+    float MADGWICK_FILTER_BETA = FactoryDefaults::MADGWICK_FILTER_BETA;
+
     // --- PID: Heading ---
     float PID_HEADING_P = FactoryDefaults::PID_HEADING_P;
     float PID_HEADING_I = FactoryDefaults::PID_HEADING_I;
@@ -174,6 +177,9 @@ class ConfigurationManager {
         currentSettings.IMU_GYRO_DEADBAND = preferences.getFloat("IMU_DEAD", FactoryDefaults::IMU_GYRO_DEADBAND);
         currentSettings.SONAR_MAX_DIST = preferences.getFloat("SNR_MAX", FactoryDefaults::SONAR_MAX_DIST);
 
+        // --- Madgwick Filter ---
+        currentSettings.MADGWICK_FILTER_BETA = preferences.getFloat("MDGW_FLTR_BETA", FactoryDefaults::MADGWICK_FILTER_BETA);
+
         // --- PID: Heading ---
         currentSettings.PID_HEADING_P = preferences.getFloat("PID_HDG_P", FactoryDefaults::PID_HEADING_P);
         currentSettings.PID_HEADING_I = preferences.getFloat("PID_HDG_I", FactoryDefaults::PID_HEADING_I);
@@ -286,6 +292,8 @@ class ConfigurationManager {
         preferences.putFloat("IMU_BETA", currentSettings.IMU_MADGWICK_BETA);
         preferences.putFloat("IMU_DEAD", currentSettings.IMU_GYRO_DEADBAND);
         preferences.putFloat("SNR_MAX", currentSettings.SONAR_MAX_DIST);
+
+        preferences.putFloat("MDGW_FLTR_BETA", currentSettings.MADGWICK_FILTER_BETA);
 
         preferences.putFloat("PID_HDG_P", currentSettings.PID_HEADING_P);
         preferences.putFloat("PID_HDG_I", currentSettings.PID_HEADING_I);
@@ -404,6 +412,8 @@ class ConfigurationManager {
         else if (varName == "IMU_MADGWICK_BETA") { currentSettings.IMU_MADGWICK_BETA = FactoryDefaults::IMU_MADGWICK_BETA; }
         else if (varName == "IMU_GYRO_DEADBAND") { currentSettings.IMU_GYRO_DEADBAND = FactoryDefaults::IMU_GYRO_DEADBAND; }
         else if (varName == "SONAR_MAX_DIST") { currentSettings.SONAR_MAX_DIST = FactoryDefaults::SONAR_MAX_DIST; }
+
+        else if (varName == "MADGWICK_FILTER_BETA") { currentSettings.MADGWICK_FILTER_BETA = FactoryDefaults::MADGWICK_FILTER_BETA; }
 
         else if (varName == "PID_HEADING_P") { currentSettings.PID_HEADING_P = FactoryDefaults::PID_HEADING_P; }
         else if (varName == "PID_HEADING_I") { currentSettings.PID_HEADING_I = FactoryDefaults::PID_HEADING_I; }

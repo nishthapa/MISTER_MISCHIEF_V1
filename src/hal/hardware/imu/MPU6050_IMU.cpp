@@ -1,6 +1,7 @@
 #include "hal/hardware/imu/MPU6050_IMU.h"
 #include "utils/RemoteLogger.h"
 #include "config/SensorConfig.h" 
+#include "config/ConfigurationManager.h"
 #include <Wire.h>
 
 #include "I2Cdev.h"
@@ -55,7 +56,7 @@ MPU6050_IMU::MPU6050_IMU(int sda, int scl, int interruptPin, uint8_t address) {
     lastKnownAngles.hasCompass = IMUConfig::HAS_COMPASS;
     lastKnownAngles.compassHeading = 0.0f;
 
-    filter = new MadgwickFilter(IMUConfig::MADGWICK_BETA);
+    filter = new MadgwickFilter(Config.MADGWICK_FILTER_BETA);
 }
 
 bool MPU6050_IMU::init() {
