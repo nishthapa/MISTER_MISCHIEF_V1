@@ -77,6 +77,12 @@ bool MPU6050_IMU::init() {
     if (IMUConfig::MPU6050_USE_HARDWARE_DMP) {
         logger.println("INITIALIZING MPU6050 (DMP MODE)...");
         mpu.initialize();
+        // === THE SILICON NOISE FILTER ===
+        // The DMP used to do this automatically. We must manually tell the MPU6050
+        // to filter out high-frequency mechanical chassis vibrations.
+        // 0 = 260Hz (Jittery), 3 = 42Hz (Smooth), 4 = 20Hz (Buttery)
+        // mpu.setDLPFMode(4);
+        mpu.setDLPFMode(IMU_GYRO_LOW_PASS_FILTER_42HZ);
         delay(50);
         
         if (!mpu.testConnection()) {
@@ -113,19 +119,18 @@ bool MPU6050_IMU::init() {
     else {
         logger.println("DMP Bypassed. Initializing Raw Data Mode...");
         mpu.initialize();
+        // === THE SILICON NOISE FILTER ===
+        // The DMP used to do this automatically. We must manually tell the MPU6050
+        // to filter out high-frequency mechanical chassis vibrations.
+        // 0 = 260Hz (Jittery), 3 = 42Hz (Smooth), 4 = 20Hz (Buttery)
+        // mpu.setDLPFMode(4);
+        mpu.setDLPFMode(IMU_GYRO_LOW_PASS_FILTER_42HZ);
         delay(50);
 
         if (!mpu.testConnection()) {
             logger.println("CRITICAL: MPU6050 connection failed!");
             return false;
         }
-
-        // === THE SILICON NOISE FILTER ===
-        // The DMP used to do this automatically. We must manually tell the MPU6050
-        // to filter out high-frequency mechanical chassis vibrations.
-        // 0 = 260Hz (Jittery), 3 = 42Hz (Smooth), 4 = 20Hz (Buttery)
-        // mpu.setDLPFMode(4);
-        mpu.setDLPFMode(IMU_GYRO_LOW_PASS_FILTER_20HZ);
 
         // NOTE: Manual offset clears removed here to preserve the MPU6050's hardware factory trim!
 
@@ -240,14 +245,32 @@ FusedAngles MPU6050_IMU::getAngles() {
         float ay_cal = (float)ay - accelBiasY;
         float az_cal = (float)az - accelBiasZ;
 
+        /*
         // 4. Feed the Unified Math Engine! 
         filter->compute(gx_rad, gy_rad, gz_rad, ax_cal, ay_cal, az_cal, 0.0f, 0.0f, 0.0f, dt, IMUConfig::HAS_COMPASS);
 
         // --- NEW: Calculate Total G-Force ---
         float accelMag = sqrt((ax_cal * ax_cal) + (ay_cal * ay_cal) + (az_cal * az_cal));
         lastKnownAngles.gForce = accelMag / IMUConfig::ACCEL_SCALE_FACTOR;
+        */
 
-        // 5. Update Memory
+        // 4. Calculate G-Force (Do this BEFORE feeding the filter!)
+        float currentGForce = sqrt((ax_cal * ax_cal) + (ay_cal * ay_cal) + (az_cal * az_cal)) / IMUConfig::ACCEL_SCALE_FACTOR;
+        
+        // Save the true physical G-force for the BehaviourEngine's lift detection
+        lastKnownAngles.gForce = currentGForce;
+
+        // 5. THE FILTER GATEKEEPER
+        if (currentGForce > Config.GFORCE_LIFT_UP_THRESHOLD || currentGForce < Config.GFORCE_LIFT_DOWN_THRESHOLD) {
+            // We hit a bump, dropped, or are spinning rapidly, or are free-falling! 
+            // Feed 0.0f to the accelerometer so the filter relies purely on the Gyroscope.
+            filter->compute(gx_rad, gy_rad, gz_rad, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, dt, false);
+        } else {
+            // Normal smooth gravity. Safe to fuse accelerometer data to find true "level".
+            filter->compute(gx_rad, gy_rad, gz_rad, ax_cal, ay_cal, az_cal, 0.0f, 0.0f, 0.0f, dt, false);
+        }
+
+        // 6. Update Memory
         lastKnownAngles.roll  = filter->getRoll();
         lastKnownAngles.pitch = filter->getPitch();
         lastKnownAngles.yaw   = filter->getYaw();

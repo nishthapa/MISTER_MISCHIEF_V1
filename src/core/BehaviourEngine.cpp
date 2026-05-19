@@ -252,5 +252,15 @@ void BehaviourEngine::update() {
         previousMode = activeMode;
     }
 
+    // --- ADAPTIVE IMU FILTERING ---
+    // If the tracks are actively moving, drop the filter beta to ignore vibration
+    if (activeMode == normalMode || activeMode == obstacleMode) {
+        imu->setFilterBeta(0.01f); // Stiff gyro trust
+    } else {
+        // When stopped (Compass Lock, Deep Sleep, Handling), use the live tuned Config beta to re-level quickly
+        imu->setFilterBeta(Config.MADGWICK_FILTER_BETA); 
+    }
+    // ----------------------------------------------
+
     if (activeMode != nullptr) activeMode->update(activeMood);
 }
