@@ -145,6 +145,12 @@ namespace FactoryDefaults {
     constexpr float MADGWICK_FILTER_BETA = 0.04f; // governs how much to trust the accelerometer // Lowered to kill the twitching!
 
     // ==========================================
+    // HOW LONG UNTIL AUTOTUNE STARTS TUNING (Gives you time to set him down and back away)
+    // ==========================================
+    // Range: 1000 to 10000 (Milliseconds to wait before violently starting Autotune)
+    constexpr unsigned long AUTOTUNE_START_DELAY_MS = 5000;
+
+    // ==========================================
     // UNIFIED POINT TURN PID TUNING (Stationary)
     // ==========================================
     constexpr float PID_POINT_P = 2.0f;

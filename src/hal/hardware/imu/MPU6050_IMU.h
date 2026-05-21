@@ -35,6 +35,8 @@ public:
     }
     
     FusedAngles getAngles() override;
+
+    float getTemperature() override;
     
     // Satisfy the interface
     void calibrateGyro() override;

@@ -9,10 +9,14 @@
 #include "utils/RadioManager.h"
 #include "hal/interfaces/I_IMU.h" // for calibration commands
 #include "core/PIDController.h"
-
+#include "core/BehaviourEngine.h"
+#include "behaviours/Mode_AutoTune.h"
 
 extern RemoteLogger logger;
 extern I_IMU* imu; // Reaches into main.cpp to grab the global IMU!
+
+extern BehaviourEngine brain;
+extern Mode_AutoTune autotuneMode;
 
 // --- All the PID controllers for live-tuning access in the CLI ---
 extern PIDController pointTurnPID;
@@ -28,6 +32,7 @@ CommandProcessor::CommandProcessor() {
     registry.registerCommand("get",   std::bind(&CommandProcessor::handleGet,   this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("reset", std::bind(&CommandProcessor::handleReset, this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("calib", std::bind(&CommandProcessor::handleCalib, this, std::placeholders::_1, std::placeholders::_2));
+    registry.registerCommand("autotune", std::bind(&CommandProcessor::handleAutotune, this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("connect",    std::bind(&CommandProcessor::handleConnect,    this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("disconnect", std::bind(&CommandProcessor::handleDisconnect, this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("connect",    std::bind(&CommandProcessor::handleConnect,    this, std::placeholders::_1, std::placeholders::_2));
@@ -50,7 +55,7 @@ const char* autoDict[] = {
     "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
     "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
     "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
-    "MADGWICK_FILTER_BETA",
+    "MADGWICK_FILTER_BETA", "AUTOTUNE_START_DELAY_MS"
     "PID_POINT_P", "PID_POINT_I", "PID_POINT_D", "PID_POINT_LIM", "PID_POINT_ILIM", "PID_POINT_DEAD",
     "PID_ARC_P", "PID_ARC_I", "PID_ARC_D", "PID_ARC_LIM", "PID_ARC_ILIM", "PID_ARC_DEAD",
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
@@ -78,7 +83,7 @@ const char* sysVariables[] = {
     "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
     "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
     "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
-    "MADGWICK_FILTER_BETA",
+    "MADGWICK_FILTER_BETA", "AUTOTUNE_START_DELAY_MS",
     "PID_POINT_P", "PID_POINT_I", "PID_POINT_D", "PID_POINT_LIM", "PID_POINT_ILIM", "PID_POINT_DEAD",
     "PID_ARC_P", "PID_ARC_I", "PID_ARC_D", "PID_ARC_LIM", "PID_ARC_ILIM", "PID_ARC_DEAD",
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
@@ -286,10 +291,8 @@ void CommandProcessor::processInput(String input) {
     if (input.length() == 0) return;
 
     // --- STATE MACHINE: Are we waiting for Y/N? ---
-    if (waitingForResetConfirm) {
-        handleResetConfirm(input);
-        return;
-    }
+    if (waitingForResetConfirm) { handleResetConfirm(input); return; }
+    if (waitingForAutotuneConfirm) { handleAutotuneConfirm(input); return; } // Waiting for autotune y/n confirmation
 
     // 1. EXTRACT COMMAND
     int firstSpace = input.indexOf(' ');
@@ -505,6 +508,9 @@ void CommandProcessor::handleSet(String varName, String valStr) {
         Config.MADGWICK_FILTER_BETA = valStr.toFloat();
         imu->setFilterBeta(Config.MADGWICK_FILTER_BETA);
     }
+
+    // AUTOTUNE START DELAY
+    else if (varName == "AUTOTUNE_START_DELAY_MS") { Config.AUTOTUNE_START_DELAY_MS = valStr.toInt(); }
 
     // --- PID TUNING VARS ---
 
@@ -853,6 +859,11 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     else if (varName == "MADGWICK_FILTER_BETA") { 
         if (wantDefaultOnly) logger.printf("[MADGWICK_FILTER_BETA] Default: %.4f\n", FactoryDefaults::MADGWICK_FILTER_BETA);
         else logger.printf("[MADGWICK_FILTER_BETA] Current: %.4f | Default: %.4f\n", Config.MADGWICK_FILTER_BETA, FactoryDefaults::MADGWICK_FILTER_BETA);
+    }
+
+    else if (varName == "AUTOTUNE_START_DELAY_MS") { 
+        if (wantDefaultOnly) logger.printf("[AUTOTUNE_START_DELAY_MS] Default: %d\n", FactoryDefaults::AUTOTUNE_START_DELAY_MS);
+        else logger.printf("[AUTOTUNE_START_DELAY_MS] Current: %d | Default: %d\n", Config.AUTOTUNE_START_DELAY_MS, FactoryDefaults::AUTOTUNE_START_DELAY_MS);
     }
 
     else if (varName.startsWith("PID_POINT")){
@@ -1224,6 +1235,34 @@ void CommandProcessor::handleCalib(String varName, String dummyVal) {
     } 
     else {
         logger.println("Usage: calib GYRO | calib ACCEL | calib MAG");
+    }
+}
+
+
+void CommandProcessor::handleAutotune(String varName, String dummyVal) {
+    logger.println("\n[WARNING] Keep Robot on a perfectly level floor. Autotuning might take a while.");
+    logger.print("Continue? (y/n): ");
+    waitingForAutotuneConfirm = true;
+}
+
+void CommandProcessor::handleAutotuneConfirm(String input) {
+    waitingForAutotuneConfirm = false;
+    input.trim();
+    input.toLowerCase();
+    
+    if (input == "y" || input == "yes") {
+        logger.println("Accepted. Disabling Autonomous Brain...");
+        
+        // Use the centralized BRAIN_ACTIVE variable flag to disable the brain during autotuning
+        // 1. Temporarily disable the brain in RAM (Do not save to NVS!)
+        // We don't want to save this to permanent flash memory,
+        // just in case the robot loses power during the tune and wakes up brain-dead!
+        Config.BRAIN_ACTIVE = false; 
+        
+        // 2. Force the state transition
+        brain.changeMode(&autotuneMode); 
+    } else {
+        logger.println("Autotune aborted.");
     }
 }
 

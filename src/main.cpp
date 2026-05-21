@@ -12,6 +12,7 @@
 #include "behaviours/Mode_ObstacleAvoidance.h"
 #include "behaviours/Mode_Dizzy.h"
 #include "behaviours/Mode_DeepSleep.h"
+#include "behaviours/Mode_AutoTune.h"
 #include "core/BehaviourEngine.h"
 #include "core/KinematicsEngine.h"
 #include "utils/RadioManager.h"
@@ -59,6 +60,7 @@ Mode_CompassLock compassMode(imu, &kinematics);
 Mode_MaintainDistance distanceMode(frontDistanceSensor, &kinematics, &distancePID);
 Mode_Dizzy dizzyMode(motorDriver);
 Mode_DeepSleep sleepMode(motorDriver);
+Mode_AutoTune autotuneMode(imu, &kinematics);
 
 // ==========================================
 // MODE / MOOD SWITCHER

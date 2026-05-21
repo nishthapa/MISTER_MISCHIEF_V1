@@ -69,6 +69,9 @@ public:
     // The main 100Hz tick
     void update();
 
+    // Public API to allow the CLI to forcefully override the current mode
+    void changeMode(IRobotMode* newMode);
+
     // The elegant getters for telemetry!
     const char* getActiveModeName() const;
     const char* getActiveMoodName() const;

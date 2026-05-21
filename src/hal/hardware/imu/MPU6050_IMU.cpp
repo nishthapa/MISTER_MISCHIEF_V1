@@ -147,6 +147,17 @@ bool MPU6050_IMU::init() {
 // ==========================================
 // CLI EXECUTION
 // ==========================================
+float MPU6050_IMU::getTemperature() {
+    Wire.beginTransmission(deviceAddr);
+    // Wire.write(I2CRegistry::I2C_MPU6050_REG_TEMP_OUT_H); // TEMP_OUT_H register
+    Wire.write(0x41); // TEMP_OUT_H register // Using hardcoded value to avoid dependency on I2CRegistry in this low-level file
+    Wire.endTransmission(false);
+    Wire.requestFrom((uint8_t)deviceAddr, (uint8_t)2, (uint8_t)true);
+    
+    int16_t rawTemp = Wire.read() << 8 | Wire.read();
+    return (rawTemp / 340.0f) + 36.53f; // Datasheet conversion formula
+}
+
 void MPU6050_IMU::calibrateGyro() {
     logger.println("\n[IMU] GYROSCOPE CALIBRATION STARTED. KEEP HARDWARE STILL FOR 5 SECONDS...");
     calibratingGyro = true;

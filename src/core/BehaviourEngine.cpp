@@ -55,6 +55,16 @@ void BehaviourEngine::init(bool isColdBoot) {
     previousMode = activeMode;
 }
 
+void BehaviourEngine::changeMode(IRobotMode* newMode) {
+    if (newMode != nullptr) {
+        // We simply change the pointer! 
+        // In the very next tick of update(), your Transition Manager will detect 
+        // (activeMode != previousMode) and will automatically fire onExit() for the 
+        // old mode and onEnter() for the new mode safely.
+        activeMode = newMode;
+    }
+}
+
 const char* BehaviourEngine::getActiveModeName() const {
     return activeMode->getName();
 }
@@ -66,6 +76,22 @@ const char* BehaviourEngine::getActiveMoodName() const {
 }
 
 void BehaviourEngine::update() {
+    // ==========================================
+    // THE MASTER OVERRIDE (MANUAL / AUTOTUNE MODE or when "set BRAIN_ACTIVE false" is used for testing)
+    // ==========================================
+    if (!Config.BRAIN_ACTIVE) {
+        // Even if the brain is off, the active mode MUST run its math
+        if (activeMode != nullptr) activeMode->update(activeMood);
+        
+        // The Transition Manager MUST still run so onEnter/onExit fire safely!
+        if (activeMode != previousMode) {
+            if (previousMode != nullptr) previousMode->onExit();
+            if (activeMode != nullptr) activeMode->onEnter();
+            previousMode = activeMode;
+        }
+        return; // EXIT EARLY! Do not run survival reflexes or mood logic!
+    }
+
     FusedAngles currentAngles = imu->getAngles();
     float distance = sonar->getDistanceCM();
     

@@ -23,6 +23,12 @@ private:
     int tabDictIndex = 0;
     int wordStartIndex = 0;
 
+    bool waitingForAutotuneConfirm = false;
+
+    // Autotuning state handlers
+    void handleAutotune(String varName, String dummyVal);
+    void handleAutotuneConfirm(String input);
+
     // Terminal Helpers
     void redrawCLI();
     void processInput(String input); // Moved to private! Only the terminal calls this now.

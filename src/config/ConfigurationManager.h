@@ -46,6 +46,8 @@ struct MasterSettings {
     // --- Madgwick Filter ---
     float MADGWICK_FILTER_BETA = FactoryDefaults::MADGWICK_FILTER_BETA;
 
+    // --- Automatic PID Tuning ---
+    unsigned long AUTOTUNE_START_DELAY_MS = FactoryDefaults::AUTOTUNE_START_DELAY_MS;
 
     // --- PID: Unified Point Turn ---
     float PID_POINT_P = FactoryDefaults::PID_POINT_P;
@@ -199,6 +201,9 @@ class ConfigurationManager {
         // --- Madgwick Filter ---
         currentSettings.MADGWICK_FILTER_BETA = preferences.getFloat("MDGW_FLTR_BETA", FactoryDefaults::MADGWICK_FILTER_BETA);
 
+        // Autotune start delay
+        currentSettings.AUTOTUNE_START_DELAY_MS = preferences.getULong("AT_DELAY", FactoryDefaults::AUTOTUNE_START_DELAY_MS);
+
         // --- PID: Unified Point Turn ---
         currentSettings.PID_POINT_P = preferences.getFloat("PID_PT_P", FactoryDefaults::PID_POINT_P);
         currentSettings.PID_POINT_I = preferences.getFloat("PID_PT_I", FactoryDefaults::PID_POINT_I);
@@ -332,6 +337,8 @@ class ConfigurationManager {
         preferences.putFloat("SNR_MAX", currentSettings.SONAR_MAX_DIST);
 
         preferences.putFloat("MDGW_FLTR_BETA", currentSettings.MADGWICK_FILTER_BETA);
+
+        preferences.putULong("AT_DELAY", currentSettings.AUTOTUNE_START_DELAY_MS);
 
         preferences.putFloat("PID_PT_P", currentSettings.PID_POINT_P);
         preferences.putFloat("PID_PT_I", currentSettings.PID_POINT_I);
@@ -472,6 +479,8 @@ class ConfigurationManager {
         else if (varName == "SONAR_MAX_DIST") { currentSettings.SONAR_MAX_DIST = FactoryDefaults::SONAR_MAX_DIST; }
 
         else if (varName == "MADGWICK_FILTER_BETA") { currentSettings.MADGWICK_FILTER_BETA = FactoryDefaults::MADGWICK_FILTER_BETA; }
+
+        else if (varName == "AUTOTUNE_START_DELAY_MS") { currentSettings.AUTOTUNE_START_DELAY_MS = FactoryDefaults::AUTOTUNE_START_DELAY_MS; }
 
         else if (varName == "PID_POINT_P") { currentSettings.PID_POINT_P = FactoryDefaults::PID_POINT_P; }
         else if (varName == "PID_POINT_I") { currentSettings.PID_POINT_I = FactoryDefaults::PID_POINT_I; }

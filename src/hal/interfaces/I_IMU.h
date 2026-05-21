@@ -25,6 +25,8 @@ public:
     virtual void calibrateAccel() = 0;
     virtual void calibrateMag() = 0; // Magnetometer (Compass)
 
+    virtual float getTemperature() = 0; // <-- IMUs have their own thermal signatures, so this can be useful for advanced thermal compensation in the future!
+
     virtual void setFilterBeta(float beta) = 0; // Madgwick Filter Tuning (0.01 to 0.5) - Lower = less drift but slower response
     
     // Virtual destructor for safe cleanup
