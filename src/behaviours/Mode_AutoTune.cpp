@@ -1,6 +1,8 @@
 #include "behaviours/Mode_AutoTune.h"
 #include "config/ConfigurationManager.h"
 #include "utils/RemoteLogger.h"
+#include "core/BehaviourEngine.h" // For turninng brain (BRAIN_ACTIVE) on after autotune finishes
+#include "behaviours/Mode_NormalDriving.h" // For switching back to Normal Driving after autotune finishes
 #include <math.h>
 
 // We need access to the live PID to update it instantly after the tune
@@ -29,6 +31,11 @@ void Mode_AutoTune::onEnter() {
 
     countdownSeconds = Config.AUTOTUNE_START_DELAY_MS / 1000;
     lastCountdownTime = millis();
+
+    if (countdownSeconds > 0) {
+        logger.print("Autotune initiating in "); // Start the inline string
+    }
+
 }
 
 void Mode_AutoTune::update(const RobotMood& currentMood) {
@@ -50,7 +57,12 @@ void Mode_AutoTune::update(const RobotMood& currentMood) {
                 lastCountdownTime = millis();
                 
                 if (countdownSeconds > 0) {
-                    logger.printf("Autotune initiating in %d...\n", countdownSeconds);
+                    // If it's the last second, don't print the dots, just the number and a newline
+                    if (countdownSeconds > 1) {
+                        logger.printf("%d...", countdownSeconds);
+                    } else {
+                        logger.printf("%d\n", countdownSeconds);
+                    }
                     countdownSeconds--;
                 } else {
                     // Start the line that the loading dots will attach to
@@ -62,7 +74,6 @@ void Mode_AutoTune::update(const RobotMood& currentMood) {
                 }
             }
             break;
-
 
         // ==========================================
         // PHASE 1: GYRO THERMAL CALIBRATION
@@ -98,6 +109,13 @@ void Mode_AutoTune::update(const RobotMood& currentMood) {
         // ==========================================
         case STATE_RELAY_WOBBLE:
         {
+            // === THE HARDWARE TIMEOUT LATCH ===
+            if (millis() - lastCrossTime > Config.AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS) {
+                kinematics->stop();
+                logger.println("\n\n[AUTOTUNE] Failed. Please check if hardware is properly connected/working and try again.");
+                tuneState = STATE_FINISHED;
+                break; 
+            }
             float error = getShortestAngle(startYaw, currentYaw);
             
             // Track the maximum overshoot (Amplitude)

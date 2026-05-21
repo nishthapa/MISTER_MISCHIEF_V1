@@ -55,7 +55,8 @@ const char* autoDict[] = {
     "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
     "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
     "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
-    "MADGWICK_FILTER_BETA", "AUTOTUNE_START_DELAY_MS"
+    "MADGWICK_FILTER_BETA",
+    "AUTOTUNE_START_DELAY_MS", "AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS"
     "PID_POINT_P", "PID_POINT_I", "PID_POINT_D", "PID_POINT_LIM", "PID_POINT_ILIM", "PID_POINT_DEAD",
     "PID_ARC_P", "PID_ARC_I", "PID_ARC_D", "PID_ARC_LIM", "PID_ARC_ILIM", "PID_ARC_DEAD",
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
@@ -83,7 +84,8 @@ const char* sysVariables[] = {
     "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
     "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
     "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
-    "MADGWICK_FILTER_BETA", "AUTOTUNE_START_DELAY_MS",
+    "MADGWICK_FILTER_BETA",
+    "AUTOTUNE_START_DELAY_MS", "AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS",
     "PID_POINT_P", "PID_POINT_I", "PID_POINT_D", "PID_POINT_LIM", "PID_POINT_ILIM", "PID_POINT_DEAD",
     "PID_ARC_P", "PID_ARC_I", "PID_ARC_D", "PID_ARC_LIM", "PID_ARC_ILIM", "PID_ARC_DEAD",
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
@@ -511,6 +513,7 @@ void CommandProcessor::handleSet(String varName, String valStr) {
 
     // AUTOTUNE START DELAY
     else if (varName == "AUTOTUNE_START_DELAY_MS") { Config.AUTOTUNE_START_DELAY_MS = valStr.toInt(); }
+    else if (varName == "AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS") { Config.AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS = valStr.toInt(); }
 
     // --- PID TUNING VARS ---
 
@@ -864,6 +867,10 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     else if (varName == "AUTOTUNE_START_DELAY_MS") { 
         if (wantDefaultOnly) logger.printf("[AUTOTUNE_START_DELAY_MS] Default: %d\n", FactoryDefaults::AUTOTUNE_START_DELAY_MS);
         else logger.printf("[AUTOTUNE_START_DELAY_MS] Current: %d | Default: %d\n", Config.AUTOTUNE_START_DELAY_MS, FactoryDefaults::AUTOTUNE_START_DELAY_MS);
+    }
+    else if (varName == "AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS") { 
+        if (wantDefaultOnly) logger.printf("[AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS] Default: %d\n", FactoryDefaults::AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS);
+        else logger.printf("[AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS] Current: %d | Default: %d\n", Config.AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS, FactoryDefaults::AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS);
     }
 
     else if (varName.startsWith("PID_POINT")){

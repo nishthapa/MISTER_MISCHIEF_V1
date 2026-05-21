@@ -77,18 +77,20 @@ const char* BehaviourEngine::getActiveMoodName() const {
 
 void BehaviourEngine::update() {
     // ==========================================
-    // THE MASTER OVERRIDE (MANUAL / AUTOTUNE MODE or when "set BRAIN_ACTIVE false" is used for testing)
+    // THE MASTER OVERRIDE (MANUAL / AUTOTUNE MODE)
     // ==========================================
     if (!Config.BRAIN_ACTIVE) {
-        // Even if the brain is off, the active mode MUST run its math
-        if (activeMode != nullptr) activeMode->update(activeMood);
-        
-        // The Transition Manager MUST still run so onEnter/onExit fire safely!
+        // 1. RUN THE TRANSITION MANAGER FIRST
+        // This ensures onEnter() sets up variables BEFORE update() runs
         if (activeMode != previousMode) {
             if (previousMode != nullptr) previousMode->onExit();
             if (activeMode != nullptr) activeMode->onEnter();
             previousMode = activeMode;
         }
+
+        // 2. RUN THE MATH
+        if (activeMode != nullptr) activeMode->update(activeMood);
+        
         return; // EXIT EARLY! Do not run survival reflexes or mood logic!
     }
 

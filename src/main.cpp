@@ -83,10 +83,15 @@ void ControlLoopTask(void *pvParameters) {
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
 
         // THE NEW KILLSWITCH LOGIC IF MASTER DEBUG IS OFF WHEN WE ARE TUNING/CHANGING PARAMETERS/SETTINGS
+        /* // THE BRAIN ACTIVE FLAG IS THE MASTER KILLSWITCH FOR ALL MOTION. IF FALSE, THE ROBOT WILL NOT MOVE NO MATTER WHAT MODE IT IS IN.
+        // since BehaviourEngine is now acting as the gatekeeper (where it safely bypasses survival reflexes but\
+        // still runs the active mode if the brain is off), we no longer need this hard killswitch
+        // This allows us to successfully autotune and test modes even when the brain is off, which is a much more intuitive way to work with the robot in general!
         if (!Config.BRAIN_ACTIVE) {
             motorDriver->stop(); // Force motors off
             continue;            // Skip the rest of the loop entirely!
         }
+        */
 
         if (global_imuAlive) {
             brain.update();

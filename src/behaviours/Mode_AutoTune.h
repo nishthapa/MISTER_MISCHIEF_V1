@@ -2,8 +2,6 @@
 #include "behaviours/IRobotMode.h"
 #include "hal/interfaces/I_IMU.h"
 #include "core/KinematicsEngine.h"
-#include "core/BehaviourEngine.h" // For turninng brain (BRAIN_ACTIVE) on after autotune finishes
-#include "behaviours/Mode_NormalDriving.h" // For switching back to Normal Driving after autotune finishes
 
 enum AutoTuneState {
     STATE_COUNTDOWN, // <-- NEW 1st State i.e. counting down until autotune starts as defined in Config.AUTOTUNE_START_DELAY_MS

@@ -48,6 +48,7 @@ struct MasterSettings {
 
     // --- Automatic PID Tuning ---
     unsigned long AUTOTUNE_START_DELAY_MS = FactoryDefaults::AUTOTUNE_START_DELAY_MS;
+    unsigned long AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS = FactoryDefaults::AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS;
 
     // --- PID: Unified Point Turn ---
     float PID_POINT_P = FactoryDefaults::PID_POINT_P;
@@ -201,8 +202,9 @@ class ConfigurationManager {
         // --- Madgwick Filter ---
         currentSettings.MADGWICK_FILTER_BETA = preferences.getFloat("MDGW_FLTR_BETA", FactoryDefaults::MADGWICK_FILTER_BETA);
 
-        // Autotune start delay
+        // Autotune settings
         currentSettings.AUTOTUNE_START_DELAY_MS = preferences.getULong("AT_DELAY", FactoryDefaults::AUTOTUNE_START_DELAY_MS);
+        currentSettings.AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS = preferences.getULong("AT_FAIL_TMOUT", FactoryDefaults::AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS);
 
         // --- PID: Unified Point Turn ---
         currentSettings.PID_POINT_P = preferences.getFloat("PID_PT_P", FactoryDefaults::PID_POINT_P);
@@ -339,6 +341,7 @@ class ConfigurationManager {
         preferences.putFloat("MDGW_FLTR_BETA", currentSettings.MADGWICK_FILTER_BETA);
 
         preferences.putULong("AT_DELAY", currentSettings.AUTOTUNE_START_DELAY_MS);
+        preferences.putULong("AT_FAIL_TMOUT", currentSettings.AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS);
 
         preferences.putFloat("PID_PT_P", currentSettings.PID_POINT_P);
         preferences.putFloat("PID_PT_I", currentSettings.PID_POINT_I);
@@ -481,6 +484,7 @@ class ConfigurationManager {
         else if (varName == "MADGWICK_FILTER_BETA") { currentSettings.MADGWICK_FILTER_BETA = FactoryDefaults::MADGWICK_FILTER_BETA; }
 
         else if (varName == "AUTOTUNE_START_DELAY_MS") { currentSettings.AUTOTUNE_START_DELAY_MS = FactoryDefaults::AUTOTUNE_START_DELAY_MS; }
+        else if (varName == "AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS") { currentSettings.AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS = FactoryDefaults::AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS; }
 
         else if (varName == "PID_POINT_P") { currentSettings.PID_POINT_P = FactoryDefaults::PID_POINT_P; }
         else if (varName == "PID_POINT_I") { currentSettings.PID_POINT_I = FactoryDefaults::PID_POINT_I; }
