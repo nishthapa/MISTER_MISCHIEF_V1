@@ -4,8 +4,8 @@
 #include "config/SystemConfig.h"      // <-- For the master clock
 #include "config/ConfigurationManager.h"
 
-Mode_MaintainDistance::Mode_MaintainDistance(I_DistanceSensor* s, I_MotorDriver* m, PIDController* p) {
-    sonar = s; motors = m; pid = p;
+Mode_MaintainDistance::Mode_MaintainDistance(I_DistanceSensor* s, KinematicsEngine* k, PIDController* p) {
+    sonar = s; kinematics = k; pid = p;
 }
 
 void Mode_MaintainDistance::onEnter() {
@@ -22,5 +22,5 @@ void Mode_MaintainDistance::update(const RobotMood& currentMood) {
     // float correction = pid->compute(PersonalityConfig::MAINTAIN_DISTANCE_TARGET_CM, currentDistance, dt); 
     float correction = pid->compute(Config.MAINTAIN_DISTANCE_CM, currentDistance, dt);
     float finalSpeed = correction * currentMood.speedMultiplier;
-    motors->drive(-finalSpeed, -finalSpeed); 
+    kinematics->rawDrive(-finalSpeed, -finalSpeed);
 }

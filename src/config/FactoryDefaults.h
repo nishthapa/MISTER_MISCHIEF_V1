@@ -145,6 +145,27 @@ namespace FactoryDefaults {
     constexpr float MADGWICK_FILTER_BETA = 0.04f; // governs how much to trust the accelerometer // Lowered to kill the twitching!
 
     // ==========================================
+    // UNIFIED POINT TURN PID TUNING (Stationary)
+    // ==========================================
+    constexpr float PID_POINT_P = 2.0f;
+    constexpr float PID_POINT_I = 0.0f;
+    constexpr float PID_POINT_D = 0.5f;
+    constexpr float PID_POINT_LIM = 120.0f;
+    constexpr float PID_POINT_ILIM = 0.0f;
+    constexpr float PID_POINT_DEAD = 3.0f; // Degrees
+
+    // ==========================================
+    // UNIFIED ARC TURN PID TUNING (Rolling)
+    // ==========================================
+    constexpr float PID_ARC_P = 1.5f;
+    constexpr float PID_ARC_I = 0.0f;
+    constexpr float PID_ARC_D = 0.2f;
+    constexpr float PID_ARC_LIM = 100.0f;
+    constexpr float PID_ARC_ILIM = 0.0f;
+    constexpr float PID_ARC_DEAD = 2.0f; // Degrees
+
+/*
+    // ==========================================
     // HEADING HOLD PID TUNING
     // ==========================================
     constexpr float PID_HEADING_P = 1.5f;   // Range: 0.1 to 10.0
@@ -153,7 +174,9 @@ namespace FactoryDefaults {
     constexpr float PID_HEADING_LIM = 100.0f; // Range: 10.0 to 255.0
     constexpr float PID_HEADING_ILIM = 0.0f;  // Range: 0.0 to 255.0
     constexpr float PID_HEADING_DEAD = 2.0f;  // Range: 0.5 to 10.0 (Degrees)
+*/
 
+/*
     // ==========================================
     // COMPASS LOCK PID TUNING
     // ==========================================
@@ -163,6 +186,7 @@ namespace FactoryDefaults {
     constexpr float PID_COMPASS_LIM = 120.0f;
     constexpr float PID_COMPASS_ILIM = 0.0f;
     constexpr float PID_COMPASS_DEAD = 3.0f;
+*/
 
     // ==========================================
     // DISTANCE HOLD PID TUNING
@@ -174,6 +198,8 @@ namespace FactoryDefaults {
     constexpr float PID_DIST_ILIM = 20.0f;
     constexpr float PID_DIST_DEAD = 2.0f; // Centimeters
 
+
+/*    
     // ==========================================
     // OBSTACLE AVOIDANCE PATH SCAN PID TUNING
     // ==========================================
@@ -183,6 +209,8 @@ namespace FactoryDefaults {
     constexpr float PID_OBSTACLE_LIM = 90.0f;
     constexpr float PID_OBSTACLE_ILIM = 0.0f;
     constexpr float PID_OBSTACLE_DEAD = 2.0f;
+*/
+
 
     // ==========================================
     // SYSTEM STATE

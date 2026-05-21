@@ -13,9 +13,9 @@
 #include "behaviours/Mode_Dizzy.h"
 #include "behaviours/Mode_DeepSleep.h"
 #include "core/BehaviourEngine.h"
+#include "core/KinematicsEngine.h"
 #include "utils/RadioManager.h"
 #include "utils/RemoteLogger.h"
-// #include "config/DebugConfig.h" 
 #include "config/CommandRegistry.h" 
 #include "core/CommandProcessor.h"
 #include "config/SystemConfig.h"
@@ -41,24 +41,24 @@ I_IMU* imu = IMUFactory::createIMU();
 // ==========================================
 // GLOBAL PID CONTROLLERS
 // ==========================================
-PIDController obstacleAvoidancePID = PIDControllerFactory::createObstacleAvoidanceNewPathScanSweepPID();
-PIDController headingPID = PIDControllerFactory::createHeadingHoldPID();
-PIDController compassPID = PIDControllerFactory::createCompassLockPID();
+PIDController pointTurnPID = PIDControllerFactory::createPointTurnPID();
+PIDController arcTurnPID   = PIDControllerFactory::createArcTurnPID();
 PIDController distancePID = PIDControllerFactory::createDistanceHoldPID();
 
 // ==========================================
-// GLOBAL MODE OBJECTS
+// THE UNIFIED KINEMATICS ENGINE
 // ==========================================
-Mode_ObstacleAvoidance obstacleMode(motorDriver, frontDistanceSensor, imu, &obstacleAvoidancePID);
+KinematicsEngine kinematics(motorDriver, &pointTurnPID, &arcTurnPID);
 
-// THE UPGRADED CONSTRUCTOR IS NOW READY!
-Mode_NormalDriving normalMode(motorDriver, imu, &headingPID); 
-
-Mode_CompassLock compassMode(imu, motorDriver, &compassPID);
-Mode_MaintainDistance distanceMode(frontDistanceSensor, motorDriver, &distancePID);
+// ==========================================
+// GLOBAL MODE OBJECTS (Injecting Kinematics Engine)
+// ==========================================
+Mode_ObstacleAvoidance obstacleMode(&kinematics, frontDistanceSensor, imu);
+Mode_NormalDriving normalMode(imu, &kinematics); 
+Mode_CompassLock compassMode(imu, &kinematics);
+Mode_MaintainDistance distanceMode(frontDistanceSensor, &kinematics, &distancePID);
 Mode_Dizzy dizzyMode(motorDriver);
 Mode_DeepSleep sleepMode(motorDriver);
-
 
 // ==========================================
 // MODE / MOOD SWITCHER
@@ -171,11 +171,11 @@ void setup() {
   RadioManager::initRadios();
   logger.bindRadios();
 
-  // Inject the loaded NVS variables into the running PID objects
-  headingPID.setTunings(Config.PID_HEADING_P, Config.PID_HEADING_I, Config.PID_HEADING_D, Config.PID_HEADING_ILIM, Config.PID_HEADING_LIM);
-  compassPID.setTunings(Config.PID_COMPASS_P, Config.PID_COMPASS_I, Config.PID_COMPASS_D, Config.PID_COMPASS_ILIM, Config.PID_COMPASS_LIM);
+  // Inject the loaded NVS variables into the running unified PID objects
+  pointTurnPID.setTunings(Config.PID_POINT_P, Config.PID_POINT_I, Config.PID_POINT_D, Config.PID_POINT_ILIM, Config.PID_POINT_LIM);
+  arcTurnPID.setTunings(Config.PID_ARC_P, Config.PID_ARC_I, Config.PID_ARC_D, Config.PID_ARC_ILIM, Config.PID_ARC_LIM);
   distancePID.setTunings(Config.PID_DIST_P, Config.PID_DIST_I, Config.PID_DIST_D, Config.PID_DIST_ILIM, Config.PID_DIST_LIM);
-  obstacleAvoidancePID.setTunings(Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D, Config.PID_OBSTACLE_ILIM, Config.PID_OBSTACLE_LIM);
+  //obstacleAvoidancePID.setTunings(Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D, Config.PID_OBSTACLE_ILIM, Config.PID_OBSTACLE_LIM);
   // ---------------------------
 
   // Inject Madgwick Filter Beta from NVS into the IMU immediately so it's active on boot without needing a CLI command!

@@ -1,25 +1,18 @@
 #pragma once
-
 #include "behaviours/IRobotMode.h"
 #include "hal/interfaces/I_IMU.h"
-#include "hal/hardware/motordriver/XY160D_MotorDriver.h"
-#include "core/PIDController.h"
+#include "core/KinematicsEngine.h" // <-- ADDED THIS
 
 class Mode_CompassLock : public IRobotMode {
 private:
-    // This mode needs to "see" tilt, "move" motors, and "think" with PID
     I_IMU* imu;
-    I_MotorDriver* motors;
-    PIDController* pid;
-
-    // The memory of where he was looking when he was picked up
+    KinematicsEngine* kinematics; // <-- REPLACED MOTORS AND PID WITH THIS
     float targetYaw;
 
 public:
-    // Dependency Injection: Hand the mode its tools
-    Mode_CompassLock(I_IMU* i, I_MotorDriver* m, PIDController* p);
+    // Dependency injection: Hand the Mode its tools (IMU and Kinematics Engine)
+    Mode_CompassLock(I_IMU* i, KinematicsEngine* k);
 
-    // The Contract
     void onEnter() override;
     void update(const RobotMood& currentMood) override;
     const char* getName() const override { return "MODE_COMPASS_LOCK"; }

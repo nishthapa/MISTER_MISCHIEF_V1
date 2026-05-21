@@ -46,6 +46,24 @@ struct MasterSettings {
     // --- Madgwick Filter ---
     float MADGWICK_FILTER_BETA = FactoryDefaults::MADGWICK_FILTER_BETA;
 
+
+    // --- PID: Unified Point Turn ---
+    float PID_POINT_P = FactoryDefaults::PID_POINT_P;
+    float PID_POINT_I = FactoryDefaults::PID_POINT_I;
+    float PID_POINT_D = FactoryDefaults::PID_POINT_D;
+    float PID_POINT_LIM = FactoryDefaults::PID_POINT_LIM;
+    float PID_POINT_ILIM = FactoryDefaults::PID_POINT_ILIM;
+    float PID_POINT_DEAD = FactoryDefaults::PID_POINT_DEAD;
+
+    // --- PID: Unified Arc Turn ---
+    float PID_ARC_P = FactoryDefaults::PID_ARC_P;
+    float PID_ARC_I = FactoryDefaults::PID_ARC_I;
+    float PID_ARC_D = FactoryDefaults::PID_ARC_D;
+    float PID_ARC_LIM = FactoryDefaults::PID_ARC_LIM;
+    float PID_ARC_ILIM = FactoryDefaults::PID_ARC_ILIM;
+    float PID_ARC_DEAD = FactoryDefaults::PID_ARC_DEAD;
+
+    /*
     // --- PID: Heading ---
     float PID_HEADING_P = FactoryDefaults::PID_HEADING_P;
     float PID_HEADING_I = FactoryDefaults::PID_HEADING_I;
@@ -61,6 +79,7 @@ struct MasterSettings {
     float PID_COMPASS_LIM = FactoryDefaults::PID_COMPASS_LIM;
     float PID_COMPASS_ILIM = FactoryDefaults::PID_COMPASS_ILIM;
     float PID_COMPASS_DEAD = FactoryDefaults::PID_COMPASS_DEAD;
+    */
 
     // --- PID: Distance ---
     float PID_DIST_P = FactoryDefaults::PID_DIST_P;
@@ -70,6 +89,7 @@ struct MasterSettings {
     float PID_DIST_ILIM = FactoryDefaults::PID_DIST_ILIM;
     float PID_DIST_DEAD = FactoryDefaults::PID_DIST_DEAD;
 
+    /*
     // --- PID: Obstacle ---
     float PID_OBSTACLE_P = FactoryDefaults::PID_OBSTACLE_P;
     float PID_OBSTACLE_I = FactoryDefaults::PID_OBSTACLE_I;
@@ -77,6 +97,7 @@ struct MasterSettings {
     float PID_OBSTACLE_LIM = FactoryDefaults::PID_OBSTACLE_LIM;
     float PID_OBSTACLE_ILIM = FactoryDefaults::PID_OBSTACLE_ILIM;
     float PID_OBSTACLE_DEAD = FactoryDefaults::PID_OBSTACLE_DEAD;
+    */
 
     // --- Physics & Handing ---
     float TILT_HANDLING_THRESHOLD = FactoryDefaults::TILT_HANDLING_THRESHOLD;
@@ -178,6 +199,23 @@ class ConfigurationManager {
         // --- Madgwick Filter ---
         currentSettings.MADGWICK_FILTER_BETA = preferences.getFloat("MDGW_FLTR_BETA", FactoryDefaults::MADGWICK_FILTER_BETA);
 
+        // --- PID: Unified Point Turn ---
+        currentSettings.PID_POINT_P = preferences.getFloat("PID_PT_P", FactoryDefaults::PID_POINT_P);
+        currentSettings.PID_POINT_I = preferences.getFloat("PID_PT_I", FactoryDefaults::PID_POINT_I);
+        currentSettings.PID_POINT_D = preferences.getFloat("PID_PT_D", FactoryDefaults::PID_POINT_D);
+        currentSettings.PID_POINT_LIM = preferences.getFloat("PID_PT_LIM", FactoryDefaults::PID_POINT_LIM);
+        currentSettings.PID_POINT_ILIM = preferences.getFloat("PID_PT_ILM", FactoryDefaults::PID_POINT_ILIM);
+        currentSettings.PID_POINT_DEAD = preferences.getFloat("PID_PT_DED", FactoryDefaults::PID_POINT_DEAD);
+
+        // --- PID: Unified Arc Turn ---
+        currentSettings.PID_ARC_P = preferences.getFloat("PID_ARC_P", FactoryDefaults::PID_ARC_P);
+        currentSettings.PID_ARC_I = preferences.getFloat("PID_ARC_I", FactoryDefaults::PID_ARC_I);
+        currentSettings.PID_ARC_D = preferences.getFloat("PID_ARC_D", FactoryDefaults::PID_ARC_D);
+        currentSettings.PID_ARC_LIM = preferences.getFloat("PID_ARC_LIM", FactoryDefaults::PID_ARC_LIM);
+        currentSettings.PID_ARC_ILIM = preferences.getFloat("PID_ARC_ILM", FactoryDefaults::PID_ARC_ILIM);
+        currentSettings.PID_ARC_DEAD = preferences.getFloat("PID_ARC_DED", FactoryDefaults::PID_ARC_DEAD);
+
+        /*
         // --- PID: Heading ---
         currentSettings.PID_HEADING_P = preferences.getFloat("PID_HDG_P", FactoryDefaults::PID_HEADING_P);
         currentSettings.PID_HEADING_I = preferences.getFloat("PID_HDG_I", FactoryDefaults::PID_HEADING_I);
@@ -193,6 +231,7 @@ class ConfigurationManager {
         currentSettings.PID_COMPASS_LIM = preferences.getFloat("PID_CMP_LIM", FactoryDefaults::PID_COMPASS_LIM);
         currentSettings.PID_COMPASS_ILIM = preferences.getFloat("PID_CMP_ILM", FactoryDefaults::PID_COMPASS_ILIM);
         currentSettings.PID_COMPASS_DEAD = preferences.getFloat("PID_CMP_DED", FactoryDefaults::PID_COMPASS_DEAD);
+        */
 
         // --- PID: Distance ---
         currentSettings.PID_DIST_P = preferences.getFloat("PID_DST_P", FactoryDefaults::PID_DIST_P);
@@ -202,6 +241,7 @@ class ConfigurationManager {
         currentSettings.PID_DIST_ILIM = preferences.getFloat("PID_DST_ILM", FactoryDefaults::PID_DIST_ILIM);
         currentSettings.PID_DIST_DEAD = preferences.getFloat("PID_DST_DED", FactoryDefaults::PID_DIST_DEAD);
 
+        /*
         // --- PID: Obstacle ---
         currentSettings.PID_OBSTACLE_P = preferences.getFloat("PID_OBS_P", FactoryDefaults::PID_OBSTACLE_P);
         currentSettings.PID_OBSTACLE_I = preferences.getFloat("PID_OBS_I", FactoryDefaults::PID_OBSTACLE_I);
@@ -209,6 +249,7 @@ class ConfigurationManager {
         currentSettings.PID_OBSTACLE_LIM = preferences.getFloat("PID_OBS_LIM", FactoryDefaults::PID_OBSTACLE_LIM);
         currentSettings.PID_OBSTACLE_ILIM = preferences.getFloat("PID_OBS_ILM", FactoryDefaults::PID_OBSTACLE_ILIM);
         currentSettings.PID_OBSTACLE_DEAD = preferences.getFloat("PID_OBS_DED", FactoryDefaults::PID_OBSTACLE_DEAD);
+        */
 
         // --- Physics & Handing ---
         currentSettings.TILT_HANDLING_THRESHOLD = preferences.getFloat("TLT_HNDL_THRS", FactoryDefaults::TILT_HANDLING_THRESHOLD);
@@ -292,6 +333,21 @@ class ConfigurationManager {
 
         preferences.putFloat("MDGW_FLTR_BETA", currentSettings.MADGWICK_FILTER_BETA);
 
+        preferences.putFloat("PID_PT_P", currentSettings.PID_POINT_P);
+        preferences.putFloat("PID_PT_I", currentSettings.PID_POINT_I);
+        preferences.putFloat("PID_PT_D", currentSettings.PID_POINT_D);
+        preferences.putFloat("PID_PT_LIM", currentSettings.PID_POINT_LIM);
+        preferences.putFloat("PID_PT_ILM", currentSettings.PID_POINT_ILIM);
+        preferences.putFloat("PID_PT_DED", currentSettings.PID_POINT_DEAD);
+
+        preferences.putFloat("PID_ARC_P", currentSettings.PID_ARC_P);
+        preferences.putFloat("PID_ARC_I", currentSettings.PID_ARC_I);
+        preferences.putFloat("PID_ARC_D", currentSettings.PID_ARC_D);
+        preferences.putFloat("PID_ARC_LIM", currentSettings.PID_ARC_LIM);
+        preferences.putFloat("PID_ARC_ILM", currentSettings.PID_ARC_ILIM);
+        preferences.putFloat("PID_ARC_DED", currentSettings.PID_ARC_DEAD);
+
+        /*
         preferences.putFloat("PID_HDG_P", currentSettings.PID_HEADING_P);
         preferences.putFloat("PID_HDG_I", currentSettings.PID_HEADING_I);
         preferences.putFloat("PID_HDG_D", currentSettings.PID_HEADING_D);
@@ -305,6 +361,7 @@ class ConfigurationManager {
         preferences.putFloat("PID_CMP_LIM", currentSettings.PID_COMPASS_LIM);
         preferences.putFloat("PID_CMP_ILIM", currentSettings.PID_COMPASS_ILIM);
         preferences.putFloat("PID_CMP_DED", currentSettings.PID_COMPASS_DEAD);
+        */
 
         preferences.putFloat("PID_DST_P", currentSettings.PID_DIST_P);
         preferences.putFloat("PID_DST_I", currentSettings.PID_DIST_I);
@@ -313,12 +370,14 @@ class ConfigurationManager {
         preferences.putFloat("PID_DST_ILIM", currentSettings.PID_DIST_ILIM);
         preferences.putFloat("PID_DST_DED", currentSettings.PID_DIST_DEAD);
 
+        /*
         preferences.putFloat("PID_OBS_P", currentSettings.PID_OBSTACLE_P);
         preferences.putFloat("PID_OBS_I", currentSettings.PID_OBSTACLE_I);
         preferences.putFloat("PID_OBS_D", currentSettings.PID_OBSTACLE_D);
         preferences.putFloat("PID_OBS_LIM", currentSettings.PID_OBSTACLE_LIM);
         preferences.putFloat("PID_OBS_ILIM", currentSettings.PID_OBSTACLE_ILIM);
         preferences.putFloat("PID_OBS_DED", currentSettings.PID_OBSTACLE_DEAD);
+        */
 
         preferences.putFloat("TLT_HNDL_THRS", currentSettings.TILT_HANDLING_THRESHOLD);
         preferences.putFloat("GF_LFT_UP_THRS", currentSettings.GFORCE_LIFT_UP_THRESHOLD);
@@ -414,6 +473,21 @@ class ConfigurationManager {
 
         else if (varName == "MADGWICK_FILTER_BETA") { currentSettings.MADGWICK_FILTER_BETA = FactoryDefaults::MADGWICK_FILTER_BETA; }
 
+        else if (varName == "PID_POINT_P") { currentSettings.PID_POINT_P = FactoryDefaults::PID_POINT_P; }
+        else if (varName == "PID_POINT_I") { currentSettings.PID_POINT_I = FactoryDefaults::PID_POINT_I; }
+        else if (varName == "PID_POINT_D") { currentSettings.PID_POINT_D = FactoryDefaults::PID_POINT_D; }
+        else if (varName == "PID_POINT_LIM") { currentSettings.PID_POINT_LIM = FactoryDefaults::PID_POINT_LIM; }
+        else if (varName == "PID_POINT_ILIM") { currentSettings.PID_POINT_ILIM = FactoryDefaults::PID_POINT_ILIM; }
+        else if (varName == "PID_POINT_DEAD") { currentSettings.PID_POINT_DEAD = FactoryDefaults::PID_POINT_DEAD; }
+
+        else if (varName == "PID_ARC_P") { currentSettings.PID_ARC_P = FactoryDefaults::PID_ARC_P; }
+        else if (varName == "PID_ARC_I") { currentSettings.PID_ARC_I = FactoryDefaults::PID_ARC_I; }
+        else if (varName == "PID_ARC_D") { currentSettings.PID_ARC_D = FactoryDefaults::PID_ARC_D; }
+        else if (varName == "PID_ARC_LIM") { currentSettings.PID_ARC_LIM = FactoryDefaults::PID_ARC_LIM; }
+        else if (varName == "PID_ARC_ILIM") { currentSettings.PID_ARC_ILIM = FactoryDefaults::PID_ARC_ILIM; }
+        else if (varName == "PID_ARC_DEAD") { currentSettings.PID_ARC_DEAD = FactoryDefaults::PID_ARC_DEAD; }
+
+        /*
         else if (varName == "PID_HEADING_P") { currentSettings.PID_HEADING_P = FactoryDefaults::PID_HEADING_P; }
         else if (varName == "PID_HEADING_I") { currentSettings.PID_HEADING_I = FactoryDefaults::PID_HEADING_I; }
         else if (varName == "PID_HEADING_D") { currentSettings.PID_HEADING_D = FactoryDefaults::PID_HEADING_D; }
@@ -427,6 +501,7 @@ class ConfigurationManager {
         else if (varName == "PID_COMPASS_LIM") { currentSettings.PID_COMPASS_LIM = FactoryDefaults::PID_COMPASS_LIM; }
         else if (varName == "PID_COMPASS_ILIM") { currentSettings.PID_COMPASS_ILIM = FactoryDefaults::PID_COMPASS_ILIM; }
         else if (varName == "PID_COMPASS_DEAD") { currentSettings.PID_COMPASS_DEAD = FactoryDefaults::PID_COMPASS_DEAD; }
+        */
 
         else if (varName == "PID_DIST_P") { currentSettings.PID_DIST_P = FactoryDefaults::PID_DIST_P; }
         else if (varName == "PID_DIST_I") { currentSettings.PID_DIST_I = FactoryDefaults::PID_DIST_I; }
@@ -435,12 +510,14 @@ class ConfigurationManager {
         else if (varName == "PID_DIST_ILIM") { currentSettings.PID_DIST_ILIM = FactoryDefaults::PID_DIST_ILIM; }
         else if (varName == "PID_DIST_DEAD") { currentSettings.PID_DIST_DEAD = FactoryDefaults::PID_DIST_DEAD; }
 
+        /*
         else if (varName == "PID_OBSTACLE_P") { currentSettings.PID_OBSTACLE_P = FactoryDefaults::PID_OBSTACLE_P; }
         else if (varName == "PID_OBSTACLE_I") { currentSettings.PID_OBSTACLE_I = FactoryDefaults::PID_OBSTACLE_I; }
         else if (varName == "PID_OBSTACLE_D") { currentSettings.PID_OBSTACLE_D = FactoryDefaults::PID_OBSTACLE_D; }
         else if (varName == "PID_OBSTACLE_LIM") { currentSettings.PID_OBSTACLE_LIM = FactoryDefaults::PID_OBSTACLE_LIM; }
         else if (varName == "PID_OBSTACLE_ILIM") { currentSettings.PID_OBSTACLE_ILIM = FactoryDefaults::PID_OBSTACLE_ILIM; }
         else if (varName == "PID_OBSTACLE_DEAD") { currentSettings.PID_OBSTACLE_DEAD = FactoryDefaults::PID_OBSTACLE_DEAD; }
+        */
 
         else if (varName == "TILT_HANDLING_THRESHOLD") { currentSettings.TILT_HANDLING_THRESHOLD = FactoryDefaults::TILT_HANDLING_THRESHOLD; }
         else if (varName == "GFORCE_LIFT_UP_THRESHOLD") { currentSettings.GFORCE_LIFT_UP_THRESHOLD = FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD; }

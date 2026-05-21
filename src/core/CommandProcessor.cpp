@@ -15,10 +15,9 @@ extern RemoteLogger logger;
 extern I_IMU* imu; // Reaches into main.cpp to grab the global IMU!
 
 // --- All the PID controllers for live-tuning access in the CLI ---
-extern PIDController headingPID;
-extern PIDController compassPID;
+extern PIDController pointTurnPID;
+extern PIDController arcTurnPID;
 extern PIDController distancePID;
-extern PIDController obstacleAvoidancePID;
 
 CommandProcessor::CommandProcessor() {
     // ==========================================
@@ -52,8 +51,8 @@ const char* autoDict[] = {
     "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
     "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
     "MADGWICK_FILTER_BETA",
-    "PID_HEADING_P", "PID_HEADING_I", "PID_HEADING_D", "PID_HEADING_LIM", "PID_HEADING_ILIM", "PID_HEADING_DEAD",
-    "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
+    "PID_POINT_P", "PID_POINT_I", "PID_POINT_D", "PID_POINT_LIM", "PID_POINT_ILIM", "PID_POINT_DEAD",
+    "PID_ARC_P", "PID_ARC_I", "PID_ARC_D", "PID_ARC_LIM", "PID_ARC_ILIM", "PID_ARC_DEAD",
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
     "PID_OBSTACLE_P", "PID_OBSTACLE_I", "PID_OBSTACLE_D", "PID_OBSTACLE_LIM", "PID_OBSTACLE_ILIM", "PID_OBSTACLE_DEAD",
     "TILT_HANDLING_THRESHOLD", "GFORCE_LIFT_UP_THRESHOLD", "GFORCE_LIFT_DOWN_THRESHOLD", "LIFT_ENERGY_SPIKE_THRESHOLD",
@@ -80,8 +79,8 @@ const char* sysVariables[] = {
     "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
     "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
     "MADGWICK_FILTER_BETA",
-    "PID_HEADING_P", "PID_HEADING_I", "PID_HEADING_D", "PID_HEADING_LIM", "PID_HEADING_ILIM", "PID_HEADING_DEAD",
-    "PID_COMPASS_P", "PID_COMPASS_I", "PID_COMPASS_D", "PID_COMPASS_LIM", "PID_COMPASS_ILIM", "PID_COMPASS_DEAD",
+    "PID_POINT_P", "PID_POINT_I", "PID_POINT_D", "PID_POINT_LIM", "PID_POINT_ILIM", "PID_POINT_DEAD",
+    "PID_ARC_P", "PID_ARC_I", "PID_ARC_D", "PID_ARC_LIM", "PID_ARC_ILIM", "PID_ARC_DEAD",
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
     "PID_OBSTACLE_P", "PID_OBSTACLE_I", "PID_OBSTACLE_D", "PID_OBSTACLE_LIM", "PID_OBSTACLE_ILIM", "PID_OBSTACLE_DEAD",
     "TILT_HANDLING_THRESHOLD", "GFORCE_LIFT_UP_THRESHOLD", "GFORCE_LIFT_DOWN_THRESHOLD", "LIFT_ENERGY_SPIKE_THRESHOLD",
@@ -508,6 +507,24 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     }
 
     // --- PID TUNING VARS ---
+
+    // --- PID: Unified Point Turn ---
+    else if (varName == "PID_POINT_P") { Config.PID_POINT_P = valStr.toFloat(); }
+    else if (varName == "PID_POINT_I") { Config.PID_POINT_I = valStr.toFloat(); }
+    else if (varName == "PID_POINT_D") { Config.PID_POINT_D = valStr.toFloat(); }
+    else if (varName == "PID_POINT_LIM") { Config.PID_POINT_LIM = valStr.toFloat(); }
+    else if (varName == "PID_POINT_ILIM") { Config.PID_POINT_ILIM = valStr.toFloat(); }
+    else if (varName == "PID_POINT_DEAD") { Config.PID_POINT_DEAD = valStr.toFloat(); }
+
+    // --- PID: Unified Arc Turn ---
+    else if (varName == "PID_ARC_P") { Config.PID_ARC_P = valStr.toFloat(); }
+    else if (varName == "PID_ARC_I") { Config.PID_ARC_I = valStr.toFloat(); }
+    else if (varName == "PID_ARC_D") { Config.PID_ARC_D = valStr.toFloat(); }
+    else if (varName == "PID_ARC_LIM") { Config.PID_ARC_LIM = valStr.toFloat(); }
+    else if (varName == "PID_ARC_ILIM") { Config.PID_ARC_ILIM = valStr.toFloat(); }
+    else if (varName == "PID_ARC_DEAD") { Config.PID_ARC_DEAD = valStr.toFloat(); }
+
+    /*
     else if (varName == "PID_HEADING_P") { Config.PID_HEADING_P = valStr.toFloat(); }
     else if (varName == "PID_HEADING_I") { Config.PID_HEADING_I = valStr.toFloat(); }
     else if (varName == "PID_HEADING_D") { Config.PID_HEADING_D = valStr.toFloat(); }
@@ -521,6 +538,7 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     else if (varName == "PID_COMPASS_LIM") { Config.PID_COMPASS_LIM = valStr.toFloat(); }
     else if (varName == "PID_COMPASS_ILIM") { Config.PID_COMPASS_ILIM = valStr.toFloat(); }
     else if (varName == "PID_COMPASS_DEAD") { Config.PID_COMPASS_DEAD = valStr.toFloat(); }
+    */
 
     else if (varName == "PID_DIST_P") { Config.PID_DIST_P = valStr.toFloat(); }
     else if (varName == "PID_DIST_I") { Config.PID_DIST_I = valStr.toFloat(); }
@@ -529,12 +547,14 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     else if (varName == "PID_DIST_ILIM") { Config.PID_DIST_ILIM = valStr.toFloat(); }
     else if (varName == "PID_DIST_DEAD") { Config.PID_DIST_DEAD = valStr.toFloat(); }
 
+    /*
     else if (varName == "PID_OBSTACLE_P") { Config.PID_OBSTACLE_P = valStr.toFloat(); }
     else if (varName == "PID_OBSTACLE_I") { Config.PID_OBSTACLE_I = valStr.toFloat(); }
     else if (varName == "PID_OBSTACLE_D") { Config.PID_OBSTACLE_D = valStr.toFloat(); }
     else if (varName == "PID_OBSTACLE_LIM") { Config.PID_OBSTACLE_LIM = valStr.toFloat(); }
     else if (varName == "PID_OBSTACLE_ILIM") { Config.PID_OBSTACLE_ILIM = valStr.toFloat(); }
     else if (varName == "PID_OBSTACLE_DEAD") { Config.PID_OBSTACLE_DEAD = valStr.toFloat(); }
+    */
 
     else if (varName == "TILT_HANDLING_THRESHOLD") { Config.TILT_HANDLING_THRESHOLD = valStr.toFloat(); }
     else if (varName == "GFORCE_LIFT_UP_THRESHOLD") { Config.GFORCE_LIFT_UP_THRESHOLD = valStr.toFloat(); }
@@ -650,6 +670,16 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     // OTHERWISE, WE'D NEED TO WRITE A TON OF REDUNDANT CODE TO CHECK FOR EACH INDIVIDUAL PID VARIABLE AND THEN RE-APPLY THE TUNINGS,
     // WHICH WOULD BE ANNOYING TO MAINTAIN AND EASY TO SCREW UP BY FORGETTING ONE!
     
+    if (varName.startsWith("PID_POINT")) {
+        pointTurnPID.setTunings(Config.PID_POINT_P, Config.PID_POINT_I, Config.PID_POINT_D, Config.PID_POINT_ILIM, Config.PID_POINT_LIM);
+        logger.printf("UPDATED UNIFIED POINT TURN PID: P=%.2f | I=%.2f | D=%.2f\n", Config.PID_POINT_P, Config.PID_POINT_I, Config.PID_POINT_D);
+    }
+    else if (varName.startsWith("PID_ARC")) {
+        arcTurnPID.setTunings(Config.PID_ARC_P, Config.PID_ARC_I, Config.PID_ARC_D, Config.PID_ARC_ILIM, Config.PID_ARC_LIM);
+        logger.printf("UPDATED UNIFIED ARC TURN PID: P=%.2f | I=%.2f | D=%.2f\n", Config.PID_ARC_P, Config.PID_ARC_I, Config.PID_ARC_D);
+    }
+
+    /*
     if (varName.startsWith("PID_HEADING")) {
         headingPID.setTunings(Config.PID_HEADING_P, Config.PID_HEADING_I, Config.PID_HEADING_D, Config.PID_HEADING_ILIM, Config.PID_HEADING_LIM);
         logger.printf("UPDATED HEADING PID. NEW TUNINGS: P = %.2f | I = %.2f | D=%.2f\n", Config.PID_HEADING_P, Config.PID_HEADING_I, Config.PID_HEADING_D);
@@ -657,15 +687,17 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     else if (varName.startsWith("PID_COMPASS")) {
         compassPID.setTunings(Config.PID_COMPASS_P, Config.PID_COMPASS_I, Config.PID_COMPASS_D, Config.PID_COMPASS_ILIM, Config.PID_COMPASS_LIM);
         logger.printf("UPDATED COMPASS PID. NEW TUNINGS: P = %.2f | I = %.2f | D=%.2f\n", Config.PID_COMPASS_P, Config.PID_COMPASS_I, Config.PID_COMPASS_D);
-    }
+    }*/
     else if (varName.startsWith("PID_DIST")) {
         distancePID.setTunings(Config.PID_DIST_P, Config.PID_DIST_I, Config.PID_DIST_D, Config.PID_DIST_ILIM, Config.PID_DIST_LIM);
         logger.printf("UPDATED DISTANCE PID. NEW TUNINGS: P = %.2f | I = %.2f | D=%.2f\n", Config.PID_DIST_P, Config.PID_DIST_I, Config.PID_DIST_D);
     }
+
+    /*
     else if (varName.startsWith("PID_OBSTACLE")) {
         obstacleAvoidancePID.setTunings(Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D, Config.PID_OBSTACLE_ILIM, Config.PID_OBSTACLE_LIM);
         logger.printf("UPDATED OBSTACLE PID. NEW TUNINGS: P = %.2f | I = %.2f | D=%.2f\n", Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D);
-    }
+    }*/
 
     // SMART DEBUG MODE (MEDIUM) SWITCHER
     else if (varName.startsWith("DEBUG_") || varName == "ACTIVE_DEBUG_MODE") {
@@ -823,6 +855,16 @@ void CommandProcessor::handleGet(String varName, String valStr) {
         else logger.printf("[MADGWICK_FILTER_BETA] Current: %.4f | Default: %.4f\n", Config.MADGWICK_FILTER_BETA, FactoryDefaults::MADGWICK_FILTER_BETA);
     }
 
+    else if (varName.startsWith("PID_POINT")){
+        logger.printf("\t\t\t --- [UNIFIED PID: POINT TURN (STATIONARY)] ---\n");
+        logger.printf("CURRENT:\tP=%.2f\t|\tI=%.2f\t|\tD=%.2f\t|\tLIM=%.2f\t|\tDEAD=%.2f\n", Config.PID_POINT_P, Config.PID_POINT_I, Config.PID_POINT_D, Config.PID_POINT_LIM, Config.PID_POINT_DEAD);
+    }
+    else if (varName.startsWith("PID_ARC")){
+        logger.printf("\t\t\t --- [UNIFIED PID: ARC TURN (ROLLING)] ---\n");
+        logger.printf("CURRENT:\tP=%.2f\t|\tI=%.2f\t|\tD=%.2f\t|\tLIM=%.2f\t|\tDEAD=%.2f\n", Config.PID_ARC_P, Config.PID_ARC_I, Config.PID_ARC_D, Config.PID_ARC_LIM, Config.PID_ARC_DEAD);
+    }
+
+    /*
     //experimental elegant "get all PID tunings at once" check by prefix!
     else if (varName.startsWith("PID_HEADING")){
         if (wantDefaultOnly) {
@@ -857,7 +899,7 @@ void CommandProcessor::handleGet(String varName, String valStr) {
             logger.printf("DEFAULT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", FactoryDefaults::PID_COMPASS_P, FactoryDefaults::PID_COMPASS_I, FactoryDefaults::PID_COMPASS_D, FactoryDefaults::PID_COMPASS_LIM, FactoryDefaults::PID_COMPASS_ILIM, FactoryDefaults::PID_COMPASS_DEAD);
             logger.printf("CURRENT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", Config.PID_COMPASS_P, Config.PID_COMPASS_I, Config.PID_COMPASS_D, Config.PID_COMPASS_LIM, Config.PID_COMPASS_ILIM, Config.PID_COMPASS_DEAD);
         }
-    }
+    }*/
     else if (varName.startsWith("PID_DIST")){
         if (wantDefaultOnly) {
             logger.printf("\t\t\t\t\t --- [PID_DIST] ---\n");
@@ -875,6 +917,8 @@ void CommandProcessor::handleGet(String varName, String valStr) {
             logger.printf("CURRENT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", Config.PID_DIST_P, Config.PID_DIST_I, Config.PID_DIST_D, Config.PID_DIST_LIM, Config.PID_DIST_ILIM, Config.PID_DIST_DEAD);
         }
     }
+
+    /*
     else if (varName.startsWith("PID_OBSTACLE")){
         if (wantDefaultOnly) {
             logger.printf("\t\t\t\t\t --- [PID_OBSTACLE] ---\n");
@@ -891,7 +935,7 @@ void CommandProcessor::handleGet(String varName, String valStr) {
             logger.printf("DEFAULT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", FactoryDefaults::PID_OBSTACLE_P, FactoryDefaults::PID_OBSTACLE_I, FactoryDefaults::PID_OBSTACLE_D, FactoryDefaults::PID_OBSTACLE_LIM, FactoryDefaults::PID_OBSTACLE_ILIM, FactoryDefaults::PID_OBSTACLE_DEAD);
             logger.printf("CURRENT:\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\t|\t%.2f\n", Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D, Config.PID_OBSTACLE_LIM, Config.PID_OBSTACLE_ILIM, Config.PID_OBSTACLE_DEAD);
         }
-    }
+    }*/
     
 
     

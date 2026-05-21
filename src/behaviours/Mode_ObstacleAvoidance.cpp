@@ -4,8 +4,8 @@
 // #include "config/ObstacleAvoidanceConfig.h" // Safe to DELETE since we're now pulling these values from the NVS-backed ConfigurationManager
 #include "config/ConfigurationManager.h"
 
-Mode_ObstacleAvoidance::Mode_ObstacleAvoidance(I_MotorDriver* m, I_DistanceSensor* s, I_IMU* i, PIDController* p) {
-    motors = m; sonar = s; imu = i; alignPID = p;
+Mode_ObstacleAvoidance::Mode_ObstacleAvoidance(KinematicsEngine* k, I_DistanceSensor* s, I_IMU* i) {
+    kinematics = k; sonar = s; imu = i;
     currentState = FINISHED;
 }
 
@@ -38,12 +38,12 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
 
     switch (currentState) {
         case BACKING_UP:
-            motors->drive(-speed, -speed);
+            kinematics->rawDrive(-speed, -speed);
             if (elapsed > Config.OBSTACLE_BACKUP_DURATION_MS) changeState(RADAR_SWEEP);
             break;
 
         case RADAR_SWEEP:
-            motors->drive(-speed, speed); 
+            kinematics->rawDrive(-speed, speed);
             
             if (millis() - lastPingTime > 50 && pingCount < MAX_PINGS) {
                 pointCloud[pingCount].heading = imu->getAngles().yaw;
@@ -61,7 +61,7 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
             break;
 
         case CALCULATING:
-            motors->stop();
+            kinematics->stop();
             {
                 float bestScore = -1.0f;
                 bestEscapeHeading = entryHeading; // Fallback
@@ -95,13 +95,10 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
 
         case ALIGNING:
             {
-                float currentYaw = imu->getAngles().yaw;
-                float error = getShortestAngle(bestEscapeHeading, currentYaw);
+                float error = getShortestAngle(bestEscapeHeading, imu->getAngles().yaw);
                 
-                float correction = alignPID->compute(0.0f, -error, 0.01f);
-                float finalCorrection = correction * currentMood.pidAggression;
-                
-                motors->drive(finalCorrection, -finalCorrection);
+                // Zero math here! The kinematics engine handles alignment natively now
+                kinematics->navigateToHeading(bestEscapeHeading, imu->getAngles().yaw, 0.0f, currentMood.pidAggression);
 
                 // ADDED: The infinite loop timeout fix we discussed earlier
                 if (abs(error) < Config.OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG || 
@@ -112,18 +109,18 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
             break;
 
         case ESCAPE:
-            motors->drive(speed, speed);
+            kinematics->rawDrive(speed, speed);
             if (elapsed > Config.OBSTACLE_ESCAPE_DURATION_MS) changeState(FINISHED); 
             break;
 
         case FINISHED:
-            motors->stop(); 
+            kinematics->stop();
             break;
     }
 }
 
 void Mode_ObstacleAvoidance::onExit() {
-    motors->stop();
+    kinematics->stop();
 }
 
 bool Mode_ObstacleAvoidance::isSequenceComplete() {

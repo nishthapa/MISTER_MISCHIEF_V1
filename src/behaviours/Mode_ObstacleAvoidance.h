@@ -4,6 +4,7 @@
 #include "hal/hardware/motordriver/XY160D_MotorDriver.h"
 #include "hal/hardware/distancesensor/HCSR04_Sonar.h"
 #include "hal/interfaces/I_IMU.h"
+#include "core/KinematicsEngine.h" //For the new kinematics engine
 #include "core/PIDController.h"
 
 // A struct to hold our "Point Cloud" data
@@ -14,10 +15,9 @@ struct RadarPing {
 
 class Mode_ObstacleAvoidance : public IRobotMode {
 private:
-    I_MotorDriver* motors;
+    KinematicsEngine* kinematics;
     I_DistanceSensor* sonar;
     I_IMU* imu;
-    PIDController* alignPID;
 
     // The streamlined Cockroach dance
     enum SequenceState { BACKING_UP, RADAR_SWEEP, CALCULATING, ALIGNING, ESCAPE, FINISHED };
@@ -38,7 +38,7 @@ private:
 
 public:
     // Dependency Injection upgraded
-    Mode_ObstacleAvoidance(I_MotorDriver* m, I_DistanceSensor* s, I_IMU* i, PIDController* p);
+    Mode_ObstacleAvoidance(KinematicsEngine* k, I_DistanceSensor* s, I_IMU* i);
     
     void onEnter() override;
     void update(const RobotMood& currentMood) override;
