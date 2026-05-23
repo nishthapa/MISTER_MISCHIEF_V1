@@ -6,10 +6,10 @@
 class XY160D_MotorDriver : public I_MotorDriver {
 private:
     // Variable names fixed to match your .cpp file!
-    int leftFwdPin, leftRevPin, rightFwdPin, rightRevPin;
+    int enaPin, leftFwdPin, leftRevPin, rightFwdPin, rightRevPin, enbPin;
 
 public:
-    XY160D_MotorDriver(int lf, int lr, int rf, int rr);
+    XY160D_MotorDriver(int ena, int lf, int lr, int rf, int rr, int enb);
 
     // Notice we removed the accidental semicolon before override!
     void init() override;

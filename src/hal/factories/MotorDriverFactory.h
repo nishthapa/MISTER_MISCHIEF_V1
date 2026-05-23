@@ -11,13 +11,15 @@ public:
         if (MotorDriverConfig::SELECTED_DRIVER == MotorDriverConfig::DRIVER_XY160D) {
             
             // Allocate statically so it survives in memory forever
-            static XY160D_MotorDriver driver(
-                HardwarePins::PIN_MOTOR_LEFT_FWD,
-                HardwarePins::PIN_MOTOR_LEFT_REV,
-                HardwarePins::PIN_MOTOR_RIGHT_FWD,
-                HardwarePins::PIN_MOTOR_RIGHT_REV
+            return new XY160D_MotorDriver(
+            HardwarePins::PIN_MOTOR_ENA,
+            HardwarePins::PIN_MOTOR_LEFT_FWD, 
+            HardwarePins::PIN_MOTOR_LEFT_REV, 
+            HardwarePins::PIN_MOTOR_RIGHT_FWD, 
+            HardwarePins::PIN_MOTOR_RIGHT_REV,
+            HardwarePins::PIN_MOTOR_ENB
             );
-            return &driver;
+            //return &driver;
         }
 
         else if (MotorDriverConfig::SELECTED_DRIVER == MotorDriverConfig::DRIVER_L298N) {

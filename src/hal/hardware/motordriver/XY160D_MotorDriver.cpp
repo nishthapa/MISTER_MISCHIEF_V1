@@ -9,22 +9,30 @@
 #include <Arduino.h>
 
 // 1. Store the incoming pins into the object's private memory
-XY160D_MotorDriver::XY160D_MotorDriver(int lf, int lr, int rf, int rr) {
+XY160D_MotorDriver::XY160D_MotorDriver(int ena, int lf, int lr, int rf, int rr, int enb) {
+    enaPin = ena;
     leftFwdPin = lf;
     leftRevPin = lr;
     rightFwdPin = rf;
     rightRevPin = rr;
+    enbPin = enb;
 }
 
 void XY160D_MotorDriver::init() {
-    // 1. Configure the 4 hardware channels with your frequency and resolution
+    // --- 1. ENABLE THE MASTER H-BRIDGES ---
+    pinMode(enaPin, OUTPUT);
+    pinMode(enbPin, OUTPUT);
+    digitalWrite(enaPin, HIGH); // Turn on left bridge
+    digitalWrite(enbPin, HIGH); // Turn on right bridge
+
+    // 2. Configure the 4 hardware channels with your frequency and resolution
     // (These CH_ variables are still fine, they come from ChannelRegistry.h)
     ledcSetup(ChannelRegistry::CH_MOTOR_LEFT_FWD, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
     ledcSetup(ChannelRegistry::CH_MOTOR_LEFT_REV, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
     ledcSetup(ChannelRegistry::CH_MOTOR_RIGHT_FWD, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
     ledcSetup(ChannelRegistry::CH_MOTOR_RIGHT_REV, MotorDriverConfig::PWM_FREQ, MotorDriverConfig::PWM_RES);
 
-    // 2. Attach the internally stored pins to the channels
+    // 3. Attach the internally stored pins to the channels
     // DO NOT use PIN_MOTOR_..., use the private variables!
     ledcAttachPin(leftFwdPin, ChannelRegistry::CH_MOTOR_LEFT_FWD);
     ledcAttachPin(leftRevPin, ChannelRegistry::CH_MOTOR_LEFT_REV);
