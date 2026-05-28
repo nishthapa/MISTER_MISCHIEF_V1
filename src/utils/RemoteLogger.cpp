@@ -45,7 +45,7 @@ void RemoteLogger::bindRadios() {
         Serial.println("===============================\n");
     }
 
-    if (currentMode == Config.DEBUG_ACTIVE) return;
+    if (currentMode == 0) return;
 
     // 3. ATTACH TO RADIOS
     if (currentMode & Config.DEBUG_WIFI) {
@@ -96,7 +96,7 @@ int RemoteLogger::read() {
 // THREAD-SAFE handleClient()
 // ========================================================
 void RemoteLogger::handleClient() {
-    if (currentMode == Config.DEBUG_ACTIVE) return;
+    if (currentMode == 0) return;
 
     if (currentMode & Config.DEBUG_WIFI) {
         if (telnetServer.hasClient()) {
@@ -108,7 +108,7 @@ void RemoteLogger::handleClient() {
                 if (!activeClient || !activeClient.connected()) {
                     if (activeClient) activeClient.stop();
                     activeClient = newClient;
-                    activeClient.setNoDelay(true);
+                    //activeClient.setNoDelay(true);
                     connectionSuccessful = true;
                 } else {
                     // We already have an active client, reject the new one
@@ -132,13 +132,14 @@ void RemoteLogger::handleClient() {
 // ========================================================
 // THE SAFE SANITIZER (Network Optimized AND HEAP-ALLOCATION FREE)
 // ========================================================
-void sendSanitizedToTelnet(WiFiClient& client, const char* text) {
-    // Allocate a fast, static-sized RAM buffer on the stack (No Heap allocation!)
-    char buffer[512]; 
+void sendSanitizedToTelnet(WiFiClient& client, const char* text, bool appendNewline = false) {
+    // STATIC moves this 512-byte array off the Task Stack and into global RAM!
+    // Since this is ONLY called while txMutex is locked, it is 100% thread-safe.
+    static char buffer[512]; 
     size_t bufIndex = 0;
     char lastChar = '\0';
 
-    while (*text && bufIndex < 510) {
+    while (*text && bufIndex < 508) { // Leave room for \r\n\0
         if (*text == '\n' && lastChar != '\r') {
             buffer[bufIndex++] = '\r';
         }
@@ -146,12 +147,15 @@ void sendSanitizedToTelnet(WiFiClient& client, const char* text) {
         lastChar = *text;
         text++;
     }
-    buffer[bufIndex] = '\0'; // Null-terminate
+
+    // Combine the println newline into the same packet!
+    if (appendNewline) {
+        if (lastChar != '\r' && lastChar != '\n') buffer[bufIndex++] = '\r';
+        if (lastChar != '\n') buffer[bufIndex++] = '\n';
+    }
     
-    // Blast the entire buffer across the network in ONE packet
-    client.print(buffer); 
-    
-    // NOTE: client.flush() HAS BEEN REMOVED completely!
+    buffer[bufIndex] = '\0'; 
+    client.print(buffer);
 }
 // ========================================================
 
@@ -221,9 +225,8 @@ void RemoteLogger::println(const char* message) {
             Serial.println(message);
         }
         if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
-            sendSanitizedToTelnet(activeClient, message); // <-- Wired up!
-            activeClient.print("\r\n"); // Ensure telnet terminals step down a line properly
-            //activeClient.flush();
+            // Append the newline internally so it sends as ONE single TCP packet!
+            sendSanitizedToTelnet(activeClient, message, true); 
         }
         xSemaphoreGive(txMutex);
     }
@@ -235,18 +238,21 @@ void RemoteLogger::println(const char* message) {
 void RemoteLogger::printf(const char* format, ...) {
     if (currentMode == 0) return;
 
-    char buffer[256];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
-
+    // We MUST move the buffer and vsnprintf INSIDE the mutex lock!
     if (xSemaphoreTake(txMutex, portMAX_DELAY)) {
+        // STATIC moves this 256-byte array off the Task Stack!
+        static char buffer[256]; 
+        
+        va_list args;
+        va_start(args, format);
+        vsnprintf(buffer, sizeof(buffer), format, args);
+        va_end(args);
+
         if ((currentMode & Config.DEBUG_USB) && Serial) {
             Serial.print(buffer);
         }
         if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
-            sendSanitizedToTelnet(activeClient, buffer);  // <-- Wired up!
+            sendSanitizedToTelnet(activeClient, buffer);  
         }
         xSemaphoreGive(txMutex);
     }
