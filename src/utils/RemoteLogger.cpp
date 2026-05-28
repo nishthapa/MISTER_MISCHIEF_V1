@@ -59,65 +59,99 @@ void RemoteLogger::bindRadios() {
 // ========================================================
 // INCOMING COMMAND PROCESSING (wireless TELNET)
 // ========================================================
+
+// ========================================================
+// THREAD-SAFE available()
+// ========================================================
 int RemoteLogger::available() {
-    if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
-        return activeClient.available();
+    int count = 0;
+    if (currentMode == 0) return 0;
+    
+    if (xSemaphoreTake(txMutex, portMAX_DELAY)) {
+        if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
+            count = activeClient.available();
+        }
+        xSemaphoreGive(txMutex);
     }
-    return 0;
+    return count;
 }
 
+// ========================================================
+// THREAD-SAFE read()
+// ========================================================
 int RemoteLogger::read() {
-    if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
-        return activeClient.read();
+    int data = -1;
+    if (currentMode == 0) return -1;
+    
+    if (xSemaphoreTake(txMutex, portMAX_DELAY)) {
+        if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
+            data = activeClient.read();
+        }
+        xSemaphoreGive(txMutex);
     }
-    return -1;
+    return data;
 }
 
+// ========================================================
+// THREAD-SAFE handleClient()
+// ========================================================
 void RemoteLogger::handleClient() {
     if (currentMode == Config.DEBUG_ACTIVE) return;
 
     if (currentMode & Config.DEBUG_WIFI) {
         if (telnetServer.hasClient()) {
-            if (!activeClient || !activeClient.connected()) {
-                if (activeClient) activeClient.stop();
-                
-                activeClient = telnetServer.available();
-                
-                // === THE ZERO-LAG FIX ===
-                // This disables Nagle's Algorithm, forcing the router to transmit
-                // telemetry instantly instead of buffering it into chunks.
-                activeClient.setNoDelay(true);
-                logger.println("[NETWORK] Telnet Client connected."); 
+            WiFiClient newClient = telnetServer.available();
+            bool connectionSuccessful = false;
 
+            // === CRITICAL SECTION ===
+            if (xSemaphoreTake(txMutex, portMAX_DELAY)) {
+                if (!activeClient || !activeClient.connected()) {
+                    if (activeClient) activeClient.stop();
+                    activeClient = newClient;
+                    activeClient.setNoDelay(true);
+                    connectionSuccessful = true;
+                } else {
+                    // We already have an active client, reject the new one
+                    newClient.stop();
+                }
+                xSemaphoreGive(txMutex);
+            }
+            // ========================
+
+            // Print OUTSIDE the mutex to prevent a total system deadlock!
+            if (connectionSuccessful) {
+                logger.println("[NETWORK] Telnet Client connected."); 
                 if (currentMode & Config.DEBUG_USB) {
                     Serial.println("\n[SYSTEM] WiFi Client Connected!\n");
                 }
-            } else {
-                telnetServer.available().stop();
             }
         }
     }
 }
 
 // ========================================================
-// THE NEW MIDDLEWARE SANITIZER (Network Optimized)
+// THE SAFE SANITIZER (Network Optimized AND HEAP-ALLOCATION FREE)
 // ========================================================
 void sendSanitizedToTelnet(WiFiClient& client, const char* text) {
-    String sanitized = "";
-    sanitized.reserve(128); // Pre-allocate RAM to prevent fragmentation
+    // Allocate a fast, static-sized RAM buffer on the stack (No Heap allocation!)
+    char buffer[512]; 
+    size_t bufIndex = 0;
     char lastChar = '\0';
-    
-    // Build the packet entirely in fast memory
-    while (*text) {
-        if (*text == '\n' && lastChar != '\r') sanitized += '\r';
-        sanitized += *text;
+
+    while (*text && bufIndex < 510) {
+        if (*text == '\n' && lastChar != '\r') {
+            buffer[bufIndex++] = '\r';
+        }
+        buffer[bufIndex++] = *text;
         lastChar = *text;
         text++;
     }
+    buffer[bufIndex] = '\0'; // Null-terminate just to be safe
     
-    // Blast the entire string across the network in ONE packet
-    client.print(sanitized); 
-    client.flush(); // Force immediate network transmission
+    // Blast the buffer to LwIP. Let the Wi-Fi driver handle the timing!
+    client.print(buffer);
+    
+    // NOTE: client.flush() HAS BEEN REMOVED! 
 }
 // ========================================================
 
@@ -132,7 +166,7 @@ void RemoteLogger::print(const char* message) {
             Serial.print(message);
         }
         if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
-            activeClient.print(message);
+            sendSanitizedToTelnet(activeClient, message); // <-- Wired up!
         }
         xSemaphoreGive(txMutex);
     }
@@ -141,6 +175,22 @@ void RemoteLogger::print(const char* message) {
 // ========================================================
 // THREAD-SAFE print (overload for single char)
 // ========================================================
+/*void RemoteLogger::print(char c) {
+    if (currentMode == 0) return; // 0 means all telemetry is off
+
+    // Ask for the Mutex. If Core 1 is using it, wait here until it's done!
+    if (xSemaphoreTake(txMutex, portMAX_DELAY)) {
+        if ((currentMode & Config.DEBUG_USB) && Serial) {
+            Serial.print(c);
+        }
+        if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
+            //activeClient.print(c);
+            sendSanitizedToTelnet(activeClient, &c); // <-- Wired up!
+        }
+        xSemaphoreGive(txMutex); // Release the Mutex so the other Core can talk
+    }
+}*/
+
 void RemoteLogger::print(char c) {
     if (currentMode == 0) return; // 0 means all telemetry is off
 
@@ -150,7 +200,11 @@ void RemoteLogger::print(char c) {
             Serial.print(c);
         }
         if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
-            activeClient.print(c);
+            // Wrap the single char into a null-terminated C-string
+            char charStr[2] = {c, '\0'}; 
+            
+            // Send it through the sanitizer!
+            sendSanitizedToTelnet(activeClient, charStr); 
         }
         xSemaphoreGive(txMutex); // Release the Mutex so the other Core can talk
     }
@@ -167,7 +221,9 @@ void RemoteLogger::println(const char* message) {
             Serial.println(message);
         }
         if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
-            activeClient.println(message);
+            sendSanitizedToTelnet(activeClient, message); // <-- Wired up!
+            activeClient.print("\r\n"); // Ensure telnet terminals step down a line properly
+            //activeClient.flush();
         }
         xSemaphoreGive(txMutex);
     }
@@ -190,7 +246,7 @@ void RemoteLogger::printf(const char* format, ...) {
             Serial.print(buffer);
         }
         if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
-            activeClient.print(buffer);
+            sendSanitizedToTelnet(activeClient, buffer);  // <-- Wired up!
         }
         xSemaphoreGive(txMutex);
     }

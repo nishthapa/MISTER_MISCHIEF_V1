@@ -37,8 +37,6 @@ CommandProcessor::CommandProcessor() {
     registry.registerCommand("autotune", std::bind(&CommandProcessor::handleAutotune, this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("connect",    std::bind(&CommandProcessor::handleConnect,    this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("disconnect", std::bind(&CommandProcessor::handleDisconnect, this, std::placeholders::_1, std::placeholders::_2));
-    registry.registerCommand("connect",    std::bind(&CommandProcessor::handleConnect,    this, std::placeholders::_1, std::placeholders::_2));
-    registry.registerCommand("disconnect", std::bind(&CommandProcessor::handleDisconnect, this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("reboot",     std::bind(&CommandProcessor::handleReboot,     this, std::placeholders::_1, std::placeholders::_2));
 }
 
@@ -58,7 +56,7 @@ const char* autoDict[] = {
     "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
     "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
     "MADGWICK_FILTER_BETA",
-    "AUTOTUNE_START_DELAY_MS", "AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS"
+    "AUTOTUNE_START_DELAY_MS", "AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS",
     "PID_POINT_P", "PID_POINT_I", "PID_POINT_D", "PID_POINT_LIM", "PID_POINT_ILIM", "PID_POINT_DEAD",
     "PID_ARC_P", "PID_ARC_I", "PID_ARC_D", "PID_ARC_LIM", "PID_ARC_ILIM", "PID_ARC_DEAD",
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
@@ -108,6 +106,7 @@ const char* sysVariables[] = {
 
 const int sysVarCount = sizeof(sysVariables) / sizeof(sysVariables[0]);
 
+/*
 void CommandProcessor::redrawCLI() {
     // 1. Carriage Return to the start of the line
     logger.print("\r");
@@ -136,6 +135,32 @@ void CommandProcessor::redrawCLI() {
     }
     
     // 5. Save the new length so the eraser knows what to do next time!
+    lastBufferLength = cliBuffer.length();
+}*/
+
+void CommandProcessor::redrawCLI() {
+    // Build the entire visual update in a single RAM buffer
+    String frame = "\r";
+    frame.reserve(128); // Prevent heap fragmentation!
+    frame += "mischief> ";
+    frame += cliBuffer;
+    
+    int charsToErase = lastBufferLength - cliBuffer.length();
+    if (charsToErase < 0) charsToErase = 0;
+    
+    int spacesToPrint = charsToErase + 1;
+    for (int i = 0; i < spacesToPrint; i++) frame += ' '; // Add to local memory
+    
+    // Explicitly cast to signed int to prevent unsigned underflow!
+    int spacesToMoveBack = spacesToPrint + ((int)cliBuffer.length() - cursorPos);
+    if (spacesToMoveBack < 0) spacesToMoveBack = 0;
+
+    // So that the cursor wont get permanently stuck at the far right side of the terminal window when we type or use tab-autocomplet
+    for (int i = 0; i < spacesToMoveBack; i++) frame += '\b';
+    
+    // Blast the entire frame as ONE solid TCP packet!
+    logger.print(frame.c_str());
+    
     lastBufferLength = cliBuffer.length();
 }
 
