@@ -22,6 +22,7 @@ extern Mode_AutoTune autotuneMode;
 extern PIDController pointTurnPID;
 extern PIDController arcTurnPID;
 extern PIDController distancePID;
+extern KinematicsEngine kinematics; // To access the motors with "test MOTOR" command
 
 CommandProcessor::CommandProcessor() {
     // ==========================================
@@ -32,6 +33,7 @@ CommandProcessor::CommandProcessor() {
     registry.registerCommand("get",   std::bind(&CommandProcessor::handleGet,   this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("reset", std::bind(&CommandProcessor::handleReset, this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("calib", std::bind(&CommandProcessor::handleCalib, this, std::placeholders::_1, std::placeholders::_2));
+    registry.registerCommand("test", std::bind(&CommandProcessor::handleTest, this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("autotune", std::bind(&CommandProcessor::handleAutotune, this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("connect",    std::bind(&CommandProcessor::handleConnect,    this, std::placeholders::_1, std::placeholders::_2));
     registry.registerCommand("disconnect", std::bind(&CommandProcessor::handleDisconnect, this, std::placeholders::_1, std::placeholders::_2));
@@ -46,7 +48,7 @@ CommandProcessor::CommandProcessor() {
 
 // The Autocomplete Dictionary
 const char* autoDict[] = {
-    "set", "get", "reset", "calib", "default", "ALL",
+    "set", "get", "reset", "calib", "test", "default", "ALL",
     "connect", "disconnect", "reboot", "wifi", "bluetooth",
     "SERIAL_BAUD_RATE", "CRUISING_SPEED", "OBSTACLE_TRIGGER_CM", "MAINTAIN_DISTANCE_CM", "MOTOR_MIN_PWM",
     "OBS_SWEEP_ANGLE", "OBS_SWEEP_SPEED", "OBS_SWEEP_PAUSE", "OBS_CLEAR_THRESH", "OBS_HYSTERESIS",
@@ -108,11 +110,11 @@ const int sysVarCount = sizeof(sysVariables) / sizeof(sysVariables[0]);
 
 void CommandProcessor::redrawCLI() {
     // 1. Carriage Return to the start of the line
-    Serial.print("\r");
+    logger.print("\r");
     
     // 2. Draw the pristine prompt and the current buffer
-    Serial.print("mischief> ");
-    Serial.print(cliBuffer);
+    logger.print("mischief> ");
+    logger.print(cliBuffer.c_str()); // .c_str() used here because logger only takes const char* natively
     
     // 3. THE SMART ERASER
     // Calculate exactly how many ghost characters are left over from the last draw
@@ -124,13 +126,13 @@ void CommandProcessor::redrawCLI() {
     
     // Print exactly enough spaces to wipe the ghosts away cleanly
     for (int i = 0; i < spacesToPrint; i++) {
-        Serial.print(" ");
+        logger.print(" ");
     }
     
     // 4. Walk the cursor back over the spaces we just printed, PLUS the actual cursor offset
     int spacesToMoveBack = spacesToPrint + (cliBuffer.length() - cursorPos);
     for (int i = 0; i < spacesToMoveBack; i++) {
-        Serial.print("\b");
+        logger.print('\b');
     }
     
     // 5. Save the new length so the eraser knows what to do next time!
@@ -144,43 +146,51 @@ void CommandProcessor::processChar(char c) {
     // --- ANSI ESCAPE SEQUENCE DECODER (Arrows) ---
     if (c == 27) { 
         delay(5); 
+        char bracket = 0;
+        char arrow = 0;
+        
+        // THE FIX: Check both physical USB and Wi-Fi for the remaining ANSI sequence bytes!
         if (Serial.available() >= 2) {
-            char bracket = Serial.read();
-            char arrow = Serial.read();
-            if (bracket == '[') {
-                if (arrow == 'A') { // UP ARROW
-                    if (historyCount > 0) {
-                        if (historyIndex == -1) historyIndex = historyCount - 1; 
-                        else if (historyIndex > 0) historyIndex--;               
+            bracket = Serial.read();
+            arrow = Serial.read();
+        } else if (logger.available() >= 2) {
+            bracket = logger.read();
+            arrow = logger.read();
+        }
+
+        if (bracket == '[') {
+            if (arrow == 'A') { // UP ARROW
+                if (historyCount > 0) {
+                    if (historyIndex == -1) historyIndex = historyCount - 1; 
+                    else if (historyIndex > 0) historyIndex--;               
+                    cliBuffer = cmdHistory[historyIndex];
+                    cursorPos = cliBuffer.length(); 
+                    redrawCLI();
+                }
+            } 
+            else if (arrow == 'B') { // DOWN ARROW
+                if (historyIndex != -1) {
+                    if (historyIndex < historyCount - 1) {
+                        historyIndex++;
                         cliBuffer = cmdHistory[historyIndex];
-                        cursorPos = cliBuffer.length(); 
-                        redrawCLI();
+                    } else {
+                        historyIndex = -1; 
+                        cliBuffer = "";
                     }
-                } 
-                else if (arrow == 'B') { // DOWN ARROW
-                    if (historyIndex != -1) {
-                        if (historyIndex < historyCount - 1) {
-                            historyIndex++;
-                            cliBuffer = cmdHistory[historyIndex];
-                        } else {
-                            historyIndex = -1; 
-                            cliBuffer = "";
-                        }
-                        cursorPos = cliBuffer.length();
-                        redrawCLI();
-                    }
+                    cursorPos = cliBuffer.length();
+                    redrawCLI();
                 }
-                else if (arrow == 'C') { // RIGHT ARROW (Optimized ASCII)
-                    if (cursorPos < cliBuffer.length()) {
-                        Serial.print(cliBuffer[cursorPos]); // Reprint the char to push cursor right!
-                        cursorPos++;
-                    }
+            }
+            else if (arrow == 'C') { // RIGHT ARROW (Optimized ASCII)
+                if (cursorPos < cliBuffer.length()) {
+                    logger.print(cliBuffer[cursorPos]); // Reprint the char to push cursor right!
+                    cursorPos++;
                 }
-                else if (arrow == 'D') { // LEFT ARROW (Optimized ASCII)
-                    if (cursorPos > 0) {
-                        cursorPos--;
-                        Serial.print("\b"); // Standard backspace physically moves cursor left!
-                    }
+            }
+            else if (arrow == 'D') { // LEFT ARROW (Optimized ASCII)
+                if (cursorPos > 0) {
+                    cursorPos--;
+                    logger.print('\b'); // Standard backspace physically moves cursor left!
                 }
             }
         }
@@ -226,7 +236,7 @@ void CommandProcessor::processChar(char c) {
                 // Optimized: Backspacing at the very end
                 cliBuffer.remove(cliBuffer.length() - 1);
                 cursorPos--;
-                Serial.print("\b \b"); 
+                logger.print("\b \b"); 
                 lastBufferLength = cliBuffer.length(); // <-- ADD THIS
             } else {
                 // Splicing in the middle
@@ -240,7 +250,7 @@ void CommandProcessor::processChar(char c) {
 
     // --- ENTER KEY ---
     if (c == '\n') {
-        Serial.println(); 
+        logger.println(""); 
         if (cliBuffer.length() > 0) { 
             
             // SAVE TO HISTORY
@@ -268,7 +278,7 @@ void CommandProcessor::processChar(char c) {
                 logger.println("[SYSTEM] Telemetry Paused! Type 'set SERIAL_DEBUG_MASTER on' to resume.");
             }
         }
-        Serial.print("mischief> "); 
+        logger.print("mischief> "); 
         return;
     } 
 
@@ -278,7 +288,7 @@ void CommandProcessor::processChar(char c) {
             // Optimized: Typing at the very end of the string
             cliBuffer += c;
             cursorPos++;
-            Serial.print(c);
+            logger.print(c);
         } else {
             // Splicing in the middle (Requires full redraw)
             cliBuffer = cliBuffer.substring(0, cursorPos) + c + cliBuffer.substring(cursorPos);
@@ -295,6 +305,8 @@ void CommandProcessor::processInput(String input) {
     // --- STATE MACHINE: Are we waiting for Y/N? ---
     if (waitingForResetConfirm) { handleResetConfirm(input); return; }
     if (waitingForAutotuneConfirm) { handleAutotuneConfirm(input); return; } // Waiting for autotune y/n confirmation
+
+    if (motorWizardState > 0) { handleMotorWizardInput(input); return; } // interceptor for the wizard to hijack keystrokes
 
     // 1. EXTRACT COMMAND
     int firstSpace = input.indexOf(' ');
@@ -340,89 +352,6 @@ void CommandProcessor::processInput(String input) {
         logger.printf("Available commands: %s\n", registry.getAvailableCommands().c_str());
     }
 }
-
-/*void CommandProcessor::handleSet(String varName, String valStr) {
-    if (varName == "") {
-        logger.println("Usage: set <VARIABLE> <VALUE>");
-        return;
-    }
-
-    // --- THE EDGE CASE FIX ---
-    if (valStr == "") {
-        logger.printf("Error: Please provide a value to set for %s\n", varName.c_str());
-        return;
-    }
-
-    // ==========================================
-    // CONTEXT-AWARE STRING VALIDATION
-    // ==========================================
-    bool isStringVariable = (varName == "WIFI_SSID" || varName == "WIFI_PASSWORD" || varName == "BT_NAME");
-    
-    if (isStringVariable) {
-        // Check if it is perfectly wrapped in double quotes
-        if (valStr.startsWith("\"") && valStr.endsWith("\"") && valStr.length() >= 2) {
-            // Valid! Strip the quotes off so we don't save literal quotes to the hard drive
-            valStr = valStr.substring(1, valStr.length() - 1);
-        } else {
-            // Invalid! Block the save and educate the user.
-            logger.println("\n[ERROR] Text variables must be enclosed in double quotes!");
-            logger.printf("Example: set %s \"My Value\"\n", varName.c_str());
-            return; // Abort the command entirely
-        }
-    }
-
-    if (varName == "CRUISING_SPEED") { Config.CRUISING_SPEED = valStr.toFloat(); }
-    else if (varName == "OBSTACLE_TRIGGER_CM") { Config.OBSTACLE_TRIGGER_CM = valStr.toFloat(); }
-    else if (varName == "MAINTAIN_DIST_CM") { Config.MAINTAIN_DIST_CM = valStr.toFloat(); }
-
-    // --- NETWORK VARS ---
-    else if (varName == "WIFI_SSID") { Config.WIFI_SSID = valStr; }
-    else if (varName == "WIFI_PASSWORD") { Config.WIFI_PASSWORD = valStr; }
-    else if (varName == "BT_NAME") { Config.BT_NAME = valStr; }
-    else if (varName == "WIFI_ACTIVE") { 
-        valStr.toLowerCase();
-        Config.WIFI_ACTIVE = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }
-    else if (varName == "BT_ACTIVE") { 
-        valStr.toLowerCase();
-        Config.BT_ACTIVE = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }
- 
-    // --- SYSTEM VARS ---
-    else if (varName == "BRAIN_ACTIVE") { 
-        valStr.toLowerCase();
-        Config.BRAIN_ACTIVE = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }
-    
-    // --- DEBUG VARS ---
-    else if (varName == "SERIAL_DEBUG_MASTER") { 
-        valStr.toLowerCase();
-        Config.SERIAL_DEBUG_MASTER = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }
-    
-    /* FOR LATER: Granular debug controls for each subsystem!
-    else if (varName == "SERIAL_DEBUG_IMU") { 
-        valStr.toLowerCase();
-        Config.SERIAL_DEBUG_IMU = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }
-    else if (varName == "SERIAL_DEBUG_SONAR") { 
-        valStr.toLowerCase();
-        Config.SERIAL_DEBUG_SONAR = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }
-    else if (varName == "SERIAL_DEBUG_MOTOR_DRIVER") { 
-        valStr.toLowerCase();
-        Config.SERIAL_DEBUG_MOTOR_DRIVER = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }//
-    
-    else {
-        logger.printf("Unknown variable: %s\n", varName.c_str());
-        return;
-    }
-
-    ConfigSys.save();
-    logger.printf("Successfully set %s to %s\n", varName.c_str(), valStr.c_str());
-}*/
-
 
 // ==========================================
 // THE SPECIFIC HANDLERS
@@ -1245,6 +1174,113 @@ void CommandProcessor::handleCalib(String varName, String dummyVal) {
     }
 }
 
+// ==========================================
+// THE INTERACTIVE DIAGNOSTIC WIZARDS
+// ==========================================
+void CommandProcessor::handleTest(String varName, String dummyVal) {
+    varName.toUpperCase();
+
+    if (varName == "MOTOR" || varName == "motor") {
+        logger.println("\n=== INTERACTIVE MOTOR DIAGNOSTIC WIZARD ===");
+        logger.println("WARNING: Ensure robot is elevated (Props Off!).");
+        logger.println("Testing Left Motor Channel (Positive PWM) in 2 seconds...");
+        vTaskDelay(pdMS_TO_TICKS(2000));
+
+        // Spin Left Channel Positive
+        kinematics.rawDrive(50.0f, 0.0f);
+        vTaskDelay(pdMS_TO_TICKS(5000)); // <-- INCREASED TO 5 SECONDS
+        kinematics.rawDrive(0.0f, 0.0f);
+
+        logger.println("\nWhat physically happened on the robot?");
+        logger.println("  1 = Left track moved FORWARD");
+        logger.println("  2 = Left track moved REVERSE");
+        logger.println("  3 = Right track moved FORWARD");
+        logger.println("  4 = Right track moved REVERSE");
+        logger.println("  5 = Nothing moved at all");
+        logger.print("Enter your answer (1-5): ");
+        
+        motorWizardState = 1; // Tell the CLI to route the next keystroke to the Wizard!
+    } 
+    else if (varName == "IMU" || varName == "imu") {
+        logger.println("\n=== IMU ALIGNMENT WIZARD ===");
+        logger.println("Coming soon...");
+        logger.println("=== WIZARD COMPLETE ===\n");
+    } 
+    else {
+        logger.println("\nUsage: test <HARDWARE>");
+        logger.println("Available targets: MOTOR, IMU");
+    }
+}
+
+void CommandProcessor::handleMotorWizardInput(String input) {
+    int ans = input.toInt();
+    if (ans < 1 || ans > 5) {
+        logger.print("\nInvalid input. Please enter a number between 1 and 5: ");
+        return;
+    }
+
+    if (motorWizardState == 1) {
+        leftMotorTestAns = ans; // Save the answer for the final diagnosis
+        
+        logger.println("\nGot it. Now testing Right Motor Channel (Positive PWM) in 2 seconds...");
+        vTaskDelay(pdMS_TO_TICKS(2000));
+
+        // Spin Right Channel Positive
+        kinematics.rawDrive(0.0f, 50.0f);
+        vTaskDelay(pdMS_TO_TICKS(5000)); // <-- INCREASED TO 5 SECONDS
+        kinematics.rawDrive(0.0f, 0.0f);
+
+        logger.println("\nWhat physically happened on the robot?");
+        logger.println("  1 = Left track moved FORWARD");
+        logger.println("  2 = Left track moved REVERSE");
+        logger.println("  3 = Right track moved FORWARD");
+        logger.println("  4 = Right track moved REVERSE");
+        logger.println("  5 = Nothing moved at all");
+        logger.print("Enter your answer (1-5): ");
+        
+        motorWizardState = 2; // Move to the final phase
+    } 
+    else if (motorWizardState == 2) {
+        int rightMotorTestAns = ans;
+        motorWizardState = 0; // Release the CLI back to normal operations
+        
+        logger.println("\n\n=== DIAGNOSIS RESULTS ===");
+        
+        if (leftMotorTestAns == 5 && rightMotorTestAns == 5) {
+            logger.println("[DEAD] Neither motor moved.");
+            logger.println("Check ENA/ENB wiring, main battery power, and ensure the XY-160D logic pins are connected.");
+        } 
+        else if (leftMotorTestAns == 1 && rightMotorTestAns == 3) {
+            logger.println("[PERFECT] Your motors are wired flawlessly! No changes needed.");
+        } 
+        else {
+            logger.println("[ISSUE DETECTED] Incorrect wiring mapped.");
+            logger.println("\n--- HOW TO FIX IT ---");
+            logger.println("Open src/config/PinConfig.h and update these pins:\n");
+            
+            // Analyze Left Channel
+            logger.print("LEFT CHANNEL is currently driving: ");
+            if (leftMotorTestAns == 1) logger.println("Left Forward (Correct)");
+            else if (leftMotorTestAns == 2) logger.println("Left Reverse. \n  -> FIX: Swap PIN_MOTOR_LEFT_FWD and PIN_MOTOR_LEFT_REV");
+            else if (leftMotorTestAns == 3) logger.println("Right Forward. \n  -> FIX: This channel is swapped with the right side!");
+            else if (leftMotorTestAns == 4) logger.println("Right Reverse. \n  -> FIX: Swapped sides AND reversed polarity.");
+            
+            // Analyze Right Channel
+            logger.print("RIGHT CHANNEL is currently driving: ");
+            if (rightMotorTestAns == 3) logger.println("Right Forward (Correct)");
+            else if (rightMotorTestAns == 4) logger.println("Right Reverse. \n  -> FIX: Swap PIN_MOTOR_RIGHT_FWD and PIN_MOTOR_RIGHT_REV");
+            else if (rightMotorTestAns == 1) logger.println("Left Forward. \n  -> FIX: This channel is swapped with the left side!");
+            else if (rightMotorTestAns == 2) logger.println("Left Reverse. \n  -> FIX: Swapped sides AND reversed polarity.");
+            
+            // Master Swap Check
+            if ((leftMotorTestAns == 3 || leftMotorTestAns == 4) && (rightMotorTestAns == 1 || rightMotorTestAns == 2)) {
+                logger.println("\n[MASTER FIX] You completely crossed the Left and Right sides.");
+                logger.println("  -> The easiest fix is to physically swap the Left and Right motor wires where they screw into the XY160D green terminal blocks.");
+            }
+        }
+        logger.println("=== WIZARD COMPLETE ===\n");
+    }
+}
 
 void CommandProcessor::handleAutotune(String varName, String dummyVal) {
     logger.println("\n[WARNING] Keep Robot on a perfectly level floor. Autotuning might take a while.");

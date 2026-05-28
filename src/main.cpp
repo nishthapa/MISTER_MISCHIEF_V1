@@ -121,9 +121,14 @@ void SensorTask(void *pvParameters) {
     // ==========================================
     // 1. INSTANT CLI PROCESSING (Runs every 1ms)
     // ==========================================
+    // Read from the USB Cable
     while (Serial.available()) {
-        // Feed raw bytes to the isolated Terminal Emulator!
         cliEngine.processChar(Serial.read()); 
+    }
+
+    // Read from the Wi-Fi/Telnet Connection
+    while (logger.available()) {
+        cliEngine.processChar(logger.read());
     }
 
     unsigned long currentTime = millis();

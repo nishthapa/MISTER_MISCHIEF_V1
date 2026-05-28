@@ -6,6 +6,8 @@
 RemoteLogger::RemoteLogger(int port) : telnetServer(port), currentMode(0), isBluetoothConnected(false) {}
 
 void RemoteLogger::beginSerial() {
+    txMutex = xSemaphoreCreateMutex(); // Create the mutex for synchronizing access to the WiFi client
+
     // Grab the intended mode instantly on boot
     currentMode = Config.ACTIVE_DEBUG_MODE;
 
@@ -54,6 +56,23 @@ void RemoteLogger::bindRadios() {
     }
 }
 
+// ========================================================
+// INCOMING COMMAND PROCESSING (wireless TELNET)
+// ========================================================
+int RemoteLogger::available() {
+    if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
+        return activeClient.available();
+    }
+    return 0;
+}
+
+int RemoteLogger::read() {
+    if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
+        return activeClient.read();
+    }
+    return -1;
+}
+
 void RemoteLogger::handleClient() {
     if (currentMode == Config.DEBUG_ACTIVE) return;
 
@@ -67,7 +86,8 @@ void RemoteLogger::handleClient() {
                 // === THE ZERO-LAG FIX ===
                 // This disables Nagle's Algorithm, forcing the router to transmit
                 // telemetry instantly instead of buffering it into chunks.
-                activeClient.setNoDelay(true); 
+                activeClient.setNoDelay(true);
+                logger.println("[NETWORK] Telnet Client connected."); 
 
                 if (currentMode & Config.DEBUG_USB) {
                     Serial.println("\n[SYSTEM] WiFi Client Connected!\n");
@@ -101,46 +121,63 @@ void sendSanitizedToTelnet(WiFiClient& client, const char* text) {
 }
 // ========================================================
 
+// ========================================================
+// THREAD-SAFE print
+// ========================================================
 void RemoteLogger::print(const char* message) {
-    if (currentMode == Config.DEBUG_ACTIVE) return;
+    if (currentMode == 0) return;
 
-    // THE FIX: Only print to USB if a cable is plugged in AND a terminal is listening
-    if ((currentMode & Config.DEBUG_USB) && Serial) {
-        Serial.print(message);
+    if (xSemaphoreTake(txMutex, portMAX_DELAY)) {
+        if ((currentMode & Config.DEBUG_USB) && Serial) {
+            Serial.print(message);
+        }
+        if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
+            activeClient.print(message);
+        }
+        xSemaphoreGive(txMutex);
     }
-    
-    if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
-        sendSanitizedToTelnet(activeClient, message);
-    }
-
-    // if ((currentMode & Config.DEBUG_BLUETOOTH) && isBluetoothConnected) {
-    //     bleTxCharacteristic->setValue((uint8_t*)message, strlen(message));
-    //     bleTxCharacteristic->notify();
-    // }
 }
 
+// ========================================================
+// THREAD-SAFE print (overload for single char)
+// ========================================================
+void RemoteLogger::print(char c) {
+    if (currentMode == 0) return; // 0 means all telemetry is off
+
+    // Ask for the Mutex. If Core 1 is using it, wait here until it's done!
+    if (xSemaphoreTake(txMutex, portMAX_DELAY)) {
+        if ((currentMode & Config.DEBUG_USB) && Serial) {
+            Serial.print(c);
+        }
+        if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
+            activeClient.print(c);
+        }
+        xSemaphoreGive(txMutex); // Release the Mutex so the other Core can talk
+    }
+}
+
+// ========================================================
+// THREAD-SAFE println
+// ========================================================
 void RemoteLogger::println(const char* message) {
-    if (currentMode == Config.DEBUG_ACTIVE) return;
+    if (currentMode == 0) return;
 
-    // THE FIX: Check the physical connection first
-    if ((currentMode & Config.DEBUG_USB) && Serial) {
-        Serial.println(message);
+    if (xSemaphoreTake(txMutex, portMAX_DELAY)) {
+        if ((currentMode & Config.DEBUG_USB) && Serial) {
+            Serial.println(message);
+        }
+        if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
+            activeClient.println(message);
+        }
+        xSemaphoreGive(txMutex);
     }
-    
-    if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
-        activeClient.println(message);
-    }
-
-    // if ((currentMode & Config.DEBUG_BLUETOOTH) && isBluetoothConnected) {
-    //     char buffer[256];
-    //     snprintf(buffer, sizeof(buffer), "%s\n", message);
-    //     bleTxCharacteristic->setValue((uint8_t*)buffer, strlen(buffer));
-    //     bleTxCharacteristic->notify();
-    // }
 }
 
+// ========================================================
+// THREAD-SAFE printf
+// ========================================================
 void RemoteLogger::printf(const char* format, ...) {
-    if (currentMode == Config.DEBUG_ACTIVE) return;
+    if (currentMode == 0) return;
 
     char buffer[256];
     va_list args;
@@ -148,17 +185,13 @@ void RemoteLogger::printf(const char* format, ...) {
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    // THE FIX: Check the physical connection first
-    if ((currentMode & Config.DEBUG_USB) && Serial) {
-        Serial.print(buffer);
+    if (xSemaphoreTake(txMutex, portMAX_DELAY)) {
+        if ((currentMode & Config.DEBUG_USB) && Serial) {
+            Serial.print(buffer);
+        }
+        if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
+            activeClient.print(buffer);
+        }
+        xSemaphoreGive(txMutex);
     }
-    
-    if ((currentMode & Config.DEBUG_WIFI) && activeClient && activeClient.connected()) {
-        sendSanitizedToTelnet(activeClient, buffer);
-    }
-
-    // if ((currentMode & Config.DEBUG_BLUETOOTH) && isBluetoothConnected) {
-    //     bleTxCharacteristic->setValue((uint8_t*)buffer, strlen(buffer));
-    //     bleTxCharacteristic->notify();
-    // }
 }

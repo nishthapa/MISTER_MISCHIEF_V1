@@ -6,5 +6,6 @@
 
 # === Custom User Ignores ===
 TEMP_CODE/
+docs/
 *.txt
 *.ps1
