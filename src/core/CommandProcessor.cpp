@@ -141,7 +141,7 @@ void CommandProcessor::redrawCLI() {
 void CommandProcessor::redrawCLI() {
     // Build the entire visual update in a single RAM buffer
     String frame = "\r";
-    frame.reserve(128); // Prevent heap fragmentation!
+    frame.reserve(128); 
     frame += "mischief> ";
     frame += cliBuffer;
     
@@ -149,14 +149,13 @@ void CommandProcessor::redrawCLI() {
     if (charsToErase < 0) charsToErase = 0;
     
     int spacesToPrint = charsToErase + 1;
-    for (int i = 0; i < spacesToPrint; i++) frame += ' '; // Add to local memory
+    for (int i = 0; i < spacesToPrint; i++) frame += ' '; 
     
     // Explicitly cast to signed int to prevent unsigned underflow!
     int spacesToMoveBack = spacesToPrint + ((int)cliBuffer.length() - cursorPos);
     if (spacesToMoveBack < 0) spacesToMoveBack = 0;
-
-    // So that the cursor wont get permanently stuck at the far right side of the terminal window when we type or use tab-autocomplet
-    for (int i = 0; i < spacesToMoveBack; i++) frame += '\b';
+    
+    for (int i = 0; i < spacesToMoveBack; i++) frame += '\b'; 
     
     // Blast the entire frame as ONE solid TCP packet!
     logger.print(frame.c_str());

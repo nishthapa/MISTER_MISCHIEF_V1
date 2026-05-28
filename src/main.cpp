@@ -229,9 +229,9 @@ logger.println("Waking up the IMU...");
   // ==========================================
   // TEMPORARY AUTOTUNE BOOT TEST
   // ==========================================
-  logger.println("WARNING: Forcing Autotune on boot for testing...");
-  Config.BRAIN_ACTIVE = false;       // Temporarily disable survival reflexes
-  brain.changeMode(&autotuneMode);   // Force the brain into Autotune mode!
+  //logger.println("WARNING: Forcing Autotune on boot for testing...");
+  //Config.BRAIN_ACTIVE = false;       // Temporarily disable survival reflexes
+  //brain.changeMode(&autotuneMode);   // Force the brain into Autotune mode!
   // ==========================================
   
   logger.println("Mister Mischief V1 Booting...");

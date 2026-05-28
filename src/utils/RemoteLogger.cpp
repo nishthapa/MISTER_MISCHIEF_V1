@@ -146,12 +146,12 @@ void sendSanitizedToTelnet(WiFiClient& client, const char* text) {
         lastChar = *text;
         text++;
     }
-    buffer[bufIndex] = '\0'; // Null-terminate just to be safe
+    buffer[bufIndex] = '\0'; // Null-terminate
     
-    // Blast the buffer to LwIP. Let the Wi-Fi driver handle the timing!
-    client.print(buffer);
+    // Blast the entire buffer across the network in ONE packet
+    client.print(buffer); 
     
-    // NOTE: client.flush() HAS BEEN REMOVED! 
+    // NOTE: client.flush() HAS BEEN REMOVED completely!
 }
 // ========================================================
 
