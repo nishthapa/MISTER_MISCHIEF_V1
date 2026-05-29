@@ -122,7 +122,7 @@ namespace FactoryDefaults {
     // RANGE: 0.75f TO 0.99f // MUST equal (1.0f - ENERGY_EMA_ALPHA). The trust in the historical average.
     constexpr float ENERGY_EMA_BETA = 0.90f;
     
-    // How fast frustration cools down when left alone
+    // How fast frustration heats up or cools down when left alone
     constexpr float FRUSTRATION_COOLDOWN_RATE = 0.5f; 
     constexpr float FRUSTRATION_HEATUP_RATE = 1.0f;
     

@@ -21,6 +21,9 @@ BehaviourEngine::BehaviourEngine(I_IMU* i, I_DistanceSensor* s,
     imu = i; sonar = s;
     obstacleMode = obs; normalMode = norm; compassMode = comp;
     distanceMode = dist; dizzyMode = diz; sleepMode = sleep;
+
+    isHandTeasing = false;
+    ambientBackgroundDistance = 400.0f; // Default to max range
     
     activeMode = normalMode;
     previousMode = nullptr;
@@ -35,6 +38,8 @@ BehaviourEngine::BehaviourEngine(I_IMU* i, I_DistanceSensor* s,
     // Initialize our latches!
     isLowering = false;
     hasLanded = false;
+
+    isHandVanishing = false; // Initialize the new latch
     
     dizzyBarYaw = 0.0f; dizzyBarPitch = 0.0f; dizzyBarRoll = 0.0f;
     smoothedTotalEnergy = 0.0f;
@@ -96,8 +101,9 @@ void BehaviourEngine::update() {
 
     FusedAngles currentAngles = imu->getAngles();
     float distance = sonar->getDistanceCM();
-    
+    float previousDistance = lastDistance; // <--- NEW: Freeze the memory before we overwrite it!
     float distanceDelta = (distance != lastDistance && lastDistance > 0.0f) ? (distance - lastDistance) : 0.0f;
+
     lastDistance = distance;
     
     auto getShortestAngleDelta = [](float current, float previous) {
@@ -130,6 +136,12 @@ void BehaviourEngine::update() {
     float effectiveYawEnergy = (rawYawEnergy > Config.DIZZY_ENERGY_DEADBAND) ? rawYawEnergy : 0.0f;
     float effectivePitchEnergy = (rawPitchEnergy > Config.DIZZY_ENERGY_DEADBAND) ? rawPitchEnergy : 0.0f;
     float effectiveRollEnergy = (rawRollEnergy > Config.DIZZY_ENERGY_DEADBAND) ? rawRollEnergy : 0.0f;
+
+    // === NEW LOGIC: PROTECT THE SWEEP ===
+    // If the robot is intentionally spinning itself to scan, ignore the yaw energy!
+    if (activeMode == obstacleMode) {
+        effectiveYawEnergy = 0.0f; 
+    }
     
     dizzyBarYaw = (Config.DIZZY_CHARGE_RATE * effectiveYawEnergy) + (Config.DIZZY_DECAY_RATE * dizzyBarYaw);
     dizzyBarPitch = (Config.DIZZY_CHARGE_RATE * effectivePitchEnergy) + (Config.DIZZY_DECAY_RATE * dizzyBarPitch);
@@ -152,14 +164,67 @@ void BehaviourEngine::update() {
             activeMode = obstacleMode;
         }
     }
-    else if (distance > 0 && distance < Config.OBSTACLE_TRIGGER_CM) {
-        if (activeMode == distanceMode) activeMode = distanceMode;
-        else if (distanceDelta < -15.0f) { activeMode = distanceMode; isDizzy = false; }
-        else { activeMode = obstacleMode; isDizzy = false; }
-    } 
-    else if (activeMode == distanceMode && distance > 0 && distance < (Config.OBSTACLE_TRIGGER_CM + 15.0f)) {
-        activeMode = distanceMode;
+
+    // PRIORITY 1B: MAINTAIN DISTANCE (The Game)
+    else if (activeMode == distanceMode) {
+        
+        if (frustrationLevel >= Config.DISTANCE_HOLD_FRUSTRATION_LIMIT) {
+            isDizzy = true; dizzyStartTime = millis(); activeMode = dizzyMode; isHandVanishing = false;
+        }
+        
+        // 1. THE VANISHING EVENT (Derivative Tracking)
+        // If the distance suddenly spikes by more than 20cm in a single frame, the hand is gone.
+        // (This only triggers AFTER the Sonar driver's 500ms quarantine verifies it's real!)
+        if (distanceDelta > 20.0f) {
+            isHandVanishing = true;
+            vanishingStartTime = millis();
+        }
+        
+        // 2. THE EXIT LATCH
+        if (isHandVanishing) {
+            // If the hand comes right back (a sudden physical drop), cancel the exit!
+            if (distanceDelta < -15.0f) {
+                isHandVanishing = false;
+            }
+            // If it has safely been gone for 500ms, exit the mode!
+            else if (millis() - vanishingStartTime > 800) { // <--- INCREASED TO 800ms
+                activeMode = normalMode; 
+                isHandVanishing = false;
+                isHandTeasing = false; 
+            }
+        } 
+        
+        // 3. THE BACKUP SAFETY NET
+        // If the robot backed up so far that it is just staring into open space (>80cm), 
+        // kill the mode safely.
+        else if (distance > 80.0f) {
+            activeMode = normalMode;
+            isHandVanishing = false;
+            isHandTeasing = false;
+        }
     }
+
+    // PRIORITY 1C: ENTERING THE GAME OR AVOIDING OBSTACLE
+    else if (distance > 0 && distance < Config.OBSTACLE_TRIGGER_CM) {
+        
+        if (distanceDelta < -15.0f && !isHandTeasing) { 
+            isHandTeasing = true;
+            teaseStartTime = millis();
+            ambientBackgroundDistance = previousDistance; // <--- NEW: Save the TRUE background!
+        }
+        
+        if (isHandTeasing) {
+            if (millis() - teaseStartTime > 800) { // <--- INCREASED TO 800ms
+                activeMode = distanceMode; 
+                isDizzy = false; 
+            }
+        } 
+        else { 
+            activeMode = obstacleMode; // Crept up on a wall
+            isDizzy = false; 
+        }
+    }
+
     else if ((dizzyBarYaw > Config.DIZZY_TRIGGER_THRESHOLD || 
               dizzyBarPitch > Config.DIZZY_TRIGGER_THRESHOLD || 
               dizzyBarRoll > Config.DIZZY_TRIGGER_THRESHOLD) && !isDizzy) {

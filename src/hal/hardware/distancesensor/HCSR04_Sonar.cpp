@@ -77,6 +77,25 @@ float HCSR04_Sonar::getDistanceCM() {
         outlierStreak = 0;
     }
 
-    // 5. Feed into the Median Filter
-    return filter.addSample(rawDistance);
+    // 5. Feed the physics-verified distance into the Median Filter
+    float medianDistance = filter.addSample(rawDistance);
+
+    // ==========================================
+    // 6. ADAPTIVE LOW-PASS FILTER (Dynamic Bias)
+    // ==========================================
+    if (emaDistance < 0.0f) {
+        emaDistance = medianDistance; // Initialize
+    } else {
+        float alpha = EMA_ALPHA; // Default to heavy smoothing for PID stability
+        
+        // If the new reading is radically different, it's a sudden physical event.
+        // Increase the bias to 1.0 to snap to the new reality instantly!
+        if (abs(medianDistance - emaDistance) > 10.0f) {
+            alpha = 0.9f; 
+        }
+
+        emaDistance = (alpha * medianDistance) + ((1.0f - alpha) * emaDistance);
+    }
+
+    return emaDistance;
 }

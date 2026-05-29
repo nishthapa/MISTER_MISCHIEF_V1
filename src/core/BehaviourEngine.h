@@ -51,6 +51,14 @@ private:
     bool isLowering;
     bool hasLanded;
 
+    // THE EVENT LATCH
+    bool isHandVanishing;
+    unsigned long vanishingStartTime;
+
+    bool isHandTeasing;            // To track the 500ms entry verification
+    unsigned long teaseStartTime;  // When did we first see the hand?
+    float ambientBackgroundDistance; // Point #3: The saved memory of the room!
+
     float lastDistance;
     FusedAngles lastAngles;
 
