@@ -281,10 +281,10 @@ FusedAngles MPU6050_IMU::getAngles() {
             filter->compute(gx_rad, gy_rad, gz_rad, ax_cal, ay_cal, az_cal, 0.0f, 0.0f, 0.0f, dt, false);
         }
 
-        // 6. Update Memory
-        lastKnownAngles.roll  = filter->getRoll();
-        lastKnownAngles.pitch = filter->getPitch();
-        lastKnownAngles.yaw   = filter->getYaw();
+        // 6. Update Memory with Dynamic Axis Inversion Multipliers as stored in the Config Manager
+        lastKnownAngles.roll  = filter->getRoll()  * (Config.IMU_INVERT_ROLL ? -1.0f : 1.0f);
+        lastKnownAngles.pitch = filter->getPitch() * (Config.IMU_INVERT_PITCH ? -1.0f : 1.0f);
+        lastKnownAngles.yaw   = filter->getYaw()   * (Config.IMU_INVERT_YAW ? -1.0f : 1.0f);
     }
     
     return lastKnownAngles;

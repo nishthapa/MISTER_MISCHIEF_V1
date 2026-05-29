@@ -58,7 +58,7 @@ const char* autoDict[] = {
     "OBSTACLE_ALIGN_TIMEOUT_MS", "OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG", "OBSTACLE_ESCAPE_DURATION_MS",
     "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
     "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
-    "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
+    "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST", "IMU_INVERT_ROLL", "IMU_INVERT_PITCH", "IMU_INVERT_YAW",
     "MADGWICK_FILTER_BETA",
     "AUTOTUNE_START_DELAY_MS", "AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS"
     "PID_POINT_P", "PID_POINT_I", "PID_POINT_D", "PID_POINT_LIM", "PID_POINT_ILIM", "PID_POINT_DEAD",
@@ -87,7 +87,7 @@ const char* sysVariables[] = {
     "OBSTACLE_ALIGN_TIMEOUT_MS", "OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG", "OBSTACLE_ESCAPE_DURATION_MS",
     "DIZZY_SPIN_PWM", "DIZZY_SPIN_TIME", "DIZZY_COOLDOWN", "SLEEP_TIMEOUT_MS", "SLEEP_WAKE_G",
     "COMPASS_LOCK_ENTRY_SETTLE_MS", "COMPASS_LOCK_EXIT_SETTLE_MS",
-    "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST",
+    "IMU_GYRO_DEADBAND", "SONAR_MAX_DIST", "IMU_INVERT_ROLL", "IMU_INVERT_PITCH", "IMU_INVERT_YAW",
     "MADGWICK_FILTER_BETA",
     "AUTOTUNE_START_DELAY_MS", "AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS",
     "PID_POINT_P", "PID_POINT_I", "PID_POINT_D", "PID_POINT_LIM", "PID_POINT_ILIM", "PID_POINT_DEAD",
@@ -512,6 +512,11 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     else if (varName == "IMU_GYRO_DEADBAND") { Config.IMU_GYRO_DEADBAND = valStr.toFloat(); }
     else if (varName == "SONAR_MAX_DIST") { Config.SONAR_MAX_DIST = valStr.toFloat(); }
 
+    // --- IMU ORIENTATION ---
+    else if (varName == "IMU_INVERT_ROLL") { Config.IMU_INVERT_ROLL = (valStr == "on" || valStr == "1" || valStr == "true"); }
+    else if (varName == "IMU_INVERT_PITCH") { Config.IMU_INVERT_PITCH = (valStr == "on" || valStr == "1" || valStr == "true"); }
+    else if (varName == "IMU_INVERT_YAW") { Config.IMU_INVERT_YAW = (valStr == "on" || valStr == "1" || valStr == "true"); }
+
     // APPLY THE NEW MADGWICK FILTER AS WELL AS SAVE IT IN THE NVS
     else if (varName == "MADGWICK_FILTER_BETA") {
         Config.MADGWICK_FILTER_BETA = valStr.toFloat();
@@ -864,6 +869,20 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     else if (varName == "SONAR_MAX_DIST") { 
         if (wantDefaultOnly) logger.printf("[SONAR_MAX_DIST] Default: %.1f\n", FactoryDefaults::SONAR_MAX_DIST);
         else logger.printf("[SONAR_MAX_DIST] Current: %.1f | Default: %.1f\n", Config.SONAR_MAX_DIST, FactoryDefaults::SONAR_MAX_DIST);
+    }
+
+    // --- IMU ORIENTATION ---
+    else if (varName == "IMU_INVERT_ROLL") { 
+        if (wantDefaultOnly) logger.printf("[IMU_INVERT_ROLL] Default: %s\n", FactoryDefaults::IMU_INVERT_ROLL ? "ON" : "OFF");
+        else logger.printf("[IMU_INVERT_ROLL] Current: %s | Default: %s\n", Config.IMU_INVERT_ROLL ? "ON" : "OFF", FactoryDefaults::IMU_INVERT_ROLL ? "ON" : "OFF");
+    }
+    else if (varName == "IMU_INVERT_PITCH") { 
+        if (wantDefaultOnly) logger.printf("[IMU_INVERT_PITCH] Default: %s\n", FactoryDefaults::IMU_INVERT_PITCH ? "ON" : "OFF");
+        else logger.printf("[IMU_INVERT_PITCH] Current: %s | Default: %s\n", Config.IMU_INVERT_PITCH ? "ON" : "OFF", FactoryDefaults::IMU_INVERT_PITCH ? "ON" : "OFF");
+    }
+    else if (varName == "IMU_INVERT_YAW") { 
+        if (wantDefaultOnly) logger.printf("[IMU_INVERT_YAW] Default: %s\n", FactoryDefaults::IMU_INVERT_YAW ? "ON" : "OFF");
+        else logger.printf("[IMU_INVERT_YAW] Current: %s | Default: %s\n", Config.IMU_INVERT_YAW ? "ON" : "OFF", FactoryDefaults::IMU_INVERT_YAW ? "ON" : "OFF");
     }
 
     else if (varName == "MADGWICK_FILTER_BETA") { 

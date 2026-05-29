@@ -138,6 +138,11 @@ namespace FactoryDefaults {
     // Range: 50.0 to 400.0 (Max trusted range of HC-SR04)
     constexpr float SONAR_MAX_DIST = 200.0f;
 
+    // --- IMU ORIENTATION ---
+    static const bool IMU_INVERT_ROLL = false;
+    static const bool IMU_INVERT_PITCH = true;  // Fixed the physical mount
+    static const bool IMU_INVERT_YAW = true;    // Fixed the runaway spin
+
     // ==========================================
     // MADGWICK FILTER TUNING
     // ==========================================

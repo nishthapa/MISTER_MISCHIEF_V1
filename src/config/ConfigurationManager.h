@@ -43,6 +43,11 @@ struct MasterSettings {
     float IMU_GYRO_DEADBAND = FactoryDefaults::IMU_GYRO_DEADBAND;
     float SONAR_MAX_DIST = FactoryDefaults::SONAR_MAX_DIST;
 
+    // --- IMU ORIENTATION ---
+    bool IMU_INVERT_ROLL = FactoryDefaults::IMU_INVERT_ROLL;
+    bool IMU_INVERT_PITCH = FactoryDefaults::IMU_INVERT_PITCH;
+    bool IMU_INVERT_YAW = FactoryDefaults::IMU_INVERT_YAW;
+
     // --- Madgwick Filter ---
     float MADGWICK_FILTER_BETA = FactoryDefaults::MADGWICK_FILTER_BETA;
 
@@ -199,6 +204,11 @@ class ConfigurationManager {
         currentSettings.IMU_GYRO_DEADBAND = preferences.getFloat("IMU_DEAD", FactoryDefaults::IMU_GYRO_DEADBAND);
         currentSettings.SONAR_MAX_DIST = preferences.getFloat("SNR_MAX", FactoryDefaults::SONAR_MAX_DIST);
 
+        // --- IMU ORIENTATION ---
+        currentSettings.IMU_INVERT_ROLL = preferences.getBool("IMU_INV_R", FactoryDefaults::IMU_INVERT_ROLL);
+        currentSettings.IMU_INVERT_PITCH = preferences.getBool("IMU_INV_P", FactoryDefaults::IMU_INVERT_PITCH);
+        currentSettings.IMU_INVERT_YAW = preferences.getBool("IMU_INV_Y", FactoryDefaults::IMU_INVERT_YAW);
+
         // --- Madgwick Filter ---
         currentSettings.MADGWICK_FILTER_BETA = preferences.getFloat("MDGW_FLTR_BETA", FactoryDefaults::MADGWICK_FILTER_BETA);
 
@@ -337,6 +347,10 @@ class ConfigurationManager {
 
         preferences.putFloat("IMU_DEAD", currentSettings.IMU_GYRO_DEADBAND);
         preferences.putFloat("SNR_MAX", currentSettings.SONAR_MAX_DIST);
+
+        preferences.putBool("IMU_INV_R", currentSettings.IMU_INVERT_ROLL);
+        preferences.putBool("IMU_INV_P", currentSettings.IMU_INVERT_PITCH);
+        preferences.putBool("IMU_INV_Y", currentSettings.IMU_INVERT_YAW);
 
         preferences.putFloat("MDGW_FLTR_BETA", currentSettings.MADGWICK_FILTER_BETA);
 
@@ -480,6 +494,10 @@ class ConfigurationManager {
 
         else if (varName == "IMU_GYRO_DEADBAND") { currentSettings.IMU_GYRO_DEADBAND = FactoryDefaults::IMU_GYRO_DEADBAND; }
         else if (varName == "SONAR_MAX_DIST") { currentSettings.SONAR_MAX_DIST = FactoryDefaults::SONAR_MAX_DIST; }
+
+        else if (varName == "IMU_INVERT_ROLL") { currentSettings.IMU_INVERT_ROLL = FactoryDefaults::IMU_INVERT_ROLL; }
+        else if (varName == "IMU_INVERT_PITCH") { currentSettings.IMU_INVERT_PITCH = FactoryDefaults::IMU_INVERT_PITCH; }
+        else if (varName == "IMU_INVERT_YAW") { currentSettings.IMU_INVERT_YAW = FactoryDefaults::IMU_INVERT_YAW; }
 
         else if (varName == "MADGWICK_FILTER_BETA") { currentSettings.MADGWICK_FILTER_BETA = FactoryDefaults::MADGWICK_FILTER_BETA; }
 
