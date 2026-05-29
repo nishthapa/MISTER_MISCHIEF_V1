@@ -33,14 +33,18 @@ float HCSR04_Sonar::getDistanceCM() {
     unsigned long duration = pulseIn(echoPin, HIGH, DistanceSensorConfig::ECHO_TIMEOUT_US);
 
     // 4. Handle errors (Timeout or wiring issue)
+    // Send the -1.0 to the filter anyway. If it's a 1-frame glitch, 
+    // the median filter will delete it. If the wire is actually unplugged, 
+    // the buffer will fill with -1.0s and correctly output the error!
     if (duration == 0) {
         return -1.0; 
     }
 
-    // 5. Calculate distance
+    // 5. Calculate raw distance from the sensor
     // The speed of sound is roughly 0.0343 cm per microsecond.
     // We divide by 2 because the sound wave travels to the wall AND back.
-    float distance = (duration * DistanceSensorConfig::SPEED_OF_SOUND_CM_US) / 2.0;
+    float rawDistance = (duration * DistanceSensorConfig::SPEED_OF_SOUND_CM_US) / 2.0;
     
-    return distance;
+    // 6. Return the filtered reality
+    return filter.addSample(rawDistance);
 }

@@ -1,11 +1,15 @@
 #pragma once
 
 #include "hal/interfaces/I_DistanceSensor.h"
+#include "utils/MedianFilter.h"
 
 class HCSR04_Sonar : public I_DistanceSensor {
 private:
     int trigPin;
     int echoPin;
+
+    // Instantiate a pluggable filter with a window size of 5
+    MedianFilter<5> filter;
 
 public:
     // Constructor: Forces the main program to assign the pins
