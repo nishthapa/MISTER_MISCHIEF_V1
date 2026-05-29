@@ -5,7 +5,7 @@
 #include "config/ConfigurationManager.h"
 
 Mode_MaintainDistance::Mode_MaintainDistance(I_DistanceSensor* s, KinematicsEngine* k, PIDController* p) {
-    sonar = s; kinematics = k; pid = p;
+    distSensor = s; kinematics = k; pid = p;
 }
 
 void Mode_MaintainDistance::onEnter() {
@@ -13,7 +13,7 @@ void Mode_MaintainDistance::onEnter() {
 }
 
 void Mode_MaintainDistance::update(const RobotMood& currentMood) {
-    float currentDistance = sonar->getDistanceCM();
+    float currentDistance = distSensor->getDistanceCM();
     
     // Calculate dt (Delta Time) in seconds dynamically from the Master Clock!
     float dt = SystemConfig::MAIN_LOOP_TICK_RATE_MS / 1000.0f;

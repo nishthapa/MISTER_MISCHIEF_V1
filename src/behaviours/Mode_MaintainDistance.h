@@ -8,7 +8,7 @@
 class Mode_MaintainDistance : public IRobotMode {
 private:
     // The tools this mode needs to borrow
-    I_DistanceSensor* sonar;
+    I_DistanceSensor* distSensor;
     KinematicsEngine* kinematics;
     PIDController* pid; // Exclusively needed directly (instead of through the Kinematics Engine) for maintaining distance to a hand
 

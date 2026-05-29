@@ -11,6 +11,10 @@ private:
     // Instantiate a pluggable filter with a window size of 5
     MedianFilter<5> filter;
 
+    // --- PHYSICS CONSTRAINTS ---
+    float lastAcceptedRaw = 0.0f;
+    int outlierStreak = 0;
+
 public:
     // Constructor: Forces the main program to assign the pins
     HCSR04_Sonar(int trig, int echo);

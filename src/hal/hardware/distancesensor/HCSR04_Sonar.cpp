@@ -2,6 +2,9 @@
 #include "config/SensorConfig.h"
 #include <Arduino.h>
 
+// FreeRTOS Hardware Lock to prevent OS preemption
+portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+
 // The Constructor maps your hardware pins to the internal variables
 HCSR04_Sonar::HCSR04_Sonar(int trig, int echo) {
     trigPin = trig;
@@ -17,34 +20,63 @@ void HCSR04_Sonar::init() {
 }
 
 float HCSR04_Sonar::getDistanceCM() {
-    // 1. Clear the trigger pin to ensure a clean high pulse
-    digitalWrite(trigPin, LOW);
-    delayMicroseconds(DistanceSensorConfig::TRIGGER_CLEAR_DELAY_US);
+    // 1. THE HARDWARE RESET (Fixes the HC-SR04 "Stuck Echo" Bug)
+    // Physically pull the pin down to clear any locked internal timers from previous missed pings.
+    pinMode(echoPin, OUTPUT);
+    digitalWrite(echoPin, LOW);
+    delayMicroseconds(2);
+    pinMode(echoPin, INPUT);
 
-    // 2. Fire the 10-microsecond ultrasonic pulse
+    // 2. THE OS LOCK (Fixes FreeRTOS Preemption)
+    // Lock the CPU scheduler so the RTOS cannot pause us during the critical 10us trigger.
+    portENTER_CRITICAL(&mux);
     digitalWrite(trigPin, HIGH);
-    delayMicroseconds(DistanceSensorConfig::TRIGGER_PULSE_DELAY_US);
+    delayMicroseconds(10);
     digitalWrite(trigPin, LOW);
+    portEXIT_CRITICAL(&mux);
 
-    // 3. Measure the echo pulse length
-    // CRITICAL FREERTOS SAFETY: The "25000" is a timeout in microseconds.
-    // Without this timeout, if a wire disconnects, pulseIn() would wait forever,
-    // locking up Core 0. 25,000us max wait = roughly 400cm maximum range.
+    // 3. Read the pulse
     unsigned long duration = pulseIn(echoPin, HIGH, DistanceSensorConfig::ECHO_TIMEOUT_US);
 
-    // 4. Handle errors (Timeout or wiring issue)
-    // Send the -1.0 to the filter anyway. If it's a 1-frame glitch, 
-    // the median filter will delete it. If the wire is actually unplugged, 
-    // the buffer will fill with -1.0s and correctly output the error!
+    float rawDistance;
     if (duration == 0) {
-        return -1.0; 
+        rawDistance = 400.0f; // Clamp timeouts to Max Range
+    } else {
+        rawDistance = (duration * DistanceSensorConfig::SPEED_OF_SOUND_CM_US) / 2.0;
     }
 
-    // 5. Calculate raw distance from the sensor
-    // The speed of sound is roughly 0.0343 cm per microsecond.
-    // We divide by 2 because the sound wave travels to the wall AND back.
-    float rawDistance = (duration * DistanceSensorConfig::SPEED_OF_SOUND_CM_US) / 2.0;
-    
-    // 6. Return the filtered reality
+    // ==========================================
+    // 4. ASYMMETRIC OUTLIER REJECTION
+    // ==========================================
+    const float MAX_PHYSICAL_JUMP_CM = 15.0f; 
+    float delta = rawDistance - lastAcceptedRaw;
+
+    // If it's not the first boot, and the jump is physically impossible...
+    if (lastAcceptedRaw > 0.0f && abs(delta) > MAX_PHYSICAL_JUMP_CM) {
+        
+        if (delta < 0.0f) {
+            // RULE A: THE SUDDEN OBSTACLE (e.g. A hand appeared)
+            // Distance dropped. Ricochets can't cause this. Accept immediately!
+            lastAcceptedRaw = rawDistance;
+            outlierStreak = 0;
+        } else {
+            // RULE B: THE RICOCHET (e.g. 56cm -> 250cm)
+            // Distance spiked. Quarantine this reading for 4 frames (200ms).
+            outlierStreak++;
+            if (outlierStreak < 4) {
+                rawDistance = lastAcceptedRaw; // Ignore the spike
+            } else {
+                lastAcceptedRaw = rawDistance; // Object actually moved away
+                outlierStreak = 0;
+            }
+        }
+        
+    } else {
+        // Valid physical movement. Accept and reset.
+        lastAcceptedRaw = rawDistance;
+        outlierStreak = 0;
+    }
+
+    // 5. Feed into the Median Filter
     return filter.addSample(rawDistance);
 }
