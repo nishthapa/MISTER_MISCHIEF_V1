@@ -149,8 +149,10 @@ void SensorTask(void *pvParameters) {
             }
             
             if (global_imuAlive) {
-                logger.printf("Y: %5.1f | MODE: %s | BRAIN: %s (Press ENTER to pause)\n", 
+                logger.printf("Y: %5.1f | P: %5.1f | R: %5.1f | MODE: %s | BRAIN: %s (Press ENTER to pause telemetry printing)\n", 
                               global_yaw, 
+                              global_pitch,
+                              global_roll,
                               brain.getActiveModeName(), 
                               Config.BRAIN_ACTIVE ? "ON" : "OFF");
             }
