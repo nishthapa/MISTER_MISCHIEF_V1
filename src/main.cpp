@@ -96,14 +96,19 @@ void ControlLoopTask(void *pvParameters) {
         if (global_imuAlive) {
             brain.update();
         } else {
-            motorDriver->stop();
+            motorDriver->stop(); // DISABLED FOR TESTING WITH VCC CUT USB CABLE
         }
 
+        // ==========================================
+        // DISABLED FOR TESTING WITH VCC CUT USB CABLE
+        // ==========================================
+       
         // Update Telemetry Bridge
         FusedAngles currentAngles = imu->getAngles();
         global_yaw = currentAngles.yaw;
         global_pitch = currentAngles.pitch;
         global_roll = currentAngles.roll;
+        
     }
 }
 
@@ -145,7 +150,7 @@ void SensorTask(void *pvParameters) {
         
         if (Config.SERIAL_DEBUG_MASTER) {
             if (Config.SERIAL_DEBUG_SONAR) {
-                logger.printf("[SONAR] Distance: %.1f cm | ", global_frontDistanceCM);
+                logger.printf("[SONAR] Distance: %.1f cm | ", global_frontDistanceCM); // DISABLED FOR TESTING WITH VCC CUT USB CABLE
             }
             
             if (global_imuAlive) {
@@ -157,7 +162,7 @@ void SensorTask(void *pvParameters) {
                               Config.BRAIN_ACTIVE ? "ON" : "OFF");
             }
         } else {
-            if (!global_imuAlive && Config.BRAIN_ACTIVE) motorDriver->stop(); 
+            if (!global_imuAlive && Config.BRAIN_ACTIVE) motorDriver->stop(); // DISABLED FOR TESTING WITH VCC CUT USB CABLE
         }
     }
     
@@ -193,7 +198,7 @@ void setup() {
   
   logger.println("Configuration Manager loaded from permanent memory.");
 
-// ==========================================
+  // ==========================================
   // THE TELNET WAITING ROOM
   // ==========================================
   unsigned long waitStart = millis();
@@ -208,7 +213,11 @@ void setup() {
   frontDistanceSensor->init();
   motorDriver->init();
 
-logger.println("Waking up the IMU...");
+  // ==========================================
+  // DISABLED FOR TESTING WITH VCC CUT USB CABLE
+  // ==========================================
+  
+  logger.println("Waking up the IMU...");
   int imuRetries = 0;
   while (!imu->init() && imuRetries < SystemConfig::IMU_MAX_RETRIES) {
       logger.println("IMU failed to initialize. Rebooting I2C bus...");
@@ -216,6 +225,7 @@ logger.println("Waking up the IMU...");
       imuRetries++;
   }
   global_imuAlive = (imuRetries < SystemConfig::IMU_MAX_RETRIES);
+  
 
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   bool isColdBoot = (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED);
@@ -226,9 +236,9 @@ logger.println("Waking up the IMU...");
   // ==========================================
   // TEMPORARY AUTOTUNE BOOT TEST
   // ==========================================
-  logger.println("WARNING: Forcing Autotune on boot for testing...");
-  Config.BRAIN_ACTIVE = false;       // Temporarily disable survival reflexes
-  brain.changeMode(&autotuneMode);   // Force the brain into Autotune mode!
+  //logger.println("WARNING: Forcing Autotune on boot for testing...");
+  //Config.BRAIN_ACTIVE = false;       // Temporarily disable survival reflexes
+  //brain.changeMode(&autotuneMode);   // Force the brain into Autotune mode!
   // ==========================================
   
   logger.println("Mister Mischief V1 Booting...");
