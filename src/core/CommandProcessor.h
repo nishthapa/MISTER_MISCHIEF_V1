@@ -25,11 +25,6 @@ private:
 
     bool waitingForAutotuneConfirm = false;
 
-    // --- FOR THE MOTOR TEST WIZARD ---
-    int motorWizardState = 0; 
-    int leftMotorTestAns = 0;
-    void handleMotorWizardInput(String input);
-
     // Autotuning state handlers
     void handleAutotune(String varName, String dummyVal);
     void handleAutotuneConfirm(String input);
@@ -42,9 +37,7 @@ private:
     void handleSet(String varName, String valStr);
     void handleGet(String varName, String dummyVal); 
     void handleReset(String varName, String dummyVal);
-    void handleCalib(String varName, String dummyVal);
-    
-    void handleTest(String varName, String dummyVal);
+    void handleCalib(String varName, String dummyVal); 
 
     // THE NEW NETWORK COMMANDS
     void handleConnect(String target, String dummyVal);

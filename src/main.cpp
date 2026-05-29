@@ -121,14 +121,9 @@ void SensorTask(void *pvParameters) {
     // ==========================================
     // 1. INSTANT CLI PROCESSING (Runs every 1ms)
     // ==========================================
-    // Read from the USB Cable
     while (Serial.available()) {
+        // Feed raw bytes to the isolated Terminal Emulator!
         cliEngine.processChar(Serial.read()); 
-    }
-
-    // Read from the Wi-Fi/Telnet Connection
-    while (logger.available()) {
-        cliEngine.processChar(logger.read());
     }
 
     unsigned long currentTime = millis();
@@ -229,9 +224,9 @@ logger.println("Waking up the IMU...");
   // ==========================================
   // TEMPORARY AUTOTUNE BOOT TEST
   // ==========================================
-  //logger.println("WARNING: Forcing Autotune on boot for testing...");
-  //Config.BRAIN_ACTIVE = false;       // Temporarily disable survival reflexes
-  //brain.changeMode(&autotuneMode);   // Force the brain into Autotune mode!
+  logger.println("WARNING: Forcing Autotune on boot for testing...");
+  Config.BRAIN_ACTIVE = false;       // Temporarily disable survival reflexes
+  brain.changeMode(&autotuneMode);   // Force the brain into Autotune mode!
   // ==========================================
   
   logger.println("Mister Mischief V1 Booting...");
