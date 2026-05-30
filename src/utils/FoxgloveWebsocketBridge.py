@@ -40,7 +40,7 @@ async def main():
         
         # 3. Connect to the ESP32's raw WebSocket stream
         try:
-            async with websockets.connect(f"ws://{ESP32_IP}:{ESP32_PORT}") as ws:
+            async with websockets.connect(f"ws://{ESP32_IP}:{ESP32_PORT}", compression=None) as ws:
                 print("Connected! Relaying telemetry to Foxglove Studio on ws://localhost:8765...")
                 
                 # 4. Infinite loop to catch JSON and forward it to Foxglove

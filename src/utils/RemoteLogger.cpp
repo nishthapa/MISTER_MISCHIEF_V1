@@ -65,29 +65,40 @@ void RemoteLogger::handleClient() {
 void RemoteLogger::print(const char* message) {
     if (currentMode == Config.DEBUG_ACTIVE) return;
     if ((currentMode & Config.DEBUG_USB) && Serial) Serial.print(message);
-    if (currentMode & Config.DEBUG_WIFI) webSocket.broadcastTXT(message);
+    // REMOVED WEBSOCKET BROADCAST
 }
 
 void RemoteLogger::println(const char* message) {
     if (currentMode == Config.DEBUG_ACTIVE) return;
     if ((currentMode & Config.DEBUG_USB) && Serial) Serial.println(message);
-    
-    if (currentMode & Config.DEBUG_WIFI) {
-        // Broadcast appends nothing, so we just send the message
-        webSocket.broadcastTXT(message);
-    }
+    // REMOVED WEBSOCKET BROADCAST
 }
 
-// THE STACK-ALLOCATED FIX (No more Core 0 Panics!)
 void RemoteLogger::printf(const char* format, ...) {
     if (currentMode == Config.DEBUG_ACTIVE) return;
 
-    char buffer[512]; // Fixed stack buffer. Safe from heap fragmentation!
+    char buffer[512]; 
     va_list args;
     va_start(args, format);
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
     if ((currentMode & Config.DEBUG_USB) && Serial) Serial.print(buffer);
+    // REMOVED WEBSOCKET BROADCAST
+}
+
+// === THE NEW THREAD-SAFE TELEMETRY FIREWALL ===
+void RemoteLogger::sendTelemetryJSON(const char* format, ...) {
+    if (currentMode == Config.DEBUG_ACTIVE) return;
+
+    char buffer[512]; 
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+
+    if ((currentMode & Config.DEBUG_USB) && Serial) Serial.print(buffer);
+    
+    // THIS IS THE ONLY FUNCTION ALLOWED TO TOUCH THE WEBSOCKET
     if (currentMode & Config.DEBUG_WIFI) webSocket.broadcastTXT(buffer);
 }

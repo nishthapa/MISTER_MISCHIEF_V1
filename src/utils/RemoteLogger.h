@@ -39,6 +39,8 @@ public:
     void print(const char* message);
     void println(const char* message);
     void printf(const char* format, ...);
+
+    void sendTelemetryJSON(const char* format, ...);
 };
 
 // This tells all other files that "logger" exists globally!

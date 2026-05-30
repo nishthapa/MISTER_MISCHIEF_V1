@@ -165,8 +165,8 @@ void SensorTask(void *pvParameters) {
             }*/
 
             if (global_imuAlive) {
-                // Output raw JSON!
-                logger.printf("{\"yaw\":%.2f,\"pitch\":%.2f,\"roll\":%.2f,\"sonar\":%.1f,\"mode\":\"%s\",\"brain\":%s}", 
+                // Output raw JSON using the new safe function!
+                logger.sendTelemetryJSON("{\"yaw\":%.2f,\"pitch\":%.2f,\"roll\":%.2f,\"sonar\":%.1f,\"mode\":\"%s\",\"brain\":%s}\n", 
                               global_yaw, 
                               global_pitch,
                               global_roll,
