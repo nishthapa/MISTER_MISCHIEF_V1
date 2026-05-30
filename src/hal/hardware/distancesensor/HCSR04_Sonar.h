@@ -18,7 +18,7 @@ private:
 
     // --- LOW PASS FILTER ---
     float emaDistance = -1.0f;
-    const float EMA_ALPHA = 0.3f; // Trust 30% new data, 70% history
+    const float EMA_ALPHA = 0.2f; // Trust 30% new data, 70% history
 
 public:
     // Constructor: Forces the main program to assign the pins

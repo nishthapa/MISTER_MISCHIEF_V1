@@ -14,6 +14,7 @@ private:
     float integral;
     float previousMeasurement;
     float previousFilteredDTerm;
+    bool isFirstFrame; // when it first starts up
 
 public:
     // Insert dead_zone as the 6th param. Default the 7th param to 15Hz to keep the factory clean!

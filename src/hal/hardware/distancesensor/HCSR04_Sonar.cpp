@@ -20,6 +20,18 @@ void HCSR04_Sonar::init() {
 }
 
 float HCSR04_Sonar::getDistanceCM() {
+    // ==========================================
+    // 0. ACOUSTIC LOCKOUT CACHE (The Double-Poll Fix)
+    // ==========================================
+    // Prevent acoustic collision! Limit physical pings to ~25Hz (40ms) 
+    // to allow ghost echoes to clear the room. If asked for distance 
+    // too quickly, return the heavily smoothed EMA memory!
+    static unsigned long lastPingTime = 0;
+    if (lastPingTime != 0 && millis() - lastPingTime < 40) {
+        return emaDistance;
+    }
+    lastPingTime = millis();
+
     // 1. THE HARDWARE RESET (Fixes the HC-SR04 "Stuck Echo" Bug)
     // Physically pull the pin down to clear any locked internal timers from previous missed pings.
     pinMode(echoPin, OUTPUT);
@@ -96,19 +108,21 @@ float HCSR04_Sonar::getDistanceCM() {
     // 5. Feed the physics-verified distance into the Median Filter
     float medianDistance = filter.addSample(rawDistance);
 
-    // ==========================================
-    // 6. ADAPTIVE LOW-PASS FILTER (Dynamic Bias)
+// ==========================================
+    // 6. ADAPTIVE LOW-PASS FILTER (Continuous Dynamic Bias)
     // ==========================================
     if (emaDistance < 0.0f) {
         emaDistance = medianDistance; // Initialize
     } else {
-        float alpha = EMA_ALPHA; // Default to heavy smoothing for PID stability
+        float diff = abs(medianDistance - emaDistance);
         
-        // If the new reading is radically different, it's a sudden physical event.
-        // Increase the bias to 1.0 to snap to the new reality instantly!
-        if (abs(medianDistance - emaDistance) > 10.0f) {
-            alpha = 0.9f; 
-        }
+        // Base alpha of 0.2 to kill static noise when resting. 
+        // For every 1cm of physical movement, we dynamically add 0.2 to the alpha.
+        // This makes it glide smoothly when still, but track instantly when moving!
+        float alpha = EMA_ALPHA + (diff * EMA_ALPHA); 
+        
+        // Cap the trust at 90% so we never pass raw noise to the PID
+        if (alpha > 0.9f) alpha = 0.9f; 
 
         emaDistance = (alpha * medianDistance) + ((1.0f - alpha) * emaDistance);
     }

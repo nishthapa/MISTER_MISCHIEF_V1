@@ -19,11 +19,21 @@ void Mode_MaintainDistance::onEnter() {
 void Mode_MaintainDistance::update(const RobotMood& currentMood) {
     float currentDistance = distSensor->getDistanceCM();
     
+    // ==========================================
+    // THE SOFTWARE CLUTCH (You missed this!)
+    // ==========================================
+    // If the distance suddenly jumps beyond our play zone (e.g., > 60cm), 
+    // the Brain is currently running its 800ms verification timer.
+    // Cut the motors instantly so he doesn't violently lurch while thinking!
+    if (currentDistance > 60.0f) { // To-do: puth this 60 onto factory defaults and ConfigurationManager (NVS Storage) as "MAINTAIN_DISTANCE_EXIT_DISTANCE_CM"
+        kinematics->stop();
+        pid->reset(); // Keep memory clean while clutched
+        return;       // Skip the PID math entirely
+    }
+
     // Calculate dt (Delta Time) in seconds dynamically from the Master Clock!
     float dt = SystemConfig::MAIN_LOOP_TICK_RATE_MS / 1000.0f;
     
-    // Target distance to maintain is defined in PersonalityConfig
-    // float correction = pid->compute(PersonalityConfig::MAINTAIN_DISTANCE_TARGET_CM, currentDistance, dt); 
     float correction = pid->compute(Config.MAINTAIN_DISTANCE_CM, currentDistance, dt);
     float finalSpeed = correction * currentMood.speedMultiplier;
     kinematics->rawDrive(-finalSpeed, -finalSpeed);

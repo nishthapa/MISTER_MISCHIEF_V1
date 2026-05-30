@@ -15,7 +15,13 @@ PIDController::PIDController(float p, float i, float d, float max_i, float max_o
 
 float PIDController::compute(float setpoint, float measuredValue, float dt) {
     // Safety check to prevent divide-by-zero if loop runs too fast
-    if (dt <= 0.0f) return 0.0f; 
+    if (dt <= 0.0f) return 0.0f;
+
+    // If it's the exact moment we start the game, sync the memory to reality!
+    if (isFirstFrame) {
+        previousMeasurement = measuredValue;
+        isFirstFrame = false;
+    }
 
     float error = setpoint - measuredValue;
 
@@ -82,7 +88,7 @@ void PIDController::setTunings(float p, float i, float d, float max_i, float max
 }
 
 void PIDController::reset() {
-    integral = 0.0f;
-    previousMeasurement = 0.0f;
-    previousFilteredDTerm = 0.0f;
+    integral = 0.0f; 
+    previousFilteredDTerm = 0.0f; 
+    isFirstFrame = true; // <--- Stop wiping previousMeasurement to 0!
 }
