@@ -108,6 +108,11 @@ float HCSR04_Sonar::getDistanceCM() {
     // 5. Feed the physics-verified distance into the Median Filter
     float medianDistance = filter.addSample(rawDistance);
 
+    // ==========================================
+    // THE FIX: FEED THE CACHE!
+    // ==========================================
+    emaDistance = medianDistance; 
+
     // JUST RETURN THE RAW MEDIAN! DELETE THE EMA STUFF!
     return medianDistance; 
 }
