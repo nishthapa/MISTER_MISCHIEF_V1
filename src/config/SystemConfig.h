@@ -32,4 +32,6 @@ namespace SystemConfig {
     constexpr unsigned long IMU_RETRY_DELAY_MS = 1000;    // Wait time between failures
 
     constexpr int TELNET_PORT = 23; // Moved from the old WiFiConfig!
+
+    constexpr int WEBSOCKET_PORT = 81;
 }

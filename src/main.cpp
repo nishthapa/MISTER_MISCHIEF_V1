@@ -21,7 +21,8 @@
 #include "core/CommandProcessor.h"
 #include "config/SystemConfig.h"
 
-RemoteLogger logger(SystemConfig::TELNET_PORT); 
+//RemoteLogger logger(SystemConfig::TELNET_PORT);
+RemoteLogger logger(SystemConfig::WEBSOCKET_PORT); 
 
 // ==========================================
 // INTER-CORE COMMUNICATION (THE BRIDGE)
@@ -150,9 +151,10 @@ void SensorTask(void *pvParameters) {
         
         if (Config.SERIAL_DEBUG_MASTER) {
             if (Config.SERIAL_DEBUG_SONAR) {
-                logger.printf("[SONAR] Distance: %.1f cm | ", global_frontDistanceCM); // DISABLED FOR TESTING WITH VCC CUT USB CABLE
+                //logger.printf("[SONAR] Distance: %.1f cm | ", global_frontDistanceCM); // DISABLED FOR TESTING WITH VCC CUT USB CABLE
             }
             
+            /*
             if (global_imuAlive) {
                 logger.printf("Y: %5.1f | P: %5.1f | R: %5.1f | MODE: %s | BRAIN: %s (Press ENTER to pause telemetry printing)\n", 
                               global_yaw, 
@@ -160,7 +162,21 @@ void SensorTask(void *pvParameters) {
                               global_roll,
                               brain.getActiveModeName(), 
                               Config.BRAIN_ACTIVE ? "ON" : "OFF");
+            }*/
+
+            if (global_imuAlive) {
+                // Output raw JSON!
+                logger.printf("{\"yaw\":%.2f,\"pitch\":%.2f,\"roll\":%.2f,\"sonar\":%.1f,\"mode\":\"%s\",\"brain\":%s}", 
+                              global_yaw, 
+                              global_pitch,
+                              global_roll,
+                              global_frontDistanceCM,
+                              brain.getActiveModeName(), 
+                              Config.BRAIN_ACTIVE ? "true" : "false");
             }
+
+
+
         } else {
             if (!global_imuAlive && Config.BRAIN_ACTIVE) motorDriver->stop(); // DISABLED FOR TESTING WITH VCC CUT USB CABLE
         }

@@ -1,19 +1,24 @@
 #pragma once
 
 #include <WiFi.h>
+#include <WebSocketsServer.h>
 #include <stdarg.h>
 #include <stdint.h> // For the uint8_t type
 
 class RemoteLogger {
 private:
-    WiFiServer telnetServer;
+    //WiFiServer telnetServer;
+    WebSocketsServer webSocket; // <--- REPLACE WiFiServer telnetServer;
     WiFiClient activeClient;
     
     // We use a boolean to track if a BLE device is connected
-    bool isBluetoothConnected; 
+    bool isBluetoothConnected;
+
+    // Helper to handle client connections
+    static void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length);
 
     // The logger's internal memory of what is actually physically possible
-    uint8_t currentMode; 
+    uint8_t currentMode;
 
 public:
     RemoteLogger(int port);
