@@ -19,22 +19,31 @@ void Mode_MaintainDistance::onEnter() {
 void Mode_MaintainDistance::update(const RobotMood& currentMood) {
     float currentDistance = distSensor->getDistanceCM();
     
-    // ==========================================
-    // THE SOFTWARE CLUTCH (You missed this!)
-    // ==========================================
-    // If the distance suddenly jumps beyond our play zone (e.g., > 60cm), 
-    // the Brain is currently running its 800ms verification timer.
-    // Cut the motors instantly so he doesn't violently lurch while thinking!
-    if (currentDistance > 60.0f) { // To-do: puth this 60 onto factory defaults and ConfigurationManager (NVS Storage) as "MAINTAIN_DISTANCE_EXIT_DISTANCE_CM"
+    // THE SOFTWARE CLUTCH
+    // If the book is actually removed (jumps > 60cm), pause the motors
+    if (currentDistance > 60.0f) { 
         kinematics->stop();
-        pid->reset(); // Keep memory clean while clutched
-        return;       // Skip the PID math entirely
+        pid->reset(); 
+        return;       
     }
 
-    // Calculate dt (Delta Time) in seconds dynamically from the Master Clock!
-    float dt = SystemConfig::MAIN_LOOP_TICK_RATE_MS / 1000.0f;
-    
-    float correction = pid->compute(Config.MAINTAIN_DISTANCE_CM, currentDistance, dt);
-    float finalSpeed = correction * currentMood.speedMultiplier;
+    // ==========================================
+    // THE ALIASING FIX (Decouple PID from Brain)
+    // ==========================================
+    static float lastProcessedDistance = -1.0f;
+    static float lastCorrection = 0.0f;
+
+    // ONLY run the PID math when a fresh physical ping clears the 40ms cache!
+    if (currentDistance != lastProcessedDistance) {
+        
+        // The true physical time elapsed between sensor updates is ~40ms (0.04s)
+        float trueDt = 0.04f; 
+        
+        lastCorrection = pid->compute(Config.MAINTAIN_DISTANCE_CM, currentDistance, trueDt);
+        lastProcessedDistance = currentDistance;
+    }
+
+    // Apply the perfectly smoothed correction to the tracks continuously
+    float finalSpeed = lastCorrection * currentMood.speedMultiplier;
     kinematics->rawDrive(-finalSpeed, -finalSpeed);
 }

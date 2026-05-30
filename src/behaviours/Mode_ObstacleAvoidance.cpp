@@ -67,21 +67,27 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood) {
                 bestEscapeHeading = entryHeading; // Fallback
 
                 for (int i = 0; i < pingCount; i++) {
-                    // Filter out sonar misfires
                     if (pointCloud[i].distance <= 0.0f) continue;
 
-                    // 3. THE PENALTY MATH (Ping-Pong Prevention)
-                    // Calculate how far off-center this angle is (0 to 180 degrees)
                     float deviation = abs(getShortestAngle(pointCloud[i].heading, entryHeading));
-                    
-                    // The Aggressive Base Penalty (0° = 1.0, 90° = 0.5, 180° = 0.0)
-                    float basePenalty = 1.0f - (deviation / 180.0f); 
+                    float scoreMultiplier = 1.0f; // Default to trusting the raw distance
 
-                    // Square it to brutally punish backward angles!
-                    // (e.g., a 150° turn gets its distance multiplied by a tiny 0.027)
-                    float aggressivePenalty = basePenalty * basePenalty; 
+                    // ==========================================
+                    // THE PING-PONG PREVENTION
+                    // ==========================================
+                    // If the angle is pointing mostly backwards (> 135 degrees), 
+                    // it is the path we came from. Slash its score by 80%!
+                    if (deviation > 135.0f) {
+                        scoreMultiplier = 0.2f; 
+                    }
+                    // If the angle is pointing straight back into the wall we just hit,
+                    // apply a mild 50% penalty just to be safe.
+                    else if (deviation < 30.0f) {
+                        scoreMultiplier = 0.5f;
+                    }
+                    // Angles between 30 and 135 (left and right flanks) keep a 1.0 multiplier!
 
-                    float score = pointCloud[i].distance * aggressivePenalty;
+                    float score = pointCloud[i].distance * scoreMultiplier;
 
                     if (score > bestScore) {
                         bestScore = score;

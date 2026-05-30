@@ -187,7 +187,7 @@ void BehaviourEngine::update() {
                 isHandVanishing = false;
             }
             // If it has safely been gone for 500ms, exit the mode!
-            else if (millis() - vanishingStartTime > 800) { // <--- INCREASED TO 800ms
+            else if (millis() - vanishingStartTime > 700) { // <--- INCREASED TO 700ms
                 activeMode = normalMode; 
                 isHandVanishing = false;
                 isHandTeasing = false; 
@@ -214,7 +214,7 @@ void BehaviourEngine::update() {
         }
         
         if (isHandTeasing) {
-            if (millis() - teaseStartTime > 800) { // <--- INCREASED TO 800ms
+            if (millis() - teaseStartTime > 700) { // <--- INCREASED TO 700ms
                 activeMode = distanceMode; 
                 isDizzy = false; 
             }

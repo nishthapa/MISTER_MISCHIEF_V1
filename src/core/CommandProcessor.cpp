@@ -589,8 +589,8 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     else if (varName == "DIZZY_DECAY_RATE") { Config.DIZZY_DECAY_RATE = valStr.toFloat(); }
     else if (varName == "DIZZY_TRIGGER_THRESHOLD") { Config.DIZZY_TRIGGER_THRESHOLD = valStr.toFloat(); }
     else if (varName == "ENERGY_EMA_ALPHA") { Config.ENERGY_EMA_ALPHA = valStr.toFloat(); }
-    else if (varName == "ENERGY_EMA_BETA") { Config.ENERGY_EMA_BETA = valStr.toFloat(); }
-    else if (varName == "DISTANCE_HOLD_FRUSTRATION_LIMIT") { Config.DISTANCE_HOLD_FRUSTRATION_LIMIT = valStr.toInt(); }
+    else if (varName == "ENERGY_EMA_BETA") { Config.ENERGY_EMA_BETA = valStr.toFloat(); }    
+    else if (varName == "DISTANCE_HOLD_FRUSTRATION_LIMIT") { Config.DISTANCE_HOLD_FRUSTRATION_LIMIT = valStr.toFloat(); } // CORRECTED
     else if (varName == "FRUSTRATION_COOLDOWN_RATE") { Config.FRUSTRATION_COOLDOWN_RATE = valStr.toFloat(); }
     else if (varName == "FRUSTRATION_HEATUP_RATE") { Config.FRUSTRATION_HEATUP_RATE = valStr.toFloat(); }
 
@@ -1138,9 +1138,10 @@ void CommandProcessor::handleGet(String varName, String valStr) {
         if (wantDefaultOnly) logger.printf("[ENERGY_EMA_BETA] Default: %.2f\n", FactoryDefaults::ENERGY_EMA_BETA);
         else logger.printf("[ENERGY_EMA_BETA] Current: %.2f | Default: %.2f\n", Config.ENERGY_EMA_BETA, FactoryDefaults::ENERGY_EMA_BETA);
     }
+    // CORRECT:
     else if (varName == "DISTANCE_HOLD_FRUSTRATION_LIMIT") { 
-        if (wantDefaultOnly) logger.printf("[DISTANCE_HOLD_FRUSTRATION_LIMIT] Default: %d\n", FactoryDefaults::DISTANCE_HOLD_FRUSTRATION_LIMIT);
-        else logger.printf("[DISTANCE_HOLD_FRUSTRATION_LIMIT] Current: %d | Default: %d\n", Config.DISTANCE_HOLD_FRUSTRATION_LIMIT, FactoryDefaults::DISTANCE_HOLD_FRUSTRATION_LIMIT);
+        if (wantDefaultOnly) logger.printf("[DISTANCE_HOLD_FRUSTRATION_LIMIT] Default: %.1f\n", FactoryDefaults::DISTANCE_HOLD_FRUSTRATION_LIMIT);
+        else logger.printf("[DISTANCE_HOLD_FRUSTRATION_LIMIT] Current: %.1f | Default: %.1f\n", Config.DISTANCE_HOLD_FRUSTRATION_LIMIT, FactoryDefaults::DISTANCE_HOLD_FRUSTRATION_LIMIT);
     }
     else if (varName == "FRUSTRATION_COOLDOWN_RATE") { 
         if (wantDefaultOnly) logger.printf("[FRUSTRATION_COOLDOWN_RATE] Default: %.2f\n", FactoryDefaults::FRUSTRATION_COOLDOWN_RATE);

@@ -31,7 +31,9 @@ float PIDController::compute(float setpoint, float measuredValue, float dt) {
     if (abs(error) <= deadband) {
         // We are inside the target zone! 
         // Sync the D-Term memory so it doesn't violently kick when the target eventually moves
-        previousMeasurement = measuredValue; 
+        previousMeasurement = measuredValue;
+
+        integral = 0.0f; // <--- Dump the memory if we decide to increase I term later
         
         // Kill all motor power to sit dead still.
         return 0.0f; 
