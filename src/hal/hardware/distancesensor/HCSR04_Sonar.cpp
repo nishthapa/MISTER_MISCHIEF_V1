@@ -108,24 +108,6 @@ float HCSR04_Sonar::getDistanceCM() {
     // 5. Feed the physics-verified distance into the Median Filter
     float medianDistance = filter.addSample(rawDistance);
 
-// ==========================================
-    // 6. ADAPTIVE LOW-PASS FILTER (Continuous Dynamic Bias)
-    // ==========================================
-    if (emaDistance < 0.0f) {
-        emaDistance = medianDistance; // Initialize
-    } else {
-        float diff = abs(medianDistance - emaDistance);
-        
-        // Base alpha of 0.2 to kill static noise when resting. 
-        // For every 1cm of physical movement, we dynamically add 0.2 to the alpha.
-        // This makes it glide smoothly when still, but track instantly when moving!
-        float alpha = EMA_ALPHA + (diff * EMA_ALPHA); 
-        
-        // Cap the trust at 90% so we never pass raw noise to the PID
-        if (alpha > 0.9f) alpha = 0.9f; 
-
-        emaDistance = (alpha * medianDistance) + ((1.0f - alpha) * emaDistance);
-    }
-
-    return emaDistance;
+    // JUST RETURN THE RAW MEDIAN! DELETE THE EMA STUFF!
+    return medianDistance; 
 }

@@ -10,8 +10,12 @@ namespace SystemConfig {
     constexpr uint32_t TASK_STACK_SIZE = 8192;       // Memory allocated per core (in words)      
     constexpr UBaseType_t SENSOR_TASK_PRIORITY = 1;  // 0 Priority for sensor reading and telemetry      
     constexpr UBaseType_t CONTROL_TASK_PRIORITY = 1; // 1 Priority for main control loop and decision making
-    constexpr UBaseType_t SENSOR_TASK_CORE_AFFINITY = 0; // Run the sensor task on Core 0 (the "I/O Core")
-    constexpr UBaseType_t CONTROL_TASK_CORE_AFFINITY = 1; // Run the control loop on Core 1 (the "CPU Core")
+    //constexpr UBaseType_t SENSOR_TASK_CORE_AFFINITY = 0; // Run the sensor task on Core 0 (the "I/O Core")
+    //constexpr UBaseType_t CONTROL_TASK_CORE_AFFINITY = 1; // Run the control loop on Core 1 (the "CPU Core")
+
+    // SWAP THESE TWO NUMBERS!
+    constexpr UBaseType_t SENSOR_TASK_CORE_AFFINITY = 1;  // <--- Networking & Sonar belongs on APP CPU!
+    constexpr UBaseType_t CONTROL_TASK_CORE_AFFINITY = 0; // <--- Physics & Math runs on PRO CPU!
     
     // --- Loop Rates ---
     constexpr unsigned long MAIN_LOOP_TICK_RATE_MS = 10;  // 10ms = 100Hz (The Physics Engine metronome)
