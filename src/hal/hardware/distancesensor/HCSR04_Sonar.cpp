@@ -40,9 +40,25 @@ float HCSR04_Sonar::getDistanceCM() {
 
     float rawDistance;
     if (duration == 0) {
-        rawDistance = 400.0f; // Clamp timeouts to Max Range
+        // ==========================================
+        // THE HC-SR04 BLINDSPOT FIX
+        // ==========================================
+        // If we were tracking something close (< 25cm), a timeout is usually a deflection 
+        // off curved fingers, or the object slipped under the 3cm minimum range. 
+        if (lastAcceptedRaw > 0.0f && lastAcceptedRaw < 25.0f) {
+            blindspotStreak++;
+            if (blindspotStreak < 15) { // Forgive up to 750ms of acoustic scatter
+                rawDistance = 2.0f; // Assume we are dangerously close and back up!
+            } else {
+                rawDistance = 400.0f; // Okay, the doorway is actually open
+            }
+        } else {
+            rawDistance = 400.0f; // Path is clear
+            blindspotStreak = 0;
+        }
     } else {
         rawDistance = (duration * DistanceSensorConfig::SPEED_OF_SOUND_CM_US) / 2.0;
+        blindspotStreak = 0;
     }
 
     // ==========================================

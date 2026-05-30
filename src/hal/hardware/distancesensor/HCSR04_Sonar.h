@@ -14,6 +14,7 @@ private:
     // --- PHYSICS CONSTRAINTS ---
     float lastAcceptedRaw = 0.0f;
     int outlierStreak = 0;
+    int blindspotStreak = 0; // <--- ADD THIS
 
     // --- LOW PASS FILTER ---
     float emaDistance = -1.0f;

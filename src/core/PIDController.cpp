@@ -1,15 +1,16 @@
 #include "core/PIDController.h"
 #include <math.h>
 
-PIDController::PIDController(float p, float i, float d, float max_i, float max_out, float d_cutoff_hz) {
+PIDController::PIDController(float p, float i, float d, float max_i, float max_out, float dead_zone, float d_cutoff_hz) {
     kp = p; 
     ki = i; 
     kd = d;
     maxIntegral = max_i; 
     maxOutput = max_out;
-    dFilterCutoffHz = d_cutoff_hz;
+    deadband = dead_zone;            // <--- Assign it!
+    dFilterCutoffHz = d_cutoff_hz;   // <--- Assign it!
 
-    reset(); // Initialize memory to zero
+    reset(); 
 }
 
 float PIDController::compute(float setpoint, float measuredValue, float dt) {
@@ -17,6 +18,18 @@ float PIDController::compute(float setpoint, float measuredValue, float dt) {
     if (dt <= 0.0f) return 0.0f; 
 
     float error = setpoint - measuredValue;
+
+    // ==========================================
+    // THE DEADBAND FIX 
+    // ==========================================
+    if (abs(error) <= deadband) {
+        // We are inside the target zone! 
+        // Sync the D-Term memory so it doesn't violently kick when the target eventually moves
+        previousMeasurement = measuredValue; 
+        
+        // Kill all motor power to sit dead still.
+        return 0.0f; 
+    }
 
     // ---------------------------------------------------------
     // 1. PROPORTIONAL (The Spring)

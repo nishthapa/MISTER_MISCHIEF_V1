@@ -10,6 +10,10 @@ Mode_MaintainDistance::Mode_MaintainDistance(I_DistanceSensor* s, KinematicsEngi
 
 void Mode_MaintainDistance::onEnter() {
     logger.println("Mister Mischief is maintaining distance!");
+
+    // WIPE THE PID MEMORY! 
+    // This stops the massive D-term kick that was slamming him into your hand.
+    pid->reset();
 }
 
 void Mode_MaintainDistance::update(const RobotMood& currentMood) {

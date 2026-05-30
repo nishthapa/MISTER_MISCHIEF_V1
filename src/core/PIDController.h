@@ -5,6 +5,9 @@ private:
     float kp, ki, kd;
     float maxIntegral;
     float maxOutput;
+
+    float deadband; // <--- NEW!
+
     float dFilterCutoffHz;
 
     // Memory variables
@@ -13,8 +16,8 @@ private:
     float previousFilteredDTerm;
 
 public:
-    // Dependency Injection: Pass the tuning blueprint in when creating the object
-    PIDController(float p, float i, float d, float max_i, float max_out, float d_cutoff_hz);
+    // Insert dead_zone as the 6th param. Default the 7th param to 15Hz to keep the factory clean!
+    PIDController(float p, float i, float d, float max_i, float max_out, float dead_zone, float d_cutoff_hz = 15.0f);
 
     // The modern Betaflight-style computation engine
     float compute(float setpoint, float measuredValue, float dt);

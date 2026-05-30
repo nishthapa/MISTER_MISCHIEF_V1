@@ -22,10 +22,10 @@ void KinematicsEngine::navigateToHeading(float targetYaw, float currentYaw, floa
     // Kinematic Profiler: Choose PID profile based on state
     if (baseSpeed == 0.0f) {
         // Stationary: Apply high proportional authority to break static scrub friction
-        steeringCorrection = pointTurnPID->compute(0.0f, -error, dt);
+        steeringCorrection = pointTurnPID->compute(0.0f, error, dt); // <--- REMOVED THE MINUS SIGN
     } else {
         // Rolling: Apply damped heading-hold adjustments for low dynamic friction
-        steeringCorrection = arcTurnPID->compute(0.0f, -error, dt);
+        steeringCorrection = arcTurnPID->compute(0.0f, error, dt);   // <--- REMOVED THE MINUS SIGN
     }
     
     steeringCorrection *= moodAggression;
