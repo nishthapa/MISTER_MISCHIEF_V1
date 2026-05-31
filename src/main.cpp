@@ -20,6 +20,7 @@
 #include "config/CommandRegistry.h" 
 #include "core/CommandProcessor.h"
 #include "config/SystemConfig.h"
+#include "core/RobotState.h"
 
 //RemoteLogger logger(SystemConfig::TELNET_PORT);
 RemoteLogger logger(SystemConfig::WEBSOCKET_PORT); 
@@ -27,11 +28,12 @@ RemoteLogger logger(SystemConfig::WEBSOCKET_PORT);
 // ==========================================
 // INTER-CORE COMMUNICATION (THE BRIDGE)
 // ==========================================
+volatile SystemMode GLOBAL_MODE = SystemMode::BOOTING;
 volatile float global_frontDistanceCM = -1.0;
 volatile float global_yaw = 0.0;
 volatile float global_pitch = 0.0;
 volatile float global_roll = 0.0;
-volatile bool global_imuAlive = false; 
+volatile bool global_imuAlive = false;
 
 // ==========================================
 // GLOBAL HARDWARE OBJECTS
@@ -253,8 +255,8 @@ void setup() {
   // TEMPORARY AUTOTUNE BOOT TEST
   // ==========================================
   //logger.println("WARNING: Forcing Autotune on boot for testing...");
-  //Config.BRAIN_ACTIVE = false;       // Temporarily disable survival reflexes
-  //brain.changeMode(&autotuneMode);   // Force the brain into Autotune mode!
+  Config.BRAIN_ACTIVE = false;       // Temporarily disable survival reflexes
+  brain.changeMode(&autotuneMode);   // Force the brain into Autotune mode!
   // ==========================================
   
   logger.println("Mister Mischief V1 Booting...");
