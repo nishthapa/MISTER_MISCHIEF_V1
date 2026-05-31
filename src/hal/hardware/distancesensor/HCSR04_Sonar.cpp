@@ -2,69 +2,61 @@
 #include "config/SensorConfig.h"
 #include <Arduino.h>
 
-// FreeRTOS Hardware Lock to prevent OS preemption
-portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
-
 HCSR04_Sonar::HCSR04_Sonar(int trig, int echo) {
     trigPin = trig;
     echoPin = echo;
+    sonar = nullptr; // Initialize the pointer to safe null
+}
+
+HCSR04_Sonar::~HCSR04_Sonar() {
+    if (sonar != nullptr) {
+        delete sonar;
+    }
 }
 
 void HCSR04_Sonar::init() {
-    pinMode(trigPin, OUTPUT);
-    pinMode(echoPin, INPUT);
-    digitalWrite(trigPin, LOW); 
+    // SAFELY allocate memory now that FreeRTOS is booted!
+    sonar = new NewPing(trigPin, echoPin, (int)DistanceSensorConfig::SONAR_MAX_DIST);
+    emaDistance = -1.0f;
 }
 
 float HCSR04_Sonar::getDistanceCM() {
+    // 1. ACOUSTIC LOCKOUT CACHE (The 40ms Rule)
+    // We still need this to prevent the physical sound waves from colliding in the room!
     static unsigned long lastPingTime = 0;
     if (lastPingTime != 0 && millis() - lastPingTime < 40) {
         return emaDistance;
     }
     lastPingTime = millis();
 
-    // 1. THE HARDWARE RESET
-    pinMode(echoPin, OUTPUT);
-    digitalWrite(echoPin, LOW);
-    delayMicroseconds(2);
-    pinMode(echoPin, INPUT);
-
-    unsigned long duration = 0;
-
     // ==========================================
-    // THE RTOS ARMOR FIX
+    // 2. THE NEWPING FIRE & READ
     // ==========================================
-    // Lock the CPU. FreeRTOS cannot pause us while we do this math!
-    portENTER_CRITICAL(&mux);
-    
-    // Fire the trigger
-    digitalWrite(trigPin, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(trigPin, LOW);
-
-    // Read the pulse *while* the CPU is locked! 
-    // FreeRTOS is paused, so pulseIn will measure the exact physical microsecond perfectly.
-    duration = pulseIn(echoPin, HIGH, DistanceSensorConfig::ECHO_TIMEOUT_US);
-    
-    // Release the CPU back to FreeRTOS
-    portEXIT_CRITICAL(&mux);
-    // ==========================================
+    // No CPU locks. No MUX. FreeRTOS can preempt this safely.
+    // It returns 0 if the ping is out of range.
+    unsigned long ping_us = sonar->ping(); 
 
     float rawDistance;
-    if (duration == 0) {
+    if (ping_us == 0) {
+        // Blindspot / Out of Range handler
         if (lastAcceptedRaw > 0.0f && lastAcceptedRaw < 25.0f) {
             blindspotStreak++;
             if (blindspotStreak < 15) rawDistance = 2.0f; 
-            else rawDistance = 400.0f; 
+            else rawDistance = DistanceSensorConfig::SONAR_MAX_DIST; 
         } else {
-            rawDistance = 400.0f; 
+            rawDistance = DistanceSensorConfig::SONAR_MAX_DIST; 
             blindspotStreak = 0;
         }
     } else {
-        rawDistance = (duration * DistanceSensorConfig::SPEED_OF_SOUND_CM_US) / 2.0;
+        // Convert to CM using NewPing's built-in macro for the speed of sound
+        rawDistance = ping_us / (float)US_ROUNDTRIP_CM;
         blindspotStreak = 0;
     }
 
+    // ==========================================
+    // 3. PHYSICAL RICOCHET FILTER
+    // ==========================================
+    // The OS hallucinations are dead, but we still need to filter physical sound ricochets!
     const float MAX_PHYSICAL_JUMP_CM = 15.0f; 
     float delta = rawDistance - lastAcceptedRaw;
 
@@ -74,15 +66,30 @@ float HCSR04_Sonar::getDistanceCM() {
             outlierStreak = 0;
         } else {
             outlierStreak++;
-            if (outlierStreak < 4) rawDistance = lastAcceptedRaw; 
-            else { lastAcceptedRaw = rawDistance; outlierStreak = 0; }
+            if (outlierStreak < 4) {
+                rawDistance = lastAcceptedRaw; 
+            } else { 
+                lastAcceptedRaw = rawDistance; 
+                outlierStreak = 0; 
+            }
         }
     } else {
         lastAcceptedRaw = rawDistance;
         outlierStreak = 0;
     }
 
+    // 4. Feed the clean data to the Median Filter to kill SPIKES
     float medianDistance = filter.addSample(rawDistance);
-    emaDistance = medianDistance; 
-    return medianDistance; 
+    
+    // 5. Feed the Median result into the EMA Filter to kill FUZZ
+    if (emaDistance < 0.0f) {
+        // If it's the very first boot ping, sync the cache to reality!
+        emaDistance = medianDistance;
+    } else {
+        // EMA Math: Blend the new reading with the historical average
+        // (Assuming EMA_ALPHA is defined in your header, usually ~0.2f to 0.4f)
+        emaDistance = (EMA_ALPHA * medianDistance) + ((1.0f - EMA_ALPHA) * emaDistance);
+    }
+
+    return emaDistance; 
 }

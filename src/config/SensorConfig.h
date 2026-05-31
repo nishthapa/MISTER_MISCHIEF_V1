@@ -26,6 +26,7 @@ namespace DistanceSensorConfig {
     // --- Hardware Pin Timings ---
     constexpr unsigned int TRIGGER_CLEAR_DELAY_US = 2;  // Time to stabilize the pin LOW
     constexpr unsigned int TRIGGER_PULSE_DELAY_US = 10; // Time to hold the pin HIGH to fire the pulse
+    constexpr unsigned int SONAR_MAX_DIST = 350;
 }
 
 // ==========================================
