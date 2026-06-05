@@ -32,8 +32,9 @@ volatile SystemMode GLOBAL_MODE = SystemMode::BOOTING;
 
 // Instantiate the global memory bank!
 volatile GlobalSensorState CurrentSensorState = { -1.0f, {0,0,0,0,false,0}, false };
+
 // Instantiate the low level Hardware Command Bus for sending commands from the Brain to the HAL without direct hardware access!
-volatile HardwareCommandBus HardwareCommands = { false, 0.1f };
+volatile HardwareCommandBus HardwareCommands = { false, false, false, 0.1f }; // FIX: Added the extra falses for Accel and Mag!
 
 // ==========================================
 // GLOBAL HARDWARE OBJECTS
@@ -70,8 +71,70 @@ Mode_AutoTune autotuneMode(&kinematics); // Removed 'imu'
 BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode);
 CommandProcessor cliEngine;
 
+
 // ==========================================
-// CORE 1: THE MAIN CONTROL LOOP (PHYSICS & DECISIONS)
+// TASK 1: THE GATHERER (CORE 1 - APP CPU)
+// ==========================================
+void SensorTask(void *pvParameters) {
+    unsigned long lastSonarTime = 0;
+
+    for (;;) {
+        // ==========================================
+        // 0. EXECUTE HARDWARE COMMANDS FROM THE BRAIN
+        // ==========================================
+        if (HardwareCommands.requestGyroCalibration) {
+            if (imu) imu->calibrateGyro();
+            HardwareCommands.requestGyroCalibration = false; // Reset the flag!
+        }
+
+        if (HardwareCommands.requestAccelCalibration) {
+            if (imu) imu->calibrateAccel();
+            HardwareCommands.requestAccelCalibration = false; // Reset the flag!
+        }
+
+        if (HardwareCommands.requestMagCalibration) {
+            if (imu) imu->calibrateMag();
+            HardwareCommands.requestMagCalibration = false; // Reset the flag!
+        }
+        
+        static float currentBeta = -1.0f;
+        if (currentBeta != HardwareCommands.targetFilterBeta) {
+            currentBeta = HardwareCommands.targetFilterBeta;
+            if (imu) imu->setFilterBeta(currentBeta);
+        }
+
+        // ==========================================
+        // 1. ISOLATED HARDWARE POLLING
+        // ==========================================
+        
+        // Poll the IMU as fast as possible (every frame)
+        if (CurrentSensorState.imuAlive) {
+            FusedAngles currentAngles = imu->getAngles();
+            
+            // C++ volatile struct fix: We must assign the fields manually!
+            CurrentSensorState.imuAngles.yaw = currentAngles.yaw;
+            CurrentSensorState.imuAngles.pitch = currentAngles.pitch;
+            CurrentSensorState.imuAngles.roll = currentAngles.roll;
+            CurrentSensorState.imuAngles.gForce = currentAngles.gForce;
+            CurrentSensorState.imuAngles.hasCompass = currentAngles.hasCompass;
+            CurrentSensorState.imuAngles.compassHeading = currentAngles.compassHeading;
+        }
+
+        unsigned long currentTime = millis();
+
+        // Poll the Sonar exactly every 50ms
+        if (currentTime - lastSonarTime >= 50) { 
+            lastSonarTime = currentTime;
+            CurrentSensorState.distanceCM = frontDistanceSensor->getDistanceCM();
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(1)); 
+    }
+}
+
+
+// ==========================================
+// TASK 2: THE MAIN CONTROL LOOP (CORE 1 - APP CPU)
 // ==========================================
 void ControlLoopTask(void *pvParameters) { 
     const TickType_t xFrequency = pdMS_TO_TICKS(SystemConfig::MAIN_LOOP_TICK_RATE_MS);
@@ -90,105 +153,65 @@ void ControlLoopTask(void *pvParameters) {
     }
 }
 
+
 // ==========================================
-// CORE 0: THE GATHERER (SENSORS & TELEMETRY)
+// TASK 3: TELEMETRY & NETWORKING (CORE 0 - PRO CPU)
 // ==========================================
-void SensorTask(void *pvParameters) {
-  unsigned long lastTelemetryTime = 0;
-  unsigned long lastSonarTime = 0;
+void TelemetryTask(void *pvParameters) {
+    unsigned long lastTelemetryTime = 0;
 
-  for (;;) {
-    logger.handleClient();
-    
-    while (Serial.available()) {
-        cliEngine.processChar(Serial.read()); 
-    }
-
-    unsigned long currentTime = millis();
-
-    // ==========================================
-    // 0. EXECUTE HARDWARE COMMANDS FROM THE BRAIN
-    // ==========================================
-    if (HardwareCommands.requestGyroCalibration) {
-        if (imu) imu->calibrateGyro();
-        HardwareCommands.requestGyroCalibration = false; // Reset the flag!
-    }
-
-    if (HardwareCommands.requestAccelCalibration) {
-        if (imu) imu->calibrateAccel();
-        HardwareCommands.requestAccelCalibration = false; // Reset the flag!
-    }
-
-    if (HardwareCommands.requestMagCalibration) {
-        if (imu) imu->calibrateMag();
-        HardwareCommands.requestMagCalibration = false; // Reset the flag!
-    }
-    
-    static float currentBeta = -1.0f;
-    if (currentBeta != HardwareCommands.targetFilterBeta) {
-        currentBeta = HardwareCommands.targetFilterBeta;
-        if (imu) imu->setFilterBeta(currentBeta);
-    }
-
-    // ==========================================
-    // 1. ISOLATED HARDWARE POLLING
-    // ==========================================
-    
-    // Poll the IMU as fast as possible (every frame)
-    if (CurrentSensorState.imuAlive) {
-        FusedAngles currentAngles = imu->getAngles();
+    for (;;) {
+        // Process Websocket Handshakes securely on Core 0!
+        logger.handleClient();
         
-        // C++ volatile struct fix: We must assign the fields manually!
-        CurrentSensorState.imuAngles.yaw = currentAngles.yaw;
-        CurrentSensorState.imuAngles.pitch = currentAngles.pitch;
-        CurrentSensorState.imuAngles.roll = currentAngles.roll;
-        CurrentSensorState.imuAngles.gForce = currentAngles.gForce;
-        CurrentSensorState.imuAngles.hasCompass = currentAngles.hasCompass;
-        CurrentSensorState.imuAngles.compassHeading = currentAngles.compassHeading;
-    }
-
-    // Poll the Sonar exactly every 50ms
-    if (currentTime - lastSonarTime >= 50) { 
-        lastSonarTime = currentTime;
-        CurrentSensorState.distanceCM = frontDistanceSensor->getDistanceCM();
-    }
-
-    // ==========================================
-    // 2. TELEMETRY PRINTING (Reading from Memory!)
-    // ==========================================
-    if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
-        lastTelemetryTime = currentTime;
-        
-        if (Config.SERIAL_DEBUG_MASTER) {
-            if (CurrentSensorState.imuAlive) {
-                logger.sendTelemetryJSON("{\"yaw\":%.2f,\"pitch\":%.2f,\"roll\":%.2f,\"sonar\":%.1f,\"mode\":\"%s\",\"brain\":%s}\n", 
-                              CurrentSensorState.imuAngles.yaw, 
-                              CurrentSensorState.imuAngles.pitch,
-                              CurrentSensorState.imuAngles.roll,
-                              CurrentSensorState.distanceCM,
-                              brain.getActiveModeName(), 
-                              Config.BRAIN_ACTIVE ? "true" : "false");
-            }
-        } else {
-            if (!CurrentSensorState.imuAlive && Config.BRAIN_ACTIVE) motorDriver->stop(); 
+        while (Serial.available()) {
+            cliEngine.processChar(Serial.read()); 
         }
+
+        unsigned long currentTime = millis();
+
+        // ==========================================
+        // TELEMETRY PRINTING (Reading from Memory!)
+        // ==========================================
+        if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
+            lastTelemetryTime = currentTime;
+            
+            if (Config.SERIAL_DEBUG_MASTER) {
+                if (CurrentSensorState.imuAlive) {
+                    // Safe to Broadcast! Memory space is locked to the Wi-Fi driver!
+                    logger.sendTelemetryJSON("{\"yaw\":%.2f,\"pitch\":%.2f,\"roll\":%.2f,\"sonar\":%.1f,\"mode\":\"%s\",\"brain\":%s}\n", 
+                                  CurrentSensorState.imuAngles.yaw, 
+                                  CurrentSensorState.imuAngles.pitch,
+                                  CurrentSensorState.imuAngles.roll,
+                                  CurrentSensorState.distanceCM,
+                                  brain.getActiveModeName(), 
+                                  Config.BRAIN_ACTIVE ? "true" : "false");
+                }
+            }
+        }
+        
+        // Give Core 0 plenty of time to run the native ESP32 Wi-Fi Stack
+        vTaskDelay(pdMS_TO_TICKS(10)); 
     }
-    
-    vTaskDelay(pdMS_TO_TICKS(1)); 
-  }
 }
+
 
 // ==========================================
 // SETUP
 // ==========================================
 TaskHandle_t SensorTaskHandle;
 TaskHandle_t ControlLoopTaskHandle;
+TaskHandle_t TelemetryTaskHandle; // FIX: Added the 3rd task handle!
 
 void setup() {
   ConfigSys.init(); 
   logger.beginSerial();
   RadioManager::initRadios();
   logger.bindRadios();
+
+  // === THE WIFI BUFFER FIX ===
+  // Prevents the modem from sleeping, keeping RX buffers flush and ready for abrupt disconnects!
+  WiFi.setSleep(false);
 
   pointTurnPID.setTunings(Config.PID_POINT_P, Config.PID_POINT_I, Config.PID_POINT_D, Config.PID_POINT_ILIM, Config.PID_POINT_LIM);
   arcTurnPID.setTunings(Config.PID_ARC_P, Config.PID_ARC_I, Config.PID_ARC_D, Config.PID_ARC_ILIM, Config.PID_ARC_LIM);
@@ -231,16 +254,24 @@ void setup() {
   logger.println("Mister Mischief V1 Booting...");
   delay(1000); 
 
+  // === THE NEW 3-TASK ARCHITECTURE ===
+
   xTaskCreatePinnedToCore(
     SensorTask, "SensorTask", 
     SystemConfig::TASK_STACK_SIZE, NULL, SystemConfig::SENSOR_TASK_PRIORITY, 
-    &SensorTaskHandle, SystemConfig::SENSOR_TASK_CORE_AFFINITY
+    &SensorTaskHandle, SystemConfig::SENSOR_TASK_CORE_AFFINITY // Core 1 (App CPU)
   );
 
   xTaskCreatePinnedToCore(
     ControlLoopTask, "ControlLoopTask", 
-    SystemConfig::TASK_STACK_SIZE, NULL, SystemConfig::CONTROL_TASK_PRIORITY, 
-    &ControlLoopTaskHandle, SystemConfig::CONTROL_TASK_CORE_AFFINITY
+    SystemConfig::TASK_STACK_SIZE, NULL, SystemConfig::CONTROL_LOOP_TASK_PRIORITY, 
+    &ControlLoopTaskHandle, SystemConfig::CONTROL_LOOP_TASK_CORE_AFFINITY // Core 1 (App CPU)
+  );
+
+  xTaskCreatePinnedToCore(
+    TelemetryTask, "TelemetryTask", 
+    SystemConfig::TASK_STACK_SIZE, NULL, SystemConfig::TELEMETRY_TASK_PRIORITY, // Priority 1 is fine here
+    &TelemetryTaskHandle, SystemConfig::TELEMETRY_TASK_CORE_AFFINITY // Core 0 (Pro CPU) - Shared with WiFi driver
   );
 }
 
