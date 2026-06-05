@@ -9,12 +9,17 @@ volatile int RemoteLogger::activeWebSocketClients = 0;
 volatile unsigned long RemoteLogger::lastConnectTime = 0;
 
 // Instantiate the WebSocket server on the port passed by main.cpp (usually 81 for WS)
-// We allocate space for 10 messages, each up to 256 bytes long.
+// 1. Leave the constructor completely empty!
 RemoteLogger::RemoteLogger(int port) : webSocket(port), currentMode(0), isBluetoothConnected(false) {
-    telemetryQueue = xQueueCreate(10, 256); 
+    // DO NOT CALL xQueueCreate HERE
+    //telemetryQueue = xQueueCreate(10, 256); 
 }
 
 void RemoteLogger::beginSerial() {
+    // The OS is running now. It is safe to allocate kernel objects!
+    // We allocate space for 10 messages, each up to 256 bytes long.
+    telemetryQueue = xQueueCreate(10, 256);
+    
     currentMode = Config.ACTIVE_DEBUG_MODE;
     if (currentMode & Config.DEBUG_USB) {
         Serial.begin(Config.SERIAL_BAUD_RATE);
@@ -103,7 +108,7 @@ void RemoteLogger::printf(const char* format, ...) {
 void RemoteLogger::sendTelemetryJSON(const char* format, ...) {
     if (currentMode == Config.DEBUG_ACTIVE) return;
 
-    char buffer[256]; 
+    char buffer[256]; // Changed from 512 to 256 to exactly match the FREERTOS queue size!
     va_list args;
     va_start(args, format);
     vsnprintf(buffer, sizeof(buffer), format, args);
