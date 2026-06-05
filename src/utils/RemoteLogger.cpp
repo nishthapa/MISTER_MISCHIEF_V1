@@ -8,22 +8,56 @@
 volatile int RemoteLogger::activeWebSocketClients = 0;
 volatile unsigned long RemoteLogger::lastConnectTime = 0;
 
-// Instantiate the WebSocket server on the port passed by main.cpp (usually 81 for WS)
-// 1. Leave the constructor completely empty!
-RemoteLogger::RemoteLogger(int port) : webSocket(port), currentMode(0), isBluetoothConnected(false) {
-    // DO NOT CALL xQueueCreate HERE
-    //telemetryQueue = xQueueCreate(10, 256); 
+// 1. UPDATE THE CONSTRUCTOR: 
+// Initialize the wifiSink with references to the websocket and the gatekeeper variables
+RemoteLogger::RemoteLogger(int port) 
+    : webSocket(port), 
+      currentMode(0), 
+      isBluetoothConnected(false),
+      wifiSink(webSocket, activeWebSocketClients, lastConnectTime) 
+{
+    // Constructor body remains empty
+}
+
+// 2. ADD THE REGISTRATION METHOD
+void RemoteLogger::registerSink(ITelemetrySink* newSink) {
+    if (sinkCount < MAX_SINKS) {
+        activeSinks[sinkCount] = newSink;
+        sinkCount++;
+    }
 }
 
 void RemoteLogger::beginSerial() {
     // The OS is running now. It is safe to allocate kernel objects!
-    // We allocate space for 10 messages, each up to 256 bytes long.
-    telemetryQueue = xQueueCreate(10, 256);
     
     currentMode = Config.ACTIVE_DEBUG_MODE;
     if (currentMode & Config.DEBUG_USB) {
         Serial.begin(Config.SERIAL_BAUD_RATE);
         delay(3000); 
+    }
+}
+
+// 4. ADD THE JSON PUBLISHER
+void RemoteLogger::publishTelemetry(const volatile GlobalSensorState& state, const char* mode, bool brainActive) {
+    if (currentMode == Config.DEBUG_ACTIVE) return;
+    
+    // Build the JSON exactly once!
+    JsonDocument doc; 
+    doc["yaw"]   = (float)state.imuAngles.yaw;
+    doc["pitch"] = (float)state.imuAngles.pitch;
+    doc["roll"]  = (float)state.imuAngles.roll;
+    doc["sonar"] = (float)state.distanceCM;
+    doc["mode"]  = mode;
+    doc["brain"] = brainActive;
+
+    char jsonBuffer[256];
+    serializeJson(doc, jsonBuffer);
+
+    // Blast it out to any sink that is currently registered and ready!
+    for (int i = 0; i < sinkCount; i++) {
+        if (activeSinks[i] != nullptr && activeSinks[i]->isReady()) {
+            activeSinks[i]->transmit(jsonBuffer);
+        }
     }
 }
 
@@ -61,9 +95,17 @@ void RemoteLogger::bindRadios() {
 
     if (currentMode == Config.DEBUG_ACTIVE) return;
 
+    // Register USB if active
+    if (currentMode & Config.DEBUG_USB) {
+        registerSink(&usbSink);
+    }
+
+    // Register WiFi if active
     if (currentMode & Config.DEBUG_WIFI) {
         webSocket.begin();
-        webSocket.onEvent(webSocketEvent); // Bind the event handler
+        webSocket.onEvent(webSocketEvent); 
+        registerSink(&wifiSink);
+        
         if (currentMode & Config.DEBUG_USB) {
             Serial.println("WIFI: WebSocket Server Open");
         }
@@ -102,44 +144,4 @@ void RemoteLogger::printf(const char* format, ...) {
 
     if ((currentMode & Config.DEBUG_USB) && Serial) Serial.print(buffer);
     // REMOVED WEBSOCKET BROADCAST
-}
-
-// === THE TELEMETRY PRODUCER (Runs on Core 1) ===
-void RemoteLogger::sendTelemetryJSON(const char* format, ...) {
-    if (currentMode == Config.DEBUG_ACTIVE) return;
-
-    char buffer[256]; // Changed from 512 to 256 to exactly match the FREERTOS queue size!
-    va_list args;
-    va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
-
-    if ((currentMode & Config.DEBUG_USB) && Serial) Serial.print(buffer);
-
-    // Instead of forcing a network transmission, just drop the string in the mailbox!
-    // The '0' means do not block or wait if the queue is temporarily full.
-    if (currentMode & Config.DEBUG_WIFI) {
-        xQueueSend(telemetryQueue, buffer, 0); 
-    }
-}
-
-// === THE TELEMETRY CONSUMER (Runs on Core 0) ===
-void RemoteLogger::processQueue() {
-    if (currentMode == Config.DEBUG_ACTIVE) return;
-    
-    char buffer[256];
-    
-    // THE GATEKEEPER: Only touch the WebSocket if it is safe to do so
-    if ((currentMode & Config.DEBUG_WIFI) && WiFi.status() == WL_CONNECTED) {
-        if (activeWebSocketClients > 0 && (millis() - lastConnectTime > 1000)) {
-            
-            // Empty the mailbox and transmit everything waiting inside
-            while(xQueueReceive(telemetryQueue, buffer, 0) == pdTRUE) {
-                webSocket.broadcastTXT(buffer);
-            }
-        } else {
-            // If nobody is connected, secretly throw the mail in the trash so the box doesn't overflow
-            while(xQueueReceive(telemetryQueue, buffer, 0) == pdTRUE) { /* discard */ }
-        }
-    }
 }

@@ -2,10 +2,11 @@
 
 #include <WiFi.h>
 #include <WebSocketsServer.h>
+#include <ArduinoJson.h>       // <--- ADD THIS
+#include "core/GlobalSensorState.h" // <--- ADD THIS
+#include "utils/TelemetrySinks.h"   // <--- INCLUDE YOUR NEW FILE HERE
 #include <stdarg.h>
 #include <stdint.h> // For the uint8_t type
-#include <freertos/FreeRTOS.h> // <--- NEW
-#include <freertos/queue.h>    // <--- NEW
 
 class RemoteLogger {
 private:
@@ -23,10 +24,19 @@ private:
     static volatile int activeWebSocketClients;
     static volatile unsigned long lastConnectTime;
 
-    QueueHandle_t telemetryQueue; // <--- THE BRIDGE MAILBOX for sending telemetry from the Brain to the logger task safely across cores!
-
     // Helper to handle client connections
     static void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length);
+
+    // ==========================================
+    // THE NEW TELEMETRY SINK ROUTER VARIABLES
+    // ==========================================
+    static constexpr int MAX_SINKS = 3;
+    ITelemetrySink* activeSinks[MAX_SINKS] = {nullptr};
+    int sinkCount = 0;
+
+    // The physical sink instances owned by the logger
+    USBSink usbSink;
+    WebSocketSink wifiSink;
 
 public:
     RemoteLogger(int port);
@@ -40,8 +50,11 @@ public:
     // Checks for new incoming PC/Phone connections
     void handleClient();
 
-    // The Consumer function for the telemetry queue, called from the TelemetryTask loop
-    void processQueue();
+    // The method to dynamically attach telemetry sinks
+    void registerSink(ITelemetrySink* newSink);
+
+    // === THE NEW JSON PUBLISHER ===
+    void publishTelemetry(const volatile GlobalSensorState& state, const char* mode, bool brainActive);
 
     // For turning on/off from the command line
     void setMode(uint8_t newMode) { currentMode = newMode; }
@@ -51,7 +64,6 @@ public:
     void println(const char* message);
     void printf(const char* format, ...);
 
-    void sendTelemetryJSON(const char* format, ...);
 };
 
 // This tells all other files that "logger" exists globally!

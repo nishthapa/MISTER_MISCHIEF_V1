@@ -155,51 +155,34 @@ void ControlLoopTask(void *pvParameters) {
 
 
 // ==========================================
-// TASK 3: TELEMETRY PRODUCER (CORE 1 - APP CPU)
+// TASK 3: NETWORK & TELEMETRY PUBLISHER (CORE 1 - APP CPU)
 // ==========================================
-void TelemetryTask(void *pvParameters) {
+void NetworkTask(void *pvParameters) {
     unsigned long lastTelemetryTime = 0;
+    
     for (;;) {
-        // Read CLI input securely
+        // 1. Read CLI input securely
         while (Serial.available()) {
             cliEngine.processChar(Serial.read());
         }
 
-        unsigned long currentTime = millis();
-        
-        // Format the JSON and drop it in the FreeRTOS Queue
-        if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
-            lastTelemetryTime = currentTime;
-            if (Config.SERIAL_DEBUG_MASTER && CurrentSensorState.imuAlive) {
-                logger.sendTelemetryJSON("{\"yaw\":%.2f,\"pitch\":%.2f,\"roll\":%.2f,\"sonar\":%.1f,\"mode\":\"%s\",\"brain\":%s}\n", 
-                              CurrentSensorState.imuAngles.yaw, 
-                              CurrentSensorState.imuAngles.pitch,
-                              CurrentSensorState.imuAngles.roll,
-                              CurrentSensorState.distanceCM,
-                              brain.getActiveModeName(), 
-                              Config.BRAIN_ACTIVE ? "true" : "false");
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
-}
-
-// ==========================================
-// TASK 4: LOW-LEVEL NETWORK CONSUMER (CORE 0 - PRO CPU)
-// ==========================================
-void NetworkTask(void *pvParameters) {
-    for (;;) {
-        // Handle incoming WebSocket handshakes natively on Core 0
+        // 2. Handle incoming WebSocket handshakes 
         logger.handleClient();
         
-        // Read the Mailbox and transmit the waiting strings over the air
-        logger.processQueue();
+        // 3. Publish the JSON State over the air
+        unsigned long currentTime = millis();
+        if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
+            lastTelemetryTime = currentTime;
+            
+            if (CurrentSensorState.imuAlive) {
+                logger.publishTelemetry(CurrentSensorState, brain.getActiveModeName(), Config.BRAIN_ACTIVE);
+            }
+        }
         
-        // Give the Wi-Fi driver plenty of breathing room
+        // Give the network stack breathing room
         vTaskDelay(pdMS_TO_TICKS(10)); 
     }
 }
-
 
 // ==========================================
 // SETUP
@@ -265,10 +248,7 @@ void setup() {
   // App CPU (Core 1)
   xTaskCreatePinnedToCore(SensorTask, "SensorTask", SystemConfig::TASK_STACK_SENSOR, NULL, SystemConfig::SENSOR_TASK_PRIORITY, &SensorTaskHandle, SystemConfig::SENSOR_TASK_CORE_AFFINITY);
   xTaskCreatePinnedToCore(ControlLoopTask, "ControlLoopTask", SystemConfig::TASK_STACK_PHYSICS, NULL, SystemConfig::CONTROL_LOOP_TASK_PRIORITY, &ControlLoopTaskHandle, SystemConfig::CONTROL_LOOP_TASK_CORE_AFFINITY);
-  xTaskCreatePinnedToCore(TelemetryTask, "TelemetryTask", SystemConfig::TASK_STACK_TELEMETRY, NULL, SystemConfig::TELEMETRY_TASK_PRIORITY, &TelemetryTaskHandle, SystemConfig::TELEMETRY_TASK_CORE_AFFINITY); 
-  
-  // Pro CPU (Core 0) - Safely isolated!
-  xTaskCreatePinnedToCore(NetworkTask, "NetworkTask", SystemConfig::TASK_STACK_NETWORK, NULL, 1, &NetworkTaskHandle, SystemConfig::NETWORK_TASK_CORE_AFFINITY);
+  xTaskCreatePinnedToCore(NetworkTask, "NetworkTask", SystemConfig::TASK_STACK_NETWORK, NULL, SystemConfig::NETWORK_TASK_PRIORITY, &NetworkTaskHandle, SystemConfig::NETWORK_TASK_CORE_AFFINITY); 
 }
 
 void loop() { vTaskDelete(NULL); }
