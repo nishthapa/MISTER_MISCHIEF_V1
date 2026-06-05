@@ -4,6 +4,8 @@
 #include <WebSocketsServer.h>
 #include <stdarg.h>
 #include <stdint.h> // For the uint8_t type
+#include <freertos/FreeRTOS.h> // <--- NEW
+#include <freertos/queue.h>    // <--- NEW
 
 class RemoteLogger {
 private:
@@ -21,6 +23,8 @@ private:
     static volatile int activeWebSocketClients;
     static volatile unsigned long lastConnectTime;
 
+    QueueHandle_t telemetryQueue; // <--- THE BRIDGE MAILBOX for sending telemetry from the Brain to the logger task safely across cores!
+
     // Helper to handle client connections
     static void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length);
 
@@ -35,6 +39,9 @@ public:
     
     // Checks for new incoming PC/Phone connections
     void handleClient();
+
+    // The Consumer function for the telemetry queue, called from the TelemetryTask loop
+    void processQueue();
 
     // For turning on/off from the command line
     void setMode(uint8_t newMode) { currentMode = newMode; }

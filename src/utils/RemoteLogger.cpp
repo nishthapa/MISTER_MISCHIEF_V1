@@ -9,7 +9,10 @@ volatile int RemoteLogger::activeWebSocketClients = 0;
 volatile unsigned long RemoteLogger::lastConnectTime = 0;
 
 // Instantiate the WebSocket server on the port passed by main.cpp (usually 81 for WS)
-RemoteLogger::RemoteLogger(int port) : webSocket(port), currentMode(0), isBluetoothConnected(false) {}
+// We allocate space for 10 messages, each up to 256 bytes long.
+RemoteLogger::RemoteLogger(int port) : webSocket(port), currentMode(0), isBluetoothConnected(false) {
+    telemetryQueue = xQueueCreate(10, 256); 
+}
 
 void RemoteLogger::beginSerial() {
     currentMode = Config.ACTIVE_DEBUG_MODE;
@@ -96,24 +99,42 @@ void RemoteLogger::printf(const char* format, ...) {
     // REMOVED WEBSOCKET BROADCAST
 }
 
-// === THE THREAD-SAFE TELEMETRY FIREWALL ===
+// === THE TELEMETRY PRODUCER (Runs on Core 1) ===
 void RemoteLogger::sendTelemetryJSON(const char* format, ...) {
     if (currentMode == Config.DEBUG_ACTIVE) return;
 
-    char buffer[512]; 
+    char buffer[256]; 
     va_list args;
     va_start(args, format);
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
     if ((currentMode & Config.DEBUG_USB) && Serial) Serial.print(buffer);
+
+    // Instead of forcing a network transmission, just drop the string in the mailbox!
+    // The '0' means do not block or wait if the queue is temporarily full.
+    if (currentMode & Config.DEBUG_WIFI) {
+        xQueueSend(telemetryQueue, buffer, 0); 
+    }
+}
+
+// === THE TELEMETRY CONSUMER (Runs on Core 0) ===
+void RemoteLogger::processQueue() {
+    if (currentMode == Config.DEBUG_ACTIVE) return;
     
-    // === THE GATEKEEPER ===
+    char buffer[256];
+    
+    // THE GATEKEEPER: Only touch the WebSocket if it is safe to do so
     if ((currentMode & Config.DEBUG_WIFI) && WiFi.status() == WL_CONNECTED) {
-        // Only touch the WebSocket if WiFi is connected and if a client is FULLY connected AND the 1-second 
-        // connection cooldown timer has finished. This guarantees the handshake is safe!
         if (activeWebSocketClients > 0 && (millis() - lastConnectTime > 1000)) {
-            webSocket.broadcastTXT(buffer);
+            
+            // Empty the mailbox and transmit everything waiting inside
+            while(xQueueReceive(telemetryQueue, buffer, 0) == pdTRUE) {
+                webSocket.broadcastTXT(buffer);
+            }
+        } else {
+            // If nobody is connected, secretly throw the mail in the trash so the box doesn't overflow
+            while(xQueueReceive(telemetryQueue, buffer, 0) == pdTRUE) { /* discard */ }
         }
     }
 }

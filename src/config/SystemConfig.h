@@ -11,7 +11,8 @@ namespace SystemConfig {
     //constexpr uint32_t TASK_STACK_SIZE = 32768; // 32KB per task to safely handle Websockets and JSON formatting
     constexpr uint32_t TASK_STACK_SENSOR    = 4096;  // 4KB for I2C and GPIO reading
     constexpr uint32_t TASK_STACK_PHYSICS   = 4096;  // 4KB for Kinematics & Brain logic
-    constexpr uint32_t TASK_STACK_TELEMETRY = 12288; // 12KB to safely handle WebSockets & JSON
+    constexpr uint32_t TASK_STACK_TELEMETRY = 4096; // 4KB to safely telemetry & JSON
+    constexpr uint32_t TASK_STACK_NETWORK   = 8192;  // 8KB for the Websocket server to handle multiple clients and JSON formatting without crashing
 
     constexpr UBaseType_t SENSOR_TASK_PRIORITY = 1;  // 0 Priority for sensor reading and telemetry      
     constexpr UBaseType_t CONTROL_LOOP_TASK_PRIORITY = 1; // 1 Priority for main control loop and decision making
@@ -20,7 +21,8 @@ namespace SystemConfig {
     // SWAP FOR WIFI NETWORKING STABILITY
     constexpr UBaseType_t SENSOR_TASK_CORE_AFFINITY = 1;  // <--- Networking & Sonar belongs on APP CPU!
     constexpr UBaseType_t CONTROL_LOOP_TASK_CORE_AFFINITY = 1; // <--- Physics & Math runs on PRO CPU!
-    constexpr UBaseType_t TELEMETRY_TASK_CORE_AFFINITY = 0; // <--- Keep the Websocket server on PRO CPU for stability!
+    constexpr UBaseType_t TELEMETRY_TASK_CORE_AFFINITY = 1; // <--- Keep the Websocket server on PRO CPU for stability!
+    constexpr UBaseType_t NETWORK_TASK_CORE_AFFINITY = 0;   // <--- Dedicated Core for Networking to prevent instability!
     
     // --- Loop Rates ---
     constexpr unsigned long MAIN_LOOP_TICK_RATE_MS = 10;  // 10ms = 100Hz (The Physics Engine metronome)
