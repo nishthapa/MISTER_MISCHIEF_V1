@@ -47,3 +47,7 @@ void Mode_MaintainDistance::update(const RobotMood& currentMood, const volatile 
     float finalSpeed = lastCorrection * currentMood.speedMultiplier;
     kinematics->rawDrive(-finalSpeed, -finalSpeed);
 }
+
+void Mode_MaintainDistance::onExit() { 
+    kinematics->stop(); 
+}
