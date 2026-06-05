@@ -211,7 +211,7 @@ void setup() {
 
   // === THE WIFI BUFFER FIX ===
   // Prevents the modem from sleeping, keeping RX buffers flush and ready for abrupt disconnects!
-  WiFi.setSleep(false);
+  //WiFi.setSleep(false);
 
   pointTurnPID.setTunings(Config.PID_POINT_P, Config.PID_POINT_I, Config.PID_POINT_D, Config.PID_POINT_ILIM, Config.PID_POINT_LIM);
   arcTurnPID.setTunings(Config.PID_ARC_P, Config.PID_ARC_I, Config.PID_ARC_D, Config.PID_ARC_ILIM, Config.PID_ARC_LIM);
@@ -258,19 +258,19 @@ void setup() {
 
   xTaskCreatePinnedToCore(
     SensorTask, "SensorTask", 
-    SystemConfig::TASK_STACK_SIZE, NULL, SystemConfig::SENSOR_TASK_PRIORITY, 
+    SystemConfig::TASK_STACK_SENSOR, NULL, SystemConfig::SENSOR_TASK_PRIORITY, 
     &SensorTaskHandle, SystemConfig::SENSOR_TASK_CORE_AFFINITY // Core 1 (App CPU)
   );
 
   xTaskCreatePinnedToCore(
     ControlLoopTask, "ControlLoopTask", 
-    SystemConfig::TASK_STACK_SIZE, NULL, SystemConfig::CONTROL_LOOP_TASK_PRIORITY, 
+    SystemConfig::TASK_STACK_PHYSICS, NULL, SystemConfig::CONTROL_LOOP_TASK_PRIORITY, 
     &ControlLoopTaskHandle, SystemConfig::CONTROL_LOOP_TASK_CORE_AFFINITY // Core 1 (App CPU)
   );
 
   xTaskCreatePinnedToCore(
     TelemetryTask, "TelemetryTask", 
-    SystemConfig::TASK_STACK_SIZE, NULL, SystemConfig::TELEMETRY_TASK_PRIORITY, // Priority 1 is fine here
+    SystemConfig::TASK_STACK_TELEMETRY, NULL, SystemConfig::TELEMETRY_TASK_PRIORITY, // Priority 1 is fine here
     &TelemetryTaskHandle, SystemConfig::TELEMETRY_TASK_CORE_AFFINITY // Core 0 (Pro CPU) - Shared with WiFi driver
   );
 }

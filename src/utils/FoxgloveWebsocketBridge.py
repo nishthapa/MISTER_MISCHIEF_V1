@@ -4,7 +4,7 @@ import time
 from foxglove_websocket.server import FoxgloveServer
 import websockets
 
-ESP32_IP = "192.168.1.9"  # <--- HEY! DON'T FORGET TO PUT YOUR IP BACK HERE!
+ESP32_IP = "192.168.1.3"  # <--- HEY! DON'T FORGET TO PUT YOUR IP BACK HERE!
 ESP32_PORT = 81           
 
 async def main():

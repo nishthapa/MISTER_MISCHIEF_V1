@@ -30,7 +30,21 @@ void BehaviourEngine::init(bool isColdBoot) {
     previousMode = activeMode;
 }
 
-void BehaviourEngine::changeMode(IRobotMode* newMode) { if (newMode != nullptr) activeMode = newMode; }
+// void BehaviourEngine::changeMode(IRobotMode* newMode) { if (newMode != nullptr) activeMode = newMode; }
+
+void BehaviourEngine::changeMode(IRobotMode* newMode) { 
+    if (newMode != nullptr && newMode != activeMode) {
+        if (activeMode != nullptr) activeMode->onExit(); // Safely shut down the old mode
+        previousMode = activeMode;
+        activeMode = newMode;
+        
+        // Boot up the new mode immediately!
+        activeMode->onEnter(CurrentSensorState); 
+        
+        GLOBAL_MODE = mapModeToEnum(activeMode); 
+    } 
+}
+
 const char* BehaviourEngine::getActiveModeName() const { return activeMode->getName(); }
 const char* BehaviourEngine::getActiveMoodName() const { return "HAPPY"; } // Simplified for brevity
 

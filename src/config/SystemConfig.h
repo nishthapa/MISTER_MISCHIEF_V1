@@ -7,7 +7,11 @@ namespace SystemConfig {
     // ==========================================
 
     // --- FreeRTOS Task Configuration ---
-    constexpr uint32_t TASK_STACK_SIZE = 8192;       // Memory allocated per core (in words)
+    //constexpr uint32_t TASK_STACK_SIZE = 8192;       // Memory allocated per core (in words)
+    //constexpr uint32_t TASK_STACK_SIZE = 32768; // 32KB per task to safely handle Websockets and JSON formatting
+    constexpr uint32_t TASK_STACK_SENSOR    = 4096;  // 4KB for I2C and GPIO reading
+    constexpr uint32_t TASK_STACK_PHYSICS   = 4096;  // 4KB for Kinematics & Brain logic
+    constexpr uint32_t TASK_STACK_TELEMETRY = 12288; // 12KB to safely handle WebSockets & JSON
 
     constexpr UBaseType_t SENSOR_TASK_PRIORITY = 1;  // 0 Priority for sensor reading and telemetry      
     constexpr UBaseType_t CONTROL_LOOP_TASK_PRIORITY = 1; // 1 Priority for main control loop and decision making
