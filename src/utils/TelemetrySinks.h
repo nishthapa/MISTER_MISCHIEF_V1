@@ -20,7 +20,11 @@ public:
         Serial.println(jsonString);
     }
     bool isReady() override {
-        return static_cast<bool>(Serial); 
+        // === THE ESP32-S3 NATIVE USB FIX ===
+        // 1. static_cast<bool>(Serial) checks if the DTR line is high (Terminal is open)
+        // 2. availableForWrite() checks the physical buffer. If it's less than our JSON size, 
+        //    the PC is disconnected or lagging, and we must abort to prevent a 1-second hard lock!
+        return static_cast<bool>(Serial) && (Serial.availableForWrite() >= 256); 
     }
 };
 
