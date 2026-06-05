@@ -21,41 +21,37 @@
 #include "core/CommandProcessor.h"
 #include "config/SystemConfig.h"
 #include "core/RobotState.h"
+#include "core/GlobalSensorState.h" // <--- THE NEW INCLUDE
 
-//RemoteLogger logger(SystemConfig::TELNET_PORT);
 RemoteLogger logger(SystemConfig::WEBSOCKET_PORT); 
 
 // ==========================================
 // INTER-CORE COMMUNICATION (THE BRIDGE)
 // ==========================================
 volatile SystemMode GLOBAL_MODE = SystemMode::BOOTING;
-volatile float global_frontDistanceCM = -1.0;
-volatile float global_yaw = 0.0;
-volatile float global_pitch = 0.0;
-volatile float global_roll = 0.0;
-volatile bool global_imuAlive = false;
+
+// Instantiate the global memory bank!
+volatile GlobalSensorState CurrentSensorState = { -1.0f, {0,0,0,0,false,0}, false };
 
 // ==========================================
 // GLOBAL HARDWARE OBJECTS
 // ==========================================
+// Notice: We still instantiate them here, but the Brain won't use them directly anymore!
 I_DistanceSensor* frontDistanceSensor = DistanceSensorFactory::createDistanceSensor();
 I_MotorDriver* motorDriver = MotorDriverFactory::createMotorDriver();
 I_IMU* imu = IMUFactory::createIMU();
 
 // ==========================================
-// GLOBAL PID CONTROLLERS
+// GLOBAL PID CONTROLLERS & KINEMATICS
 // ==========================================
 PIDController pointTurnPID = PIDControllerFactory::createPointTurnPID();
 PIDController arcTurnPID   = PIDControllerFactory::createArcTurnPID();
 PIDController distancePID = PIDControllerFactory::createDistanceHoldPID();
 
-// ==========================================
-// THE UNIFIED KINEMATICS ENGINE
-// ==========================================
 KinematicsEngine kinematics(motorDriver, &pointTurnPID, &arcTurnPID);
 
 // ==========================================
-// GLOBAL MODE OBJECTS (Injecting Kinematics Engine)
+// GLOBAL MODE OBJECTS
 // ==========================================
 Mode_ObstacleAvoidance obstacleMode(&kinematics, frontDistanceSensor, imu);
 Mode_NormalDriving normalMode(imu, &kinematics); 
@@ -66,17 +62,15 @@ Mode_DeepSleep sleepMode(motorDriver);
 Mode_AutoTune autotuneMode(imu, &kinematics);
 
 // ==========================================
-// MODE / MOOD SWITCHER
+// MODE SWITCHER (The Brain)
 // ==========================================
+// Note: It still takes the hardware pointers right now, but we will remove them in the next step!
 BehaviourEngine brain(imu, frontDistanceSensor, &obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode);
 
-// ==========================================
-// THE COMMAND LINE ENGINE
-// ==========================================
 CommandProcessor cliEngine;
 
 // ==========================================
-// CORE 1: THE MAIN CONTROL LOOP
+// CORE 1: THE MAIN CONTROL LOOP (PHYSICS & DECISIONS)
 // ==========================================
 void ControlLoopTask(void *pvParameters) { 
     const TickType_t xFrequency = pdMS_TO_TICKS(SystemConfig::MAIN_LOOP_TICK_RATE_MS);
@@ -85,156 +79,110 @@ void ControlLoopTask(void *pvParameters) {
     for (;;) {
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
 
-        // THE NEW KILLSWITCH LOGIC IF MASTER DEBUG IS OFF WHEN WE ARE TUNING/CHANGING PARAMETERS/SETTINGS
-        /* // THE BRAIN ACTIVE FLAG IS THE MASTER KILLSWITCH FOR ALL MOTION. IF FALSE, THE ROBOT WILL NOT MOVE NO MATTER WHAT MODE IT IS IN.
-        // since BehaviourEngine is now acting as the gatekeeper (where it safely bypasses survival reflexes but\
-        // still runs the active mode if the brain is off), we no longer need this hard killswitch
-        // This allows us to successfully autotune and test modes even when the brain is off, which is a much more intuitive way to work with the robot in general!
-        if (!Config.BRAIN_ACTIVE) {
-            motorDriver->stop(); // Force motors off
-            continue;            // Skip the rest of the loop entirely!
-        }
-        */
-
-        if (global_imuAlive) {
-            brain.update();
+        // THE ISOLATION: The Brain only runs if the Gatherer says the IMU is alive!
+        if (CurrentSensorState.imuAlive) {
+            // WE NOW PASS THE MEMORY STATE TO THE BRAIN!
+            brain.update(CurrentSensorState); 
         } else {
-            motorDriver->stop(); // DISABLED FOR TESTING WITH VCC CUT USB CABLE
+            motorDriver->stop(); 
         }
-
-        // ==========================================
-        // DISABLED FOR TESTING WITH VCC CUT USB CABLE
-        // ==========================================
-       
-        // Update Telemetry Bridge
-        FusedAngles currentAngles = imu->getAngles();
-        global_yaw = currentAngles.yaw;
-        global_pitch = currentAngles.pitch;
-        global_roll = currentAngles.roll;
-        
     }
 }
 
 // ==========================================
-// CORE 0: SENSOR READS & HIGH-SPEED CLI
+// CORE 0: THE GATHERER (SENSORS & TELEMETRY)
 // ==========================================
 void SensorTask(void *pvParameters) {
-  // Two separate stopwatches!
   unsigned long lastTelemetryTime = 0;
   unsigned long lastSonarTime = 0;
 
   for (;;) {
     logger.handleClient();
     
-    // ==========================================
-    // 1. INSTANT CLI PROCESSING (Runs every 1ms)
-    // ==========================================
     while (Serial.available()) {
-        // Feed raw bytes to the isolated Terminal Emulator!
         cliEngine.processChar(Serial.read()); 
     }
 
     unsigned long currentTime = millis();
 
     // ==========================================
-    // 2. SONAR PHYSICS (Strictly limited to 50ms = 20Hz)
+    // 1. ISOLATED HARDWARE POLLING
     // ==========================================
-    // Allowing 50ms ensures all sound waves from the previous ping have safely died out!
+    
+    // Poll the IMU as fast as possible (every frame)
+    if (CurrentSensorState.imuAlive) {
+        FusedAngles currentAngles = imu->getAngles();
+        
+        // C++ volatile struct fix: We must assign the fields manually!
+        CurrentSensorState.imuAngles.yaw = currentAngles.yaw;
+        CurrentSensorState.imuAngles.pitch = currentAngles.pitch;
+        CurrentSensorState.imuAngles.roll = currentAngles.roll;
+        CurrentSensorState.imuAngles.gForce = currentAngles.gForce;
+        CurrentSensorState.imuAngles.hasCompass = currentAngles.hasCompass;
+        CurrentSensorState.imuAngles.compassHeading = currentAngles.compassHeading;
+    }
+
+    // Poll the Sonar exactly every 50ms
     if (currentTime - lastSonarTime >= 50) { 
         lastSonarTime = currentTime;
-        global_frontDistanceCM = frontDistanceSensor->getDistanceCM();
+        CurrentSensorState.distanceCM = frontDistanceSensor->getDistanceCM();
     }
 
     // ==========================================
-    // 3. TELEMETRY PRINTING 
+    // 2. TELEMETRY PRINTING (Reading from Memory!)
     // ==========================================
     if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
         lastTelemetryTime = currentTime;
         
         if (Config.SERIAL_DEBUG_MASTER) {
-            if (Config.SERIAL_DEBUG_SONAR) {
-                //logger.printf("[SONAR] Distance: %.1f cm | ", global_frontDistanceCM); // DISABLED FOR TESTING WITH VCC CUT USB CABLE
-            }
-            
-            /*
-            if (global_imuAlive) {
-                logger.printf("Y: %5.1f | P: %5.1f | R: %5.1f | MODE: %s | BRAIN: %s (Press ENTER to pause telemetry printing)\n", 
-                              global_yaw, 
-                              global_pitch,
-                              global_roll,
-                              brain.getActiveModeName(), 
-                              Config.BRAIN_ACTIVE ? "ON" : "OFF");
-            }*/
-
-            if (global_imuAlive) {
-                // Output raw JSON using the new safe function!
+            if (CurrentSensorState.imuAlive) {
                 logger.sendTelemetryJSON("{\"yaw\":%.2f,\"pitch\":%.2f,\"roll\":%.2f,\"sonar\":%.1f,\"mode\":\"%s\",\"brain\":%s}\n", 
-                              global_yaw, 
-                              global_pitch,
-                              global_roll,
-                              global_frontDistanceCM,
+                              CurrentSensorState.imuAngles.yaw, 
+                              CurrentSensorState.imuAngles.pitch,
+                              CurrentSensorState.imuAngles.roll,
+                              CurrentSensorState.distanceCM,
                               brain.getActiveModeName(), 
                               Config.BRAIN_ACTIVE ? "true" : "false");
             }
-
-
-
         } else {
-            if (!global_imuAlive && Config.BRAIN_ACTIVE) motorDriver->stop(); // DISABLED FOR TESTING WITH VCC CUT USB CABLE
+            if (!CurrentSensorState.imuAlive && Config.BRAIN_ACTIVE) motorDriver->stop(); 
         }
     }
     
-    // The task rests for just 1ms so typing is instant!
     vTaskDelay(pdMS_TO_TICKS(1)); 
   }
 }
 
 // ==========================================
-// SETUP: INITIALIZE HARDWARE & SCHEDULER
+// SETUP
 // ==========================================
 TaskHandle_t SensorTaskHandle;
 TaskHandle_t ControlLoopTaskHandle;
 
 void setup() {
-  // === BOOT THE ESP32 NVS HARD DRIVE ===
   ConfigSys.init(); 
-  
   logger.beginSerial();
   RadioManager::initRadios();
   logger.bindRadios();
 
-  // Inject the loaded NVS variables into the running unified PID objects
   pointTurnPID.setTunings(Config.PID_POINT_P, Config.PID_POINT_I, Config.PID_POINT_D, Config.PID_POINT_ILIM, Config.PID_POINT_LIM);
   arcTurnPID.setTunings(Config.PID_ARC_P, Config.PID_ARC_I, Config.PID_ARC_D, Config.PID_ARC_ILIM, Config.PID_ARC_LIM);
   distancePID.setTunings(Config.PID_DIST_P, Config.PID_DIST_I, Config.PID_DIST_D, Config.PID_DIST_ILIM, Config.PID_DIST_LIM);
-  //obstacleAvoidancePID.setTunings(Config.PID_OBSTACLE_P, Config.PID_OBSTACLE_I, Config.PID_OBSTACLE_D, Config.PID_OBSTACLE_ILIM, Config.PID_OBSTACLE_LIM);
-  // ---------------------------
-
-  // Inject Madgwick Filter Beta from NVS into the IMU immediately so it's active on boot without needing a CLI command!
-  imu->setFilterBeta(Config.MADGWICK_FILTER_BETA);
-  // ---------------------------
   
+  imu->setFilterBeta(Config.MADGWICK_FILTER_BETA);
   logger.println("Configuration Manager loaded from permanent memory.");
 
-  // ==========================================
-  // THE TELNET WAITING ROOM
-  // ==========================================
   unsigned long waitStart = millis();
   while (millis() - waitStart < SystemConfig::TELNET_WAIT_TIME_MS) {
       logger.handleClient(); 
       delay(50);
   }
   
-  // === HARDWARE WAKE-UP DELAY ===
   delay(SystemConfig::HARDWARE_WAKE_DELAY_MS);
 
   frontDistanceSensor->init();
   motorDriver->init();
 
-  // ==========================================
-  // DISABLED FOR TESTING WITH VCC CUT USB CABLE
-  // ==========================================
-  
   logger.println("Waking up the IMU...");
   int imuRetries = 0;
   while (!imu->init() && imuRetries < SystemConfig::IMU_MAX_RETRIES) {
@@ -242,27 +190,22 @@ void setup() {
       delay(SystemConfig::IMU_RETRY_DELAY_MS); 
       imuRetries++;
   }
-  global_imuAlive = (imuRetries < SystemConfig::IMU_MAX_RETRIES);
   
-
+  // Set the global state!
+  CurrentSensorState.imuAlive = (imuRetries < SystemConfig::IMU_MAX_RETRIES);
+  
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   bool isColdBoot = (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED);
   
-  // Initialize the Brain with the boot state!
   brain.init(isColdBoot);
 
-  // ==========================================
-  // TEMPORARY AUTOTUNE BOOT TEST
-  // ==========================================
-  //logger.println("WARNING: Forcing Autotune on boot for testing...");
-  Config.BRAIN_ACTIVE = false;       // Temporarily disable survival reflexes
-  brain.changeMode(&autotuneMode);   // Force the brain into Autotune mode!
-  // ==========================================
+  // Temporary testing override
+  Config.BRAIN_ACTIVE = false;       
+  brain.changeMode(&autotuneMode);   
   
   logger.println("Mister Mischief V1 Booting...");
   delay(1000); 
 
-// === TASK CREATION ===
   xTaskCreatePinnedToCore(
     SensorTask, "SensorTask", 
     SystemConfig::TASK_STACK_SIZE, NULL, SystemConfig::SENSOR_TASK_PRIORITY, 

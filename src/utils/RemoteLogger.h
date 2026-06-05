@@ -14,11 +14,15 @@ private:
     // We use a boolean to track if a BLE device is connected
     bool isBluetoothConnected;
 
-    // Helper to handle client connections
-    static void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length);
-
     // The logger's internal memory of what is actually physically possible
     uint8_t currentMode;
+
+    // === THE GATEKEEPER SECRETS (Back in Private!) ===
+    static volatile int activeWebSocketClients;
+    static volatile unsigned long lastConnectTime;
+
+    // Helper to handle client connections
+    static void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length);
 
 public:
     RemoteLogger(int port);

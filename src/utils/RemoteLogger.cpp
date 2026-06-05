@@ -2,6 +2,12 @@
 #include "utils/RadioManager.h"
 #include "config/ConfigurationManager.h"
 
+// ==========================================
+// ALLOCATE THE STATIC GATEKEEPER MEMORY
+// ==========================================
+volatile int RemoteLogger::activeWebSocketClients = 0;
+volatile unsigned long RemoteLogger::lastConnectTime = 0;
+
 // Instantiate the WebSocket server on the port passed by main.cpp (usually 81 for WS)
 RemoteLogger::RemoteLogger(int port) : webSocket(port), currentMode(0), isBluetoothConnected(false) {}
 
@@ -18,12 +24,14 @@ void RemoteLogger::webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload,
     switch(type) {
         case WStype_DISCONNECTED:
             Serial.printf("[WIFI] Client #%u Disconnected!\n", num);
+            if (activeWebSocketClients > 0) activeWebSocketClients--;
             break;
         case WStype_CONNECTED:
-            Serial.printf("[WIFI] Client #%u Connected!\n", num);
+            Serial.printf("[WIFI] Client #%u Connected! Pausing telemetry for 1 second...\n", num);
+            activeWebSocketClients++;
+            lastConnectTime = millis(); // Start the 1-second cooldown timer!
             break;
         case WStype_TEXT:
-            // If you ever want to send commands FROM the dashboard TO the robot, handle payload here
             break;
     }
 }
@@ -57,8 +65,9 @@ void RemoteLogger::bindRadios() {
 void RemoteLogger::handleClient() {
     if (currentMode == Config.DEBUG_ACTIVE) return;
     
-    if (currentMode & Config.DEBUG_WIFI) {
-        webSocket.loop(); // Keeps the WebSocket alive and processes incoming handshakes
+    // THE FIREWALL: Never touch the websocket if the router is dead!
+    if ((currentMode & Config.DEBUG_WIFI) && WiFi.status() == WL_CONNECTED) {
+        webSocket.loop(); 
     }
 }
 
@@ -87,7 +96,7 @@ void RemoteLogger::printf(const char* format, ...) {
     // REMOVED WEBSOCKET BROADCAST
 }
 
-// === THE NEW THREAD-SAFE TELEMETRY FIREWALL ===
+// === THE THREAD-SAFE TELEMETRY FIREWALL ===
 void RemoteLogger::sendTelemetryJSON(const char* format, ...) {
     if (currentMode == Config.DEBUG_ACTIVE) return;
 
@@ -99,6 +108,12 @@ void RemoteLogger::sendTelemetryJSON(const char* format, ...) {
 
     if ((currentMode & Config.DEBUG_USB) && Serial) Serial.print(buffer);
     
-    // THIS IS THE ONLY FUNCTION ALLOWED TO TOUCH THE WEBSOCKET
-    if (currentMode & Config.DEBUG_WIFI) webSocket.broadcastTXT(buffer);
+    // === THE GATEKEEPER ===
+    if ((currentMode & Config.DEBUG_WIFI) && WiFi.status() == WL_CONNECTED) {
+        // Only touch the WebSocket if WiFi is connected and if a client is FULLY connected AND the 1-second 
+        // connection cooldown timer has finished. This guarantees the handshake is safe!
+        if (activeWebSocketClients > 0 && (millis() - lastConnectTime > 1000)) {
+            webSocket.broadcastTXT(buffer);
+        }
+    }
 }
