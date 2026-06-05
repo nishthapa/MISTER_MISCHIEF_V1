@@ -2,22 +2,19 @@
 #include "behaviours/Mode_NormalDriving.h"
 #include "utils/RemoteLogger.h" 
 
-Mode_NormalDriving::Mode_NormalDriving(I_IMU* i, KinematicsEngine* k) {
-    imu = i; kinematics = k;
+Mode_NormalDriving::Mode_NormalDriving(KinematicsEngine* k) {
+    kinematics = k;
     targetHeading = 0.0f;
 }
 
-void Mode_NormalDriving::onEnter() {
+void Mode_NormalDriving::onEnter(const volatile GlobalSensorState& sensorState) {
     logger.println("Mister Mischief is cruising in Normal Driving Mode...");
-    
-    // Snapshot the exact heading the moment he starts driving
-    targetHeading = imu->getAngles().yaw; 
+    targetHeading = sensorState.imuAngles.yaw; // Read from Memory!
 }
 
-void Mode_NormalDriving::update(const RobotMood& currentMood) {
+void Mode_NormalDriving::update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) {
     float finalSpeed = Config.CRUISING_SPEED * currentMood.speedMultiplier;
-    // Engine automatically routes to Arc Turn profile because base speed > 0
-    kinematics->navigateToHeading(targetHeading, imu->getAngles().yaw, finalSpeed, currentMood.pidAggression);
+    kinematics->navigateToHeading(targetHeading, sensorState.imuAngles.yaw, finalSpeed, currentMood.pidAggression);
 }
 
 void Mode_NormalDriving::onExit() { kinematics->stop(); }

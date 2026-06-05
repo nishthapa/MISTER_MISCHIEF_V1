@@ -4,11 +4,11 @@
 #include "config/SystemConfig.h"      // <-- For the master clock
 #include "config/ConfigurationManager.h"
 
-Mode_MaintainDistance::Mode_MaintainDistance(I_DistanceSensor* s, KinematicsEngine* k, PIDController* p) {
-    distSensor = s; kinematics = k; pid = p;
+Mode_MaintainDistance::Mode_MaintainDistance(KinematicsEngine* k, PIDController* p) {
+    kinematics = k; pid = p;
 }
 
-void Mode_MaintainDistance::onEnter() {
+void Mode_MaintainDistance::onEnter(const volatile GlobalSensorState& sensorState) {
     logger.println("Mister Mischief is maintaining distance!");
 
     // WIPE THE PID MEMORY! 
@@ -16,8 +16,8 @@ void Mode_MaintainDistance::onEnter() {
     pid->reset();
 }
 
-void Mode_MaintainDistance::update(const RobotMood& currentMood) {
-    float currentDistance = distSensor->getDistanceCM();
+void Mode_MaintainDistance::update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) {
+    float currentDistance = sensorState.distanceCM; // READ FROM GLOBALSENSORSTATE MEMORY!
     
     // THE SOFTWARE CLUTCH
     // If the book is actually removed (jumps > 60cm), pause the motors

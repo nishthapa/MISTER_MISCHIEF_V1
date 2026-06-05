@@ -8,11 +8,9 @@
 #include "behaviours/Mode_DeepSleep.h"
 #include "config/ConfigurationManager.h" 
 
-BehaviourEngine::BehaviourEngine(I_IMU* i, I_DistanceSensor* s, 
-                                 Mode_ObstacleAvoidance* obs, Mode_NormalDriving* norm, 
+BehaviourEngine::BehaviourEngine(Mode_ObstacleAvoidance* obs, Mode_NormalDriving* norm, 
                                  Mode_CompassLock* comp, Mode_MaintainDistance* dist, 
                                  Mode_Dizzy* diz, Mode_DeepSleep* sleep) {
-    imu = i; sonar = s;
     obstacleMode = obs; normalMode = norm; compassMode = comp;
     distanceMode = dist; dizzyMode = diz; sleepMode = sleep;
 
@@ -23,9 +21,12 @@ BehaviourEngine::BehaviourEngine(I_IMU* i, I_DistanceSensor* s,
 void BehaviourEngine::init(bool isColdBoot) {
     if (isColdBoot) { activeMood = Moods::GROGGY; isGroggyPhase = true; coldBootTime = millis(); } 
     else { activeMood = Moods::HAPPY; isGroggyPhase = false; }
+    
     latchHandler.reset();
     GLOBAL_MODE = mapModeToEnum(activeMode);
-    activeMode->onEnter();
+    
+    // FIX 1: Pass the global state to onEnter during boot!
+    activeMode->onEnter(CurrentSensorState); 
     previousMode = activeMode;
 }
 
@@ -112,7 +113,8 @@ IRobotMode* BehaviourEngine::determineNextMode(const SemanticEvents& events) {
 void BehaviourEngine::update(const volatile GlobalSensorState& sensorState) {
     if (!Config.BRAIN_ACTIVE) {
         GLOBAL_MODE = SystemMode::MANUAL_OVERRIDE;
-        if (activeMode) activeMode->update(activeMood);
+        // FIX 2: Pass sensorState to the manual override update!
+        if (activeMode) activeMode->update(activeMood, sensorState);
         return;
     }
 
@@ -123,16 +125,22 @@ void BehaviourEngine::update(const volatile GlobalSensorState& sensorState) {
 
     IRobotMode* nextMode = determineNextMode(events);
 
+    // ... Determine next mode ...
+
     if (nextMode != activeMode) {
         if (activeMode != nullptr) activeMode->onExit();
         previousMode = activeMode;
         activeMode = nextMode;
-        if (activeMode != nullptr) activeMode->onEnter();
+        if (activeMode != nullptr) activeMode->onEnter(sensorState); // <--- PASS IT HERE
         GLOBAL_MODE = mapModeToEnum(activeMode); 
     }
 
-    if (activeMode == normalMode || activeMode == obstacleMode) imu->setFilterBeta(0.01f);
-    else imu->setFilterBeta(Config.MADGWICK_FILTER_BETA); 
+    // FIX 3: Use the Command Bus to change the IMU filter, NOT the hardware pointer!
+    if (activeMode == normalMode || activeMode == obstacleMode) {
+        HardwareCommands.targetFilterBeta = 0.01f;
+    } else {
+        HardwareCommands.targetFilterBeta = Config.MADGWICK_FILTER_BETA;
+    }
 
-    if (activeMode != nullptr) activeMode->update(activeMood);
+    if (activeMode != nullptr) activeMode->update(activeMood, sensorState);
 }

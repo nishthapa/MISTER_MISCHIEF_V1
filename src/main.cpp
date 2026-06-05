@@ -32,6 +32,8 @@ volatile SystemMode GLOBAL_MODE = SystemMode::BOOTING;
 
 // Instantiate the global memory bank!
 volatile GlobalSensorState CurrentSensorState = { -1.0f, {0,0,0,0,false,0}, false };
+// Instantiate the low level Hardware Command Bus for sending commands from the Brain to the HAL without direct hardware access!
+volatile HardwareCommandBus HardwareCommands = { false, 0.1f };
 
 // ==========================================
 // GLOBAL HARDWARE OBJECTS
@@ -53,20 +55,19 @@ KinematicsEngine kinematics(motorDriver, &pointTurnPID, &arcTurnPID);
 // ==========================================
 // GLOBAL MODE OBJECTS
 // ==========================================
-Mode_ObstacleAvoidance obstacleMode(&kinematics, frontDistanceSensor, imu);
-Mode_NormalDriving normalMode(imu, &kinematics); 
-Mode_CompassLock compassMode(imu, &kinematics);
-Mode_MaintainDistance distanceMode(frontDistanceSensor, &kinematics, &distancePID);
-Mode_Dizzy dizzyMode(motorDriver);
-Mode_DeepSleep sleepMode(motorDriver);
-Mode_AutoTune autotuneMode(imu, &kinematics);
+Mode_ObstacleAvoidance obstacleMode(&kinematics); // Removed 'frontDistanceSensor' and imu
+Mode_NormalDriving normalMode(&kinematics);  // Removed 'imu'
+Mode_CompassLock compassMode(&kinematics); // Removed 'imu'
+Mode_MaintainDistance distanceMode(&kinematics, &distancePID); // Removed 'frontDistanceSensor'
+Mode_Dizzy dizzyMode(&kinematics); // standardized dependency injection from direct motor driver access level to kinematics engine level
+Mode_DeepSleep sleepMode(&kinematics); // standardized dependency injection from direct motor driver access level to kinematics engine level
+Mode_AutoTune autotuneMode(&kinematics); // Removed 'imu'
 
 // ==========================================
 // MODE SWITCHER (The Brain)
 // ==========================================
 // Note: It still takes the hardware pointers right now, but we will remove them in the next step!
-BehaviourEngine brain(imu, frontDistanceSensor, &obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode);
-
+BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode);
 CommandProcessor cliEngine;
 
 // ==========================================
@@ -104,6 +105,30 @@ void SensorTask(void *pvParameters) {
     }
 
     unsigned long currentTime = millis();
+
+    // ==========================================
+    // 0. EXECUTE HARDWARE COMMANDS FROM THE BRAIN
+    // ==========================================
+    if (HardwareCommands.requestGyroCalibration) {
+        if (imu) imu->calibrateGyro();
+        HardwareCommands.requestGyroCalibration = false; // Reset the flag!
+    }
+
+    if (HardwareCommands.requestAccelCalibration) {
+        if (imu) imu->calibrateAccel();
+        HardwareCommands.requestAccelCalibration = false; // Reset the flag!
+    }
+
+    if (HardwareCommands.requestMagCalibration) {
+        if (imu) imu->calibrateMag();
+        HardwareCommands.requestMagCalibration = false; // Reset the flag!
+    }
+    
+    static float currentBeta = -1.0f;
+    if (currentBeta != HardwareCommands.targetFilterBeta) {
+        currentBeta = HardwareCommands.targetFilterBeta;
+        if (imu) imu->setFilterBeta(currentBeta);
+    }
 
     // ==========================================
     // 1. ISOLATED HARDWARE POLLING

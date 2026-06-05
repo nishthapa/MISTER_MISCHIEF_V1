@@ -1,11 +1,8 @@
 #pragma once
 
 #include "behaviours/IRobotMode.h"
-#include "hal/hardware/motordriver/XY160D_MotorDriver.h"
-#include "hal/hardware/distancesensor/HCSR04_Sonar.h"
-#include "hal/interfaces/I_IMU.h"
 #include "core/KinematicsEngine.h" //For the new kinematics engine
-#include "core/PIDController.h"
+
 
 // A struct to hold our "Point Cloud" data
 struct RadarPing {
@@ -15,9 +12,7 @@ struct RadarPing {
 
 class Mode_ObstacleAvoidance : public IRobotMode {
 private:
-    KinematicsEngine* kinematics;
-    I_DistanceSensor* sonar;
-    I_IMU* imu;
+    KinematicsEngine* kinematics; // NO SONAR OR IMU POINTERS! Handled by the GlobalSensorState now
 
     // The streamlined Cockroach dance
     enum SequenceState { BACKING_UP, RADAR_SWEEP, CALCULATING, ALIGNING, ESCAPE, FINISHED };
@@ -38,11 +33,12 @@ private:
 
 public:
     // Dependency Injection upgraded
-    Mode_ObstacleAvoidance(KinematicsEngine* k, I_DistanceSensor* s, I_IMU* i);
+    Mode_ObstacleAvoidance(KinematicsEngine* k);
     
-    void onEnter() override;
-    void update(const RobotMood& currentMood) override;
+    void onEnter(const volatile GlobalSensorState& sensorState) override;
+    void update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) override;
     const char* getName() const override { return "MODE_OBSTACLE_AVOIDANCE"; }
     void onExit() override;
+    
     bool isSequenceComplete();
 };

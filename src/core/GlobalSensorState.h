@@ -1,12 +1,21 @@
 #pragma once
-#include "hal/interfaces/I_IMU.h" // Needed for the FusedAngles struct
+#include "hal/interfaces/I_IMU.h"
 
-// The absolute physical truth of the robot at the current millisecond.
+// 1. DATA: The absolute physical truth of the robot (Hardware -> Brain)
 struct GlobalSensorState {
     float distanceCM;
     FusedAngles imuAngles;
     bool imuAlive;
 };
 
-// The global instance accessible across cores
+// 2. COMMANDS: Hardware requests (Brain -> Hardware)
+struct HardwareCommandBus {
+    bool requestGyroCalibration;
+    bool requestAccelCalibration;
+    bool requestMagCalibration;
+    float targetFilterBeta;
+};
+
+// The global instances accessible across cores
 extern volatile GlobalSensorState CurrentSensorState;
+extern volatile HardwareCommandBus HardwareCommands;

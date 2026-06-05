@@ -1,24 +1,18 @@
 #pragma once
-
 #include "behaviours/IRobotMode.h"
-#include "hal/hardware/distancesensor/HCSR04_Sonar.h"
-#include "core/KinematicsEngine.h" //For the new kinematics engine
+#include "core/KinematicsEngine.h"
 #include "core/PIDController.h"
 
 class Mode_MaintainDistance : public IRobotMode {
 private:
-    // The tools this mode needs to borrow
-    I_DistanceSensor* distSensor;
-    KinematicsEngine* kinematics;
-    PIDController* pid; // Exclusively needed directly (instead of through the Kinematics Engine) for maintaining distance to a hand
+    KinematicsEngine* kinematics; // NO SONAR! Handled by the GlobalSensorState now
+    PIDController* pid;
 
 public:
-    // Dependency Injection constructor
-    Mode_MaintainDistance(I_DistanceSensor* s, KinematicsEngine* k, PIDController* p);
-
-    // The Contract
-    void onEnter() override; // Nothing special needed on boot
-    void update(const RobotMood& currentMood) override;
+    Mode_MaintainDistance(KinematicsEngine* k, PIDController* p);
+    
+    void onEnter(const volatile GlobalSensorState& sensorState) override;
+    void update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) override;
     const char* getName() const override { return "MODE_MAINTAIN_DISTANCE"; }
-    void onExit() override { kinematics->stop(); } // Safety stop when leaving this mode
+    void onExit() override;
 };

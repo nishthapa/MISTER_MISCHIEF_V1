@@ -1,20 +1,17 @@
 #pragma once
 
 #include "behaviours/IRobotMode.h"
-#include "hal/hardware/motordriver/XY160D_MotorDriver.h"
+#include "core/KinematicsEngine.h"
 
 class Mode_Dizzy : public IRobotMode {
 private:
-    // This mode acts blind, it only needs the muscles
-    I_MotorDriver* motors;
+    KinematicsEngine* kinematics; // Upgraded to Kinematics Engine for uniform abstraction
 
 public:
-    // Dependency Injection constructor
-    Mode_Dizzy(I_MotorDriver* m);
+    Mode_Dizzy(KinematicsEngine* k);
 
-    // The Contract
-    void onEnter() override;
-    void update(const RobotMood& currentMood) override;
+    void onEnter(const volatile GlobalSensorState& sensorState) override;
+    void update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) override;
     const char* getName() const override { return "MODE_DIZZY"; }
-    void onExit() override { motors->stop(); } // Safety stop when he shakes the dizziness off
+    void onExit() override { kinematics->stop(); } 
 };

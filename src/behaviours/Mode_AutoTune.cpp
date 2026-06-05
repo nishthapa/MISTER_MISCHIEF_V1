@@ -12,8 +12,8 @@ extern PIDController arcTurnPID;
 extern BehaviourEngine brain;
 extern Mode_NormalDriving normalMode;
 
-Mode_AutoTune::Mode_AutoTune(I_IMU* i, KinematicsEngine* k) {
-    imu = i; kinematics = k;
+Mode_AutoTune::Mode_AutoTune(KinematicsEngine* k) {
+    kinematics = k;
     tuneState = STATE_FINISHED;
 }
 
@@ -24,7 +24,7 @@ float Mode_AutoTune::getShortestAngle(float target, float current) {
     return delta;
 }
 
-void Mode_AutoTune::onEnter() {
+void Mode_AutoTune::onEnter(const volatile GlobalSensorState& sensorState) {
     logger.println("\n[AUTOTUNE] Sequence Initiated. DO NOT TOUCH ROBOT.");
     kinematics->stop();
     tuneState = STATE_COUNTDOWN;
@@ -33,13 +33,12 @@ void Mode_AutoTune::onEnter() {
     lastCountdownTime = millis();
 
     if (countdownSeconds > 0) {
-        logger.print("Autotune initiating in "); // Start the inline string
+        logger.print("Autotune initiating in "); 
     }
-
 }
 
-void Mode_AutoTune::update(const RobotMood& currentMood) {
-    float currentYaw = imu->getAngles().yaw;
+void Mode_AutoTune::update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) {
+    float currentYaw = sensorState.imuAngles.yaw;
 
     // THE DYNAMIC LOADING INDICATOR (........)
     // If we are actively calibrating or wobbling, print a dot every 1 second!
@@ -83,12 +82,9 @@ void Mode_AutoTune::update(const RobotMood& currentMood) {
             if (millis() - stateStartTime > 2000) {
                 logger.println("[AUTOTUNE] Zeroing Gyroscope...");
                 
-                // Assuming your IMU has a calibrate/zero function
-                imu->calibrateGyro();
-                // imu->calibrateAccel(); // Only do this on an absolutely level surface! YOU HAVE BEEN WARNED!
-                // Config.CALIBRATED_TEMP_C = imu->getTemperature(); 
-                // ConfigSys.save();
-                // logger.printf("[AUTOTUNE] Thermal Fingerprint saved at: %.1f C\n", Config.CALIBRATED_TEMP_C); 
+                // THE FIX: Drop a flag on the Command Bus!
+                // SensorTask on Core 1 will see this and physically calibrate the IMU.
+                HardwareCommands.requestGyroCalibration = true; 
                 
                 startYaw = currentYaw; // Snapshot the exact starting heading
                 
