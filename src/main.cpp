@@ -13,6 +13,7 @@
 #include "behaviours/Mode_Dizzy.h"
 #include "behaviours/Mode_DeepSleep.h"
 #include "behaviours/Mode_AutoTune.h"
+#include "behaviours/Mode_Teleop.h"
 #include "core/BehaviourEngine.h"
 #include "core/KinematicsEngine.h"
 #include "utils/RadioManager.h"
@@ -35,6 +36,9 @@ volatile GlobalSensorState CurrentSensorState = { -1.0f, {0,0,0,0,false,0}, fals
 
 // Instantiate the low level Hardware Command Bus for sending commands from the Brain to the HAL without direct hardware access!
 volatile HardwareCommandBus HardwareCommands = { false, false, false, 0.1f }; // FIX: Added the extra falses for Accel and Mag!
+
+// Teleoperation memory for Phone BLE or radio Control
+volatile TeleopCommandBus TeleopCommands = {0.0f, 0.0f, false, false};
 
 // ==========================================
 // GLOBAL HARDWARE OBJECTS
@@ -63,6 +67,7 @@ Mode_MaintainDistance distanceMode(&kinematics, &distancePID); // Removed 'front
 Mode_Dizzy dizzyMode(&kinematics); // standardized dependency injection from direct motor driver access level to kinematics engine level
 Mode_DeepSleep sleepMode(&kinematics); // standardized dependency injection from direct motor driver access level to kinematics engine level
 Mode_AutoTune autotuneMode(&kinematics); // Removed 'imu'
+Mode_Teleop teleopMode(&kinematics);
 
 // ==========================================
 // MODE SWITCHER (The Brain)
@@ -140,12 +145,29 @@ void ControlLoopTask(void *pvParameters) {
     const TickType_t xFrequency = pdMS_TO_TICKS(SystemConfig::MAIN_LOOP_TICK_RATE_MS);
     TickType_t xLastWakeTime = xTaskGetTickCount();
 
+    // State tracker to detect the moment the app connects or drops
+    static bool wasBleConnected = false; 
+
     for (;;) {
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
 
+        // --- THE TELEOPERATION OVERRIDE WATCHDOG ---
+        if (TeleopCommands.isConnected && !wasBleConnected) {
+            wasBleConnected = true;
+            Config.BRAIN_ACTIVE = false;       // Shut down autonomous decision engine
+            brain.changeMode(&teleopMode);     // Force the manual kinematic mixer
+            logger.println("[SYSTEM] BLE Connected. Manual Override Engaged.");
+        } 
+        else if (!TeleopCommands.isConnected && wasBleConnected) {
+            wasBleConnected = false;
+            Config.BRAIN_ACTIVE = true;        // Turn autonomous brain back on
+            brain.changeMode(&normalMode);     // Safely recover to normal driving
+            logger.println("[SYSTEM] BLE Disconnected. Autonomous Brain Resumed.");
+        }
+        // -------------------------------------------
+
         // THE ISOLATION: The Brain only runs if the Gatherer says the IMU is alive!
         if (CurrentSensorState.imuAlive) {
-            // WE NOW PASS THE MEMORY STATE TO THE BRAIN!
             brain.update(CurrentSensorState); 
         } else {
             motorDriver->stop(); 
@@ -199,8 +221,11 @@ void setup() {
   logger.bindRadios();
 
   // === THE WIFI BUFFER FIX ===
-  // Prevents the modem from sleeping, keeping RX buffers flush and ready for abrupt disconnects!
-  WiFi.setSleep(false);
+  // Prevents the modem from sleeping, keeping RX buffers flush!
+  // CRITICAL FIX: Only execute if the radio actually booted.
+  if (Config.WIFI_ACTIVE) {
+      WiFi.setSleep(false);
+  }
 
   pointTurnPID.setTunings(Config.PID_POINT_P, Config.PID_POINT_I, Config.PID_POINT_D, Config.PID_POINT_ILIM, Config.PID_POINT_LIM);
   arcTurnPID.setTunings(Config.PID_ARC_P, Config.PID_ARC_I, Config.PID_ARC_D, Config.PID_ARC_ILIM, Config.PID_ARC_LIM);
