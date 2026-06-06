@@ -56,10 +56,14 @@ MPU6050_IMU::MPU6050_IMU(int sda, int scl, int interruptPin, uint8_t address) {
     lastKnownAngles.hasCompass = IMUConfig::HAS_COMPASS;
     lastKnownAngles.compassHeading = 0.0f;
 
-    filter = new MadgwickFilter(Config.MADGWICK_FILTER_BETA);
+    filter = new MadgwickFilter(SysConfig.MADGWICK_FILTER_BETA);
 }
 
 bool MPU6050_IMU::init() {
+    // --- NEW I2C BUS RESET FIX ---
+    // Kills any stuck previous master states before attempting a clean boot
+    Wire.end();
+    
     pinMode(intPin, INPUT);
     Wire.begin(sdaPin, sclPin);
     
@@ -286,7 +290,7 @@ FusedAngles MPU6050_IMU::getAngles() {
         float gy_rad = ((float)gy - gyroBiasY) * (M_PI / (180.0f * IMUConfig::GYRO_SCALE_FACTOR));
         float gz_rad = ((float)gz - gyroBiasZ) * (M_PI / (180.0f * IMUConfig::GYRO_SCALE_FACTOR));
         
-        if (abs(gz_rad) < Config.IMU_GYRO_DEADBAND) gz_rad = 0.0f; 
+        if (abs(gz_rad) < SysConfig.IMU_GYRO_DEADBAND) gz_rad = 0.0f; 
 
         // 3. Subtract Accel Bias
         float ax_cal = (float)ax - accelBiasX;
@@ -309,7 +313,7 @@ FusedAngles MPU6050_IMU::getAngles() {
         lastKnownAngles.gForce = currentGForce;
 
         // 5. THE FILTER GATEKEEPER
-        if (currentGForce > Config.GFORCE_LIFT_UP_THRESHOLD || currentGForce < Config.GFORCE_LIFT_DOWN_THRESHOLD) {
+        if (currentGForce > SysConfig.GFORCE_LIFT_UP_THRESHOLD || currentGForce < SysConfig.GFORCE_LIFT_DOWN_THRESHOLD) {
             // We hit a bump, dropped, or are spinning rapidly, or are free-falling! 
             // Feed 0.0f to the accelerometer so the filter relies purely on the Gyroscope.
             filter->compute(gx_rad, gy_rad, gz_rad, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, dt, false);
@@ -319,9 +323,9 @@ FusedAngles MPU6050_IMU::getAngles() {
         }
 
         // 6. Update Memory with Dynamic Axis Inversion Multipliers as stored in the Config Manager
-        lastKnownAngles.roll  = filter->getRoll()  * (Config.IMU_INVERT_ROLL ? -1.0f : 1.0f);
-        lastKnownAngles.pitch = filter->getPitch() * (Config.IMU_INVERT_PITCH ? -1.0f : 1.0f);
-        lastKnownAngles.yaw   = filter->getYaw()   * (Config.IMU_INVERT_YAW ? -1.0f : 1.0f);
+        lastKnownAngles.roll  = filter->getRoll()  * (SysConfig.IMU_INVERT_ROLL ? -1.0f : 1.0f);
+        lastKnownAngles.pitch = filter->getPitch() * (SysConfig.IMU_INVERT_PITCH ? -1.0f : 1.0f);
+        lastKnownAngles.yaw   = filter->getYaw()   * (SysConfig.IMU_INVERT_YAW ? -1.0f : 1.0f);
     }
     
     return lastKnownAngles;

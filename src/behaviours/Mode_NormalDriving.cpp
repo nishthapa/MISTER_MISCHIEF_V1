@@ -13,7 +13,7 @@ void Mode_NormalDriving::onEnter(const volatile GlobalSensorState& sensorState) 
 }
 
 void Mode_NormalDriving::update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) {
-    float finalSpeed = Config.CRUISING_SPEED * currentMood.speedMultiplier;
+    float finalSpeed = SysConfig.CRUISING_SPEED * currentMood.speedMultiplier;
     kinematics->navigateToHeading(targetHeading, sensorState.imuAngles.yaw, finalSpeed, currentMood.pidAggression);
 }
 

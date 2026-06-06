@@ -29,7 +29,7 @@ void Mode_AutoTune::onEnter(const volatile GlobalSensorState& sensorState) {
     kinematics->stop();
     tuneState = STATE_COUNTDOWN;
 
-    countdownSeconds = Config.AUTOTUNE_START_DELAY_MS / 1000;
+    countdownSeconds = SysConfig.AUTOTUNE_START_DELAY_MS / 1000;
     lastCountdownTime = millis();
 
     if (countdownSeconds > 0) {
@@ -106,7 +106,7 @@ void Mode_AutoTune::update(const RobotMood& currentMood, const volatile GlobalSe
         case STATE_RELAY_WOBBLE:
         {
             // === THE HARDWARE TIMEOUT LATCH ===
-            if (millis() - lastCrossTime > Config.AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS) {
+            if (millis() - lastCrossTime > SysConfig.AUTOTUNE_UNSUCCESSFUL_TIMEOUT_MS) {
                 kinematics->stop();
                 logger.println("\n\n[AUTOTUNE] Failed. Please check if hardware is properly connected/working and try again.");
                 tuneState = STATE_FINISHED;
@@ -176,7 +176,7 @@ void Mode_AutoTune::update(const RobotMood& currentMood, const volatile GlobalSe
 
         case STATE_FINISHED:
             // 1. Re-enable the autonomous brain!
-            Config.BRAIN_ACTIVE = true;
+            SysConfig.BRAIN_ACTIVE = true;
             
             // 2. Hand control back to the normal driving state
             brain.changeMode(&normalMode);
@@ -212,17 +212,17 @@ void Mode_AutoTune::calculateAndSavePID() {
     float arcKd = newKd * 0.80f; // Keep D relatively high to prevent cruising wobbles
 
     // 5. Save to global config and NVS
-    Config.PID_POINT_P = newKp;
-    Config.PID_POINT_I = newKi;
-    Config.PID_POINT_D = newKd;
-    Config.PID_ARC_P = arcKp;
-    Config.PID_ARC_I = arcKi;
-    Config.PID_ARC_D = arcKd;
+    SysConfig.PID_POINT_P = newKp;
+    SysConfig.PID_POINT_I = newKi;
+    SysConfig.PID_POINT_D = newKd;
+    SysConfig.PID_ARC_P = arcKp;
+    SysConfig.PID_ARC_I = arcKi;
+    SysConfig.PID_ARC_D = arcKd;
     ConfigSys.save();
 
     // 5. Update the live object instantly so Phase 3 can use it!
-    pointTurnPID.setTunings(newKp, newKi, newKd, Config.PID_POINT_ILIM, Config.PID_POINT_LIM);
-    arcTurnPID.setTunings(arcKp, arcKi, arcKd, Config.PID_ARC_ILIM, Config.PID_ARC_LIM);
+    pointTurnPID.setTunings(newKp, newKi, newKd, SysConfig.PID_POINT_ILIM, SysConfig.PID_POINT_LIM);
+    arcTurnPID.setTunings(arcKp, arcKi, arcKd, SysConfig.PID_ARC_ILIM, SysConfig.PID_ARC_LIM);
 }
 
 void Mode_AutoTune::onExit() {

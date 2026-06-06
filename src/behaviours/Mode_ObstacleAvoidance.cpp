@@ -34,12 +34,12 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood, const volatile
     
     //float speed = ObstacleConfig::BASE_SPEED * currentMood.speedMultiplier;
     
-    float speed = Config.CRUISING_SPEED * currentMood.speedMultiplier;
+    float speed = SysConfig.CRUISING_SPEED * currentMood.speedMultiplier;
 
     switch (currentState) {
         case BACKING_UP:
             kinematics->rawDrive(-speed, -speed);
-            if (elapsed > Config.OBSTACLE_BACKUP_DURATION_MS) changeState(RADAR_SWEEP);
+            if (elapsed > SysConfig.OBSTACLE_BACKUP_DURATION_MS) changeState(RADAR_SWEEP);
             break;
 
         case RADAR_SWEEP:
@@ -54,7 +54,7 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood, const volatile
 
             // 2. IMU-DRIVEN SWEEP: Stop sweeping exactly when we have turned 160 degrees. 
             // (Timeout added just in case the robot gets physically stuck)
-            if (abs(getShortestAngle(sensorState.imuAngles.yaw, entryHeading)) >= Config.OBSTACLE_SWEEP_ANGLE_DEG || elapsed > Config.OBSTACLE_SWEEP_TIMEOUT_MS) {
+            if (abs(getShortestAngle(sensorState.imuAngles.yaw, entryHeading)) >= SysConfig.OBSTACLE_SWEEP_ANGLE_DEG || elapsed > SysConfig.OBSTACLE_SWEEP_TIMEOUT_MS) {
                 changeState(CALCULATING);
             }
             break;
@@ -106,8 +106,8 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood, const volatile
 kinematics->navigateToHeading(bestEscapeHeading, sensorState.imuAngles.yaw, 0.0f, currentMood.pidAggression);
 
                 // ADDED: The infinite loop timeout fix we discussed earlier
-                if (abs(error) < Config.OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG || 
-                    elapsed > Config.OBSTACLE_ALIGN_TIMEOUT_MS) {
+                if (abs(error) < SysConfig.OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG || 
+                    elapsed > SysConfig.OBSTACLE_ALIGN_TIMEOUT_MS) {
                     changeState(ESCAPE);
                 }
             }
@@ -115,7 +115,7 @@ kinematics->navigateToHeading(bestEscapeHeading, sensorState.imuAngles.yaw, 0.0f
 
         case ESCAPE:
             kinematics->rawDrive(speed, speed);
-            if (elapsed > Config.OBSTACLE_ESCAPE_DURATION_MS) changeState(FINISHED); 
+            if (elapsed > SysConfig.OBSTACLE_ESCAPE_DURATION_MS) changeState(FINISHED); 
             break;
 
         case FINISHED:

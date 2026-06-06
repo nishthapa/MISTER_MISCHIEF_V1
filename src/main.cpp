@@ -73,7 +73,7 @@ Mode_Teleop teleopMode(&kinematics);
 // MODE SWITCHER (The Brain)
 // ==========================================
 // Note: It still takes the hardware pointers right now, but we will remove them in the next step!
-BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode);
+BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode, &teleopMode); // Added teleopMode to the constructor
 CommandProcessor cliEngine;
 
 
@@ -154,13 +154,13 @@ void ControlLoopTask(void *pvParameters) {
         // --- THE TELEOPERATION OVERRIDE WATCHDOG ---
         if (TeleopCommands.isConnected && !wasBleConnected) {
             wasBleConnected = true;
-            Config.BRAIN_ACTIVE = false;       // Shut down autonomous decision engine
+            SysConfig.BRAIN_ACTIVE = false;       // Shut down autonomous decision engine
             brain.changeMode(&teleopMode);     // Force the manual kinematic mixer
             logger.println("[SYSTEM] BLE Connected. Manual Override Engaged.");
         } 
         else if (!TeleopCommands.isConnected && wasBleConnected) {
             wasBleConnected = false;
-            Config.BRAIN_ACTIVE = true;        // Turn autonomous brain back on
+            SysConfig.BRAIN_ACTIVE = true;        // Turn autonomous brain back on
             brain.changeMode(&normalMode);     // Safely recover to normal driving
             logger.println("[SYSTEM] BLE Disconnected. Autonomous Brain Resumed.");
         }
@@ -197,7 +197,7 @@ void NetworkTask(void *pvParameters) {
             lastTelemetryTime = currentTime;
             
             if (CurrentSensorState.imuAlive) {
-                logger.publishTelemetry(CurrentSensorState, brain.getActiveModeName(), Config.BRAIN_ACTIVE);
+                logger.publishTelemetry(CurrentSensorState, brain.getActiveModeName(), SysConfig.BRAIN_ACTIVE);
             }
         }
         
@@ -220,18 +220,21 @@ void setup() {
   RadioManager::initRadios();
   logger.bindRadios();
 
-  // === THE WIFI BUFFER FIX ===
-  // Prevents the modem from sleeping, keeping RX buffers flush!
-  // CRITICAL FIX: Only execute if the radio actually booted.
-  if (Config.WIFI_ACTIVE) {
-      WiFi.setSleep(false);
+ // === MODEM COEXISTENCE FIX ===
+  // If Bluetooth is active, the ESP32 REQUIRES Wi-Fi modem sleep to switch the antenna.
+  // If only Wi-Fi is active, we can disable sleep to keep the connection rock solid.
+  if (SysConfig.WIFI_ACTIVE) {
+      if (SysConfig.BT_ACTIVE) {
+          WiFi.setSleep(true); // Mandatory for Bluetooth Coexistence
+      } else {
+          WiFi.setSleep(false); // Only safe if BT is OFF
+      }
   }
-
-  pointTurnPID.setTunings(Config.PID_POINT_P, Config.PID_POINT_I, Config.PID_POINT_D, Config.PID_POINT_ILIM, Config.PID_POINT_LIM);
-  arcTurnPID.setTunings(Config.PID_ARC_P, Config.PID_ARC_I, Config.PID_ARC_D, Config.PID_ARC_ILIM, Config.PID_ARC_LIM);
-  distancePID.setTunings(Config.PID_DIST_P, Config.PID_DIST_I, Config.PID_DIST_D, Config.PID_DIST_ILIM, Config.PID_DIST_LIM);
+  pointTurnPID.setTunings(SysConfig.PID_POINT_P, SysConfig.PID_POINT_I, SysConfig.PID_POINT_D, SysConfig.PID_POINT_ILIM, SysConfig.PID_POINT_LIM);
+  arcTurnPID.setTunings(SysConfig.PID_ARC_P, SysConfig.PID_ARC_I, SysConfig.PID_ARC_D, SysConfig.PID_ARC_ILIM, SysConfig.PID_ARC_LIM);
+  distancePID.setTunings(SysConfig.PID_DIST_P, SysConfig.PID_DIST_I, SysConfig.PID_DIST_D, SysConfig.PID_DIST_ILIM, SysConfig.PID_DIST_LIM);
   
-  imu->setFilterBeta(Config.MADGWICK_FILTER_BETA);
+  imu->setFilterBeta(SysConfig.MADGWICK_FILTER_BETA);
   logger.println("Configuration Manager loaded from permanent memory.");
 
   unsigned long waitStart = millis();
@@ -262,8 +265,8 @@ void setup() {
   brain.init(isColdBoot);
 
   // Temporary testing override
-  Config.BRAIN_ACTIVE = false;       
-  brain.changeMode(&autotuneMode);   
+//   SysConfig.BRAIN_ACTIVE = false;       
+//   brain.changeMode(&autotuneMode);   
   
   logger.println("Mister Mischief V1 Booting...");
   delay(1000); 

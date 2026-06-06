@@ -46,7 +46,7 @@ void XY160D_MotorDriver::init() {
 void XY160D_MotorDriver::setLeftSpeed(float speed) {
     speed = constrain(speed, -100.0f, 100.0f);
     // If speed is > 0, map it starting from the bare minimum PWM required to move the tracks!
-    int pwmValue = map(abs(speed), 0.1f, 100.0f, Config.MOTOR_MIN_PWM, MotorDriverConfig::MAX_DUTY);
+    int pwmValue = map(abs(speed), 0.1f, 100.0f, SysConfig.MOTOR_MIN_PWM, MotorDriverConfig::MAX_DUTY);
 
     // Note: Core 2.x ledcWrite targets the CHANNEL, not the physical PIN
     if (speed > 0) {
@@ -64,7 +64,7 @@ void XY160D_MotorDriver::setLeftSpeed(float speed) {
 void XY160D_MotorDriver::setRightSpeed(float speed) {
     speed = constrain(speed, -100.0f, 100.0f);
     // If speed is > 0, map it starting from the bare minimum PWM required to move the tracks!
-    int pwmValue = map(abs(speed), 0.1f, 100.0f, Config.MOTOR_MIN_PWM, MotorDriverConfig::MAX_DUTY);
+    int pwmValue = map(abs(speed), 0.1f, 100.0f, SysConfig.MOTOR_MIN_PWM, MotorDriverConfig::MAX_DUTY);
 
     if (speed > 0) {
         ledcWrite(ChannelRegistry::CH_MOTOR_RIGHT_FWD, pwmValue);

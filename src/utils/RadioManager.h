@@ -1,7 +1,7 @@
 #pragma once
 
 #include <WiFi.h>
-#include <NimBLEDevice.h> // instead of the heavy BLEDevice, BLEServer, BLEUtils, etc.
+#include <NimBLEDevice.h> 
 #include <Arduino.h>
 
 class RadioManager {

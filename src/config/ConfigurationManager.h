@@ -600,5 +600,6 @@ class ConfigurationManager {
     //MasterSettings& getSettings() { return currentSettings; }
 };
 
-#define Config ConfigurationManager::getInstance().get()
+// #define Config ConfigurationManager::getInstance().get()
+#define SysConfig ConfigurationManager::getInstance().get()
 #define ConfigSys ConfigurationManager::getInstance()

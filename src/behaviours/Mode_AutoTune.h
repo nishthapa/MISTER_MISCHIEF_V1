@@ -3,7 +3,7 @@
 #include "core/KinematicsEngine.h"
 
 enum AutoTuneState {
-    STATE_COUNTDOWN, // <-- NEW 1st State i.e. counting down until autotune starts as defined in Config.AUTOTUNE_START_DELAY_MS
+    STATE_COUNTDOWN, // <-- NEW 1st State i.e. counting down until autotune starts as defined in SysConfig.AUTOTUNE_START_DELAY_MS
     STATE_STATIC_CAL,
     STATE_RELAY_WOBBLE,
     STATE_VICTORY_SPIN,

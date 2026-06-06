@@ -30,16 +30,16 @@ void RemoteLogger::registerSink(ITelemetrySink* newSink) {
 void RemoteLogger::beginSerial() {
     // The OS is running now. It is safe to allocate kernel objects!
     
-    currentMode = Config.ACTIVE_DEBUG_MODE;
-    if (currentMode & Config.DEBUG_USB) {
-        Serial.begin(Config.SERIAL_BAUD_RATE);
+    currentMode = SysConfig.ACTIVE_DEBUG_MODE;
+    if (currentMode & SysConfig.DEBUG_USB) {
+        Serial.begin(SysConfig.SERIAL_BAUD_RATE);
         delay(3000); 
     }
 }
 
 // 4. ADD THE JSON PUBLISHER
 void RemoteLogger::publishTelemetry(const volatile GlobalSensorState& state, const char* mode, bool brainActive) {
-    if (currentMode == Config.DEBUG_ACTIVE) return;
+    if (currentMode == SysConfig.DEBUG_ACTIVE) return;
     
     JsonDocument doc; 
     
@@ -59,23 +59,23 @@ void RemoteLogger::publishTelemetry(const volatile GlobalSensorState& state, con
         doc["ipv4"]        = WiFi.localIP().toString();
     } else {
         // Check our NVS Config to see if it's intentionally off, or just disconnected
-        doc["wifi_status"] = Config.WIFI_ACTIVE ? "disconnected" : "off";
+        doc["wifi_status"] = SysConfig.WIFI_ACTIVE ? "disconnected" : "off";
     }
 
     // Check BT status from our NVS Config
-    doc["bt_status"] = Config.BT_ACTIVE ? "on" : "off";
+    doc["bt_status"] = SysConfig.BT_ACTIVE ? "on" : "off";
 
     // --- 3. THE SAFETY BUFFER INCREASE ---
     // Increased from 256 to 512 to accommodate the massive string additions!
     char jsonBuffer[512];
     serializeJson(doc, jsonBuffer);
 
-    // Blast it out to any sink that is currently registered and ready!
-    for (int i = 0; i < sinkCount; i++) {
-        if (activeSinks[i] != nullptr && activeSinks[i]->isReady()) {
-            activeSinks[i]->transmit(jsonBuffer);
-        }
-    }
+    // // Blast it out to any sink that is currently registered and ready!
+    // for (int i = 0; i < sinkCount; i++) {
+    //     if (activeSinks[i] != nullptr && activeSinks[i]->isReady()) {
+    //         activeSinks[i]->transmit(jsonBuffer);
+    //     }
+    // }
 }
 
 // THE EVENT HANDLER
@@ -96,62 +96,62 @@ void RemoteLogger::webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload,
 }
 
 void RemoteLogger::bindRadios() { 
-    if ((currentMode & Config.DEBUG_WIFI) && !RadioManager::isWiFiReady()) {
-        currentMode &= ~Config.DEBUG_WIFI;
-        currentMode |= Config.DEBUG_USB;   
+    if ((currentMode & SysConfig.DEBUG_WIFI) && !RadioManager::isWiFiReady()) {
+        currentMode &= ~SysConfig.DEBUG_WIFI;
+        currentMode |= SysConfig.DEBUG_USB;   
     }
     
-    if (currentMode & Config.DEBUG_USB) {
+    if (currentMode & SysConfig.DEBUG_USB) {
         Serial.println("=== TELEMETRY ROUTER ONLINE ===");
         Serial.println("[USB] ONLINE");
         Serial.print("[WIFI] ");
-        if (currentMode & Config.DEBUG_WIFI) Serial.println("WEBSOCKET ROUTED");
+        if (currentMode & SysConfig.DEBUG_WIFI) Serial.println("WEBSOCKET ROUTED");
         else Serial.println("OFF / UNAVAILABLE");
         Serial.println("===============================\n");
     }
 
-    if (currentMode == Config.DEBUG_ACTIVE) return;
+    if (currentMode == SysConfig.DEBUG_ACTIVE) return;
 
     // Register USB if active
-    if (currentMode & Config.DEBUG_USB) {
+    if (currentMode & SysConfig.DEBUG_USB) {
         registerSink(&usbSink);
     }
 
     // Register WiFi if active
-    if (currentMode & Config.DEBUG_WIFI) {
+    if (currentMode & SysConfig.DEBUG_WIFI) {
         webSocket.begin();
         webSocket.onEvent(webSocketEvent); 
         registerSink(&wifiSink);
         
-        if (currentMode & Config.DEBUG_USB) {
+        if (currentMode & SysConfig.DEBUG_USB) {
             Serial.println("WIFI: WebSocket Server Open");
         }
     }
 }
 
 void RemoteLogger::handleClient() {
-    if (currentMode == Config.DEBUG_ACTIVE) return;
+    if (currentMode == SysConfig.DEBUG_ACTIVE) return;
     
     // THE FIREWALL: Never touch the websocket if the router is dead!
-    if ((currentMode & Config.DEBUG_WIFI) && WiFi.status() == WL_CONNECTED) {
+    if ((currentMode & SysConfig.DEBUG_WIFI) && WiFi.status() == WL_CONNECTED) {
         webSocket.loop(); 
     }
 }
 
 void RemoteLogger::print(const char* message) {
-    if (currentMode == Config.DEBUG_ACTIVE) return;
-    if ((currentMode & Config.DEBUG_USB) && Serial) Serial.print(message);
+    if (currentMode == SysConfig.DEBUG_ACTIVE) return;
+    if ((currentMode & SysConfig.DEBUG_USB) && Serial) Serial.print(message);
     // REMOVED WEBSOCKET BROADCAST
 }
 
 void RemoteLogger::println(const char* message) {
-    if (currentMode == Config.DEBUG_ACTIVE) return;
-    if ((currentMode & Config.DEBUG_USB) && Serial) Serial.println(message);
+    if (currentMode == SysConfig.DEBUG_ACTIVE) return;
+    if ((currentMode & SysConfig.DEBUG_USB) && Serial) Serial.println(message);
     // REMOVED WEBSOCKET BROADCAST
 }
 
 void RemoteLogger::printf(const char* format, ...) {
-    if (currentMode == Config.DEBUG_ACTIVE) return;
+    if (currentMode == SysConfig.DEBUG_ACTIVE) return;
 
     char buffer[512]; 
     va_list args;
@@ -159,6 +159,6 @@ void RemoteLogger::printf(const char* format, ...) {
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    if ((currentMode & Config.DEBUG_USB) && Serial) Serial.print(buffer);
+    if ((currentMode & SysConfig.DEBUG_USB) && Serial) Serial.print(buffer);
     // REMOVED WEBSOCKET BROADCAST
 }

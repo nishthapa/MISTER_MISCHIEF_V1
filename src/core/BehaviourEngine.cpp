@@ -6,13 +6,14 @@
 #include "behaviours/Mode_MaintainDistance.h"
 #include "behaviours/Mode_Dizzy.h"
 #include "behaviours/Mode_DeepSleep.h"
+#include "behaviours/Mode_Teleop.h" // <--- NEW TELEOP MODE
 #include "config/ConfigurationManager.h" 
 
 BehaviourEngine::BehaviourEngine(Mode_ObstacleAvoidance* obs, Mode_NormalDriving* norm, 
                                  Mode_CompassLock* comp, Mode_MaintainDistance* dist, 
-                                 Mode_Dizzy* diz, Mode_DeepSleep* sleep) {
+                                 Mode_Dizzy* diz, Mode_DeepSleep* sleep, Mode_Teleop* teleop) {
     obstacleMode = obs; normalMode = norm; compassMode = comp;
-    distanceMode = dist; dizzyMode = diz; sleepMode = sleep;
+    distanceMode = dist; dizzyMode = diz; sleepMode = sleep; teleopMode = teleop;
 
     activeMode = normalMode; previousMode = nullptr; activeMood = Moods::HAPPY;
     isGroggyPhase = false; lastDistance = -1.0f; lastAngles = {0,0,0,0,false,0};
@@ -78,7 +79,7 @@ PerceptionData BehaviourEngine::gatherPerception(const volatile GlobalSensorStat
     p.rawPitchEnergy = abs(getShortestAngleDelta(sensorState.imuAngles.pitch, lastAngles.pitch)) / 0.01f;
     p.rawRollEnergy = abs(getShortestAngleDelta(sensorState.imuAngles.roll, lastAngles.roll)) / 0.01f;
     p.totalRawEnergy = p.rawYawEnergy + p.rawPitchEnergy + p.rawRollEnergy;
-    p.isUpright = (abs(sensorState.imuAngles.pitch) < Config.UPRIGHT_ANGLE_TOLERANCE && abs(sensorState.imuAngles.roll) < Config.UPRIGHT_ANGLE_TOLERANCE);
+    p.isUpright = (abs(sensorState.imuAngles.pitch) < SysConfig.UPRIGHT_ANGLE_TOLERANCE && abs(sensorState.imuAngles.roll) < SysConfig.UPRIGHT_ANGLE_TOLERANCE);
 
     // Deep copy the volatile struct angles into our local history
     lastAngles.yaw = sensorState.imuAngles.yaw;
@@ -125,7 +126,25 @@ IRobotMode* BehaviourEngine::determineNextMode(const SemanticEvents& events) {
 }
 
 void BehaviourEngine::update(const volatile GlobalSensorState& sensorState) {
-    if (!Config.BRAIN_ACTIVE) {
+
+    // THE DYNAMIC OVERRIDE:
+    // If the phone is connected via BLE, we immediately force the manual mode.
+    // This ignores whatever Config.BRAIN_ACTIVE is set to.
+    if (TeleopCommands.isConnected) {
+        if (GLOBAL_MODE != SystemMode::MANUAL_OVERRIDE) {
+            if (activeMode != nullptr) activeMode->onExit();
+            // Assuming 'teleopMode' is available here (pass it via constructor if not)
+            activeMode = teleopMode; 
+            activeMode->onEnter(sensorState);
+            GLOBAL_MODE = SystemMode::MANUAL_OVERRIDE;
+        }
+        
+        // Update the teleop mode with the physics
+        activeMode->update(activeMood, sensorState);
+        return;
+    }
+
+    if (!SysConfig.BRAIN_ACTIVE) {
         GLOBAL_MODE = SystemMode::MANUAL_OVERRIDE;
         // FIX 2: Pass sensorState to the manual override update!
         if (activeMode) activeMode->update(activeMood, sensorState);
@@ -153,7 +172,7 @@ void BehaviourEngine::update(const volatile GlobalSensorState& sensorState) {
     if (activeMode == normalMode || activeMode == obstacleMode) {
         HardwareCommands.targetFilterBeta = 0.01f;
     } else {
-        HardwareCommands.targetFilterBeta = Config.MADGWICK_FILTER_BETA;
+        HardwareCommands.targetFilterBeta = SysConfig.MADGWICK_FILTER_BETA;
     }
 
     if (activeMode != nullptr) activeMode->update(activeMood, sensorState);

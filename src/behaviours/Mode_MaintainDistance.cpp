@@ -39,7 +39,7 @@ void Mode_MaintainDistance::update(const RobotMood& currentMood, const volatile 
         // The true physical time elapsed between sensor updates is ~40ms (0.04s)
         float trueDt = 0.04f; 
         
-        lastCorrection = pid->compute(Config.MAINTAIN_DISTANCE_CM, currentDistance, trueDt);
+        lastCorrection = pid->compute(SysConfig.MAINTAIN_DISTANCE_CM, currentDistance, trueDt);
         lastProcessedDistance = currentDistance;
     }
 
