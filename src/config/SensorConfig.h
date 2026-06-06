@@ -51,6 +51,9 @@ namespace IMUConfig {
     // false = Raw Data + ESP32 Software Filter (10ms Boot, 400kHz I2C, Bulletproof)
     constexpr bool MPU6050_USE_HARDWARE_DMP = false;
 
+    // Time to wait for I2C reads before giving up and returning the last known angles. Prevents hard lock if the sensor becomes unresponsive.
+    constexpr uint8_t MPU6050_I2C_READ_TIMEOUT_MS = 50;
+
     // --- Physical Scale Factors ---
     // 16384.0 = +/- 2G | 8192.0 = +/- 4G | 4096.0 = +/- 8G | 2048.0 = +/- 16G
     constexpr float ACCEL_SCALE_FACTOR = 16384.0f;

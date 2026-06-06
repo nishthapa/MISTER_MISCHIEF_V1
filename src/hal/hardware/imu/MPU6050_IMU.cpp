@@ -64,8 +64,15 @@ bool MPU6050_IMU::init() {
     Wire.begin(sdaPin, sclPin);
     
     // Dynamic Speed Shift!
-    if (IMUConfig::MPU6050_USE_HARDWARE_DMP) { Wire.setClock(100000); } 
-    else { Wire.setClock(400000); }
+    if (IMUConfig::MPU6050_USE_HARDWARE_DMP) { Wire.setClock(500); } // Reduced to avoid EMI i2c Packet Loss
+    else {
+        Wire.setClock(500);
+        Wire.setTimeOut(IMUConfig::MPU6050_I2C_READ_TIMEOUT_MS); // Set the I2C read timeout to prevent lockups
+    } // Reduced to avoid EMI i2c Packet Loss
+
+    // === THE I2CDEV HIDDEN FIREWALL ===
+    // Overwrite the library's default 1000ms software loop!
+    I2Cdev::readTimeout = IMUConfig::MPU6050_I2C_READ_TIMEOUT_MS;
 
     logger.println("Resetting MPU6050 Internal Registers...");
     mpu.reset();
@@ -194,9 +201,39 @@ FusedAngles MPU6050_IMU::getAngles() {
         }
     } 
     else {
+
+        // ----------------------------------------------------
+        // STRICTLY EXPERIMENTAL
+        // ----------------------------------------------------
+        // If SDA is stuck LOW (0), the IMU has crashed and the bus is wedged.
+        // if (digitalRead(sdaPin) == LOW) {
+        //     logger.println("Bus jammed! Short-circuiting the 1-second timeout!");
+            
+        //     // Forcibly violently reset the I2C hardware immediately
+        //     Wire.end();
+        //     pinMode(sdaPin, OUTPUT);
+        //     digitalWrite(sdaPin, HIGH); // Try to force the line high
+        //     delay(1); 
+        //     Wire.begin(sdaPin, sclPin);
+        //     Wire.setClock(500); // Reduced to avoid EMI i2c Packet Loss
+            
+        //     // Abort this frame immediately without waiting 1 second
+        //     return lastKnownAngles; 
+        // }
+        // ----------------------------------------------------
+
         // --- MADGWICK SOFTWARE ROUTE ---
-        int16_t ax, ay, az, gx, gy, gz;
-        mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+        int16_t raw_ax, raw_ay, raw_az, raw_gx, raw_gy, raw_gz;
+        mpu.getMotion6(&raw_ax, &raw_ay, &raw_az, &raw_gx, &raw_gy, &raw_gz);
+
+        // === THE EMI SOFTWARE FIREWALL TO FILTER EMI NOISE ON THE I2C LINE ===
+        // Scrub the raw I2C data through your Median Filter to delete the bit-flips!
+        float ax = filterAx.addSample((float)raw_ax);
+        float ay = filterAy.addSample((float)raw_ay);
+        float az = filterAz.addSample((float)raw_az);
+        float gx = filterGx.addSample((float)raw_gx);
+        float gy = filterGy.addSample((float)raw_gy);
+        float gz = filterGz.addSample((float)raw_gz);
 
         // ----------------------------------------------------
         // STATE MACHINE A: ACCELEROMETER CALIBRATION

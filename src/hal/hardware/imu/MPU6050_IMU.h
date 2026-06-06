@@ -2,14 +2,24 @@
 #include <Arduino.h>
 #include "hal/interfaces/I_IMU.h" 
 #include "core/MadgwickFilter.h" 
+#include "utils/MedianFilter.h"  // To filter EMI Noise spikes in the i2c line
 
 class MPU6050_IMU : public I_IMU {
 private:
     int sdaPin, sclPin, intPin;         
     uint8_t deviceAddr; 
 
-    FusedAngles lastKnownAngles; 
-    MadgwickFilter* filter; 
+    FusedAngles lastKnownAngles;
+
+    // A window of 5 will instantly swallow random bit-flip spikes!
+    MedianFilter<25> filterAx;
+    MedianFilter<25> filterAy;
+    MedianFilter<25> filterAz;
+    MedianFilter<25> filterGx;
+    MedianFilter<25> filterGy;
+    MedianFilter<25> filterGz;
+
+    MadgwickFilter* filter;
 
     unsigned long lastUpdateTime;
 
