@@ -20,8 +20,8 @@ namespace FactoryDefaults {
     // ==========================================
     // MOTOR TUNING
     // ==========================================
-    // Range: 0 to 255 (Absolute lowest PWM that overcomes gear friction)
-    constexpr int MOTOR_MIN_PWM = 60; 
+    // Range: 0 to 1023 (Absolute lowest PWM that overcomes gear friction)
+    constexpr int MOTOR_MIN_PWM = 180; 
 
     // ==========================================
     // OBSTACLE AVOIDANCE ESCAPE SEQUENCE TUNING

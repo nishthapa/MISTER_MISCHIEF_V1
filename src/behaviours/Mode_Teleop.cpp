@@ -24,8 +24,16 @@ void Mode_Teleop::update(const RobotMood& currentMood, const volatile GlobalSens
     float x = TeleopCommands.joyX; // Left / Right (-1.0f to 1.0f)
 
     // 3. Hardware Deadband Filter (Cleans up mechanical centering slop)
-    if (abs(y) < 0.05f) y = 0.0f;
-    if (abs(x) < 0.05f) x = 0.0f;
+    if (abs(y) < 0.10f) y = 0.0f;
+    if (abs(x) < 0.10f) x = 0.0f;
+
+    // --- THE FIX: UNIVERSAL IDLE STOP ---
+    // If the joystick is centered, force an immediate hard stop.
+    // This kills the motors for BOTH PID and Raw Arcade modes.
+    if (x == 0.0f && y == 0.0f) {
+        kinematics->stop(); 
+        return; // Exit here. The code below won't run.
+    }
 
     // 4. Operational Routing Logic
     if (TeleopCommands.usePIDDrive) {
