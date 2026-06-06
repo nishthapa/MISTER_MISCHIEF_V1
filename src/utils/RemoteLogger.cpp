@@ -41,8 +41,9 @@ void RemoteLogger::beginSerial() {
 void RemoteLogger::publishTelemetry(const volatile GlobalSensorState& state, const char* mode, bool brainActive) {
     if (currentMode == Config.DEBUG_ACTIVE) return;
     
-    // Build the JSON exactly once!
     JsonDocument doc; 
+    
+    // --- 1. THE FAST PHYSICS DATA ---
     doc["yaw"]   = (float)state.imuAngles.yaw;
     doc["pitch"] = (float)state.imuAngles.pitch;
     doc["roll"]  = (float)state.imuAngles.roll;
@@ -50,7 +51,23 @@ void RemoteLogger::publishTelemetry(const volatile GlobalSensorState& state, con
     doc["mode"]  = mode;
     doc["brain"] = brainActive;
 
-    char jsonBuffer[256];
+    // --- 2. THE SYSTEM & NETWORK DATA ---
+    if (WiFi.status() == WL_CONNECTED) {
+        doc["wifi_status"] = "connected";
+        doc["wifi_ssid"]   = WiFi.SSID();
+        doc["wifi_rssi"]   = WiFi.RSSI(); // Excellent for tracking dead zones!
+        doc["ipv4"]        = WiFi.localIP().toString();
+    } else {
+        // Check our NVS Config to see if it's intentionally off, or just disconnected
+        doc["wifi_status"] = Config.WIFI_ACTIVE ? "disconnected" : "off";
+    }
+
+    // Check BT status from our NVS Config
+    doc["bt_status"] = Config.BT_ACTIVE ? "on" : "off";
+
+    // --- 3. THE SAFETY BUFFER INCREASE ---
+    // Increased from 256 to 512 to accommodate the massive string additions!
+    char jsonBuffer[512];
     serializeJson(doc, jsonBuffer);
 
     // Blast it out to any sink that is currently registered and ready!
