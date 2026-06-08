@@ -30,10 +30,12 @@ private:
     volatile unsigned long& lastConnectTime;
 
 public:
+    // We pass references so the sink can read the Logger's internal state!
     WebSocketSink(WebSocketsServer& webSocketRef, volatile int& activeClients, volatile unsigned long& connectTime) 
         : ws(webSocketRef), clientCount(activeClients), lastConnectTime(connectTime) {}
 
     void sendBinary(const uint8_t* buffer, size_t length) override {
+        // We cast to (uint8_t*) to satisfy the WebSockets library's strict type requirements
         // Using broadcastBIN for zero-overhead binary streaming
         ws.broadcastBIN(buffer, length);
     }

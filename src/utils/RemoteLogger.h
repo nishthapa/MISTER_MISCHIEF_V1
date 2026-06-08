@@ -40,6 +40,12 @@ private:
 
 public:
     RemoteLogger(int port);
+
+    // === ADD THESE 3 MISSING GETTERS ===
+    WebSocketsServer& getServer() { return webSocket; }
+    volatile int& getClientCount() { return activeWebSocketClients; }
+    volatile unsigned long& getLastConnectTime() { return lastConnectTime; }
+    // ===================================
     
     // Stage 1: Boots the physical USB serial port instantly
     void beginSerial();

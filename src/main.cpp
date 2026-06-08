@@ -26,7 +26,17 @@
 #include "comms/telemetry/TelemetrySinks.h"
 #include "comms/telemetry/TelemetryStreamer.h"
 
-RemoteLogger logger(SystemConfig::WEBSOCKET_PORT); 
+RemoteLogger logger(SystemConfig::WEBSOCKET_PORT);
+
+// --- 2. ADD THE SINK INSTANTIATIONS HERE ---
+USBSink usbSink;
+// We pass references from the logger so the WebSocketSink knows the server state
+WebSocketSink wifiSink(logger.getServer(), logger.getClientCount(), logger.getLastConnectTime());
+
+// ==========================================
+// SMART TELEMETRY STREAMER
+// ==========================================
+Comms::TelemetryStreamer telemetryRouter;
 
 // ==========================================
 // INTER-CORE COMMUNICATION (THE BRIDGE)
@@ -77,12 +87,6 @@ Mode_Teleop teleopMode(&kinematics);
 // Note: It still takes the hardware pointers right now, but we will remove them in the next step!
 BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode, &teleopMode); // Added teleopMode to the constructor
 CommandProcessor cliEngine;
-
-
-// ==========================================
-// SMART TELEMETRY STREAMER
-// ==========================================
-Comms::TelemetryStreamer telemetryRouter;
 
 // ==========================================
 // TASK 1: THE GATHERER (CORE 1 - APP CPU)
