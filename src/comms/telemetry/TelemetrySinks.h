@@ -45,6 +45,23 @@ public:
         return (WiFi.status() == WL_CONNECTED && clientCount > 0 && (millis() - lastConnectTime > 1000));
     }
 };
-/* // 3. The Bluetooth Implementation (Uncomment when BLE is ready!)
+
+// 3. A Debug Sink that prints packets as Hexadecimal (Human readable, keeps architecture clean!)
+class DebugHexSink : public ITelemetrySink {
+public:
+    void sendBinary(const uint8_t* buffer, size_t length) override {
+        Serial.print("[TX BINARY] ");
+        for (size_t i = 0; i < length; i++) {
+            if (buffer[i] < 0x10) Serial.print("0");
+            Serial.print(buffer[i], HEX);
+            Serial.print(" ");
+        }
+        Serial.println();
+    }
+    
+    bool isReady() override { return true; }
+};
+
+/* // 4. The Bluetooth Implementation (Uncomment when BLE is ready!)
 class BluetoothSink : public ITelemetrySink { ... }
 */

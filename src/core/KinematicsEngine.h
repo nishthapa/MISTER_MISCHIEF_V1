@@ -2,12 +2,16 @@
 
 #include "hal/interfaces/I_MotorDriver.h"
 #include "core/PIDController.h"
+#include "core/GlobalDataBus.h" // For reporting telemetry to the global memory bank
 
 class KinematicsEngine {
 private:
     I_MotorDriver* motorDriver;
     PIDController* pointTurnPID;
     PIDController* arcTurnPID;
+
+    // Helper to safely report telemetry
+    void reportTelemetry(float left, float right);
 
     float getShortestAngle(float target, float current);
 

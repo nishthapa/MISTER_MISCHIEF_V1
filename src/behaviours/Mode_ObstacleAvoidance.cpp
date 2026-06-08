@@ -103,7 +103,7 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood, const volatile
                 float error = getShortestAngle(bestEscapeHeading, robotData.physics.imuAngles.yaw);
                 
                 // Zero math here! The kinematics engine handles alignment natively now
-kinematics->navigateToHeading(bestEscapeHeading, robotData.physics.imuAngles.yaw, 0.0f, currentMood.pidAggression);
+                kinematics->navigateToHeading(bestEscapeHeading, robotData.physics.imuAngles.yaw, 0.0f, currentMood.pidAggression);
 
                 // ADDED: The infinite loop timeout fix we discussed earlier
                 if (abs(error) < SysConfig.OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG || 

@@ -1,4 +1,5 @@
 #pragma once
+
 #include "hal/interfaces/I_IMU.h"
 #include <stdint.h>
 #include "config/PacketIDRegistry.h" // <-- Brings in your Comms::HealthBit definitions!
@@ -49,6 +50,9 @@ struct TeleopCommandBus {
     bool usePIDDrive = false; // Toggles between RAW motor mixing and PID Heading Hold
     bool isConnected = false; // Failsafe: Stops robot if BLE drops
 };
+
+// The global lock object
+// extern portMUX_TYPE globalDataBusLock; // TODO: Flesh it out for atomic reads/writes
 
 // =========================================================================
 // GLOBAL CROSS-CORE INSTANCES

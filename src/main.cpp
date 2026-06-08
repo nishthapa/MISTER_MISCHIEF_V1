@@ -30,6 +30,7 @@ RemoteLogger logger(SystemConfig::WEBSOCKET_PORT);
 
 // --- 2. ADD THE SINK INSTANTIATIONS HERE ---
 USBSink usbSink;
+DebugHexSink debugHexSink;
 // We pass references from the logger so the WebSocketSink knows the server state
 WebSocketSink wifiSink(logger.getServer(), logger.getClientCount(), logger.getLastConnectTime());
 
@@ -43,7 +44,10 @@ Comms::TelemetryStreamer telemetryRouter;
 // ==========================================
 volatile SystemMode GLOBAL_MODE = SystemMode::BOOTING;
 
+// portMUX_TYPE globalDataBusLock = portMUX_INITIALIZER_UNLOCKED; // TODO: We might want to add a spinlock for the global data bus
+
 // Instantiate the global memory bank!
+// TODO: Use Spinlock (critical sections) & remove volatile to protect this shared memory in the future:
 volatile GlobalDataBank CurrentRobotData = {};
 
 // Instantiate the low level Hardware Command Bus for sending commands from the Brain to the HAL without direct hardware access!
@@ -124,9 +128,10 @@ void SensorTask(void *pvParameters) {
         // ==========================================
         
         // Poll the IMU as fast as possible (every frame)
-        if (CurrentRobotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
+        //if (CurrentRobotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
             FusedAngles currentAngles = imu->getAngles();
-            
+
+            //portENTER_CRITICAL(&globalDataBusLock); // Pause other core // TODO: We might want to add a critical section
             // C++ volatile struct fix: We must assign the fields manually!
             CurrentRobotData.physics.imuAngles.yaw = currentAngles.yaw;
             CurrentRobotData.physics.imuAngles.pitch = currentAngles.pitch;
@@ -134,14 +139,17 @@ void SensorTask(void *pvParameters) {
             CurrentRobotData.physics.imuAngles.gForce = currentAngles.gForce;
             CurrentRobotData.physics.imuAngles.hasCompass = currentAngles.hasCompass;
             CurrentRobotData.physics.imuAngles.compassHeading = currentAngles.compassHeading;
-        }
+            //portEXIT_CRITICAL(&globalDataBusLock);  // Resume other core // TODO: We might want to add a critical section
+        //}
 
         unsigned long currentTime = millis();
 
         // Poll the Sonar exactly every 50ms
         if (currentTime - lastSonarTime >= 50) { 
             lastSonarTime = currentTime;
+            //portENTER_CRITICAL(&globalDataBusLock); // Pause other core // TODO: We might want to add a critical section
             CurrentRobotData.sensors.distanceCM = frontDistanceSensor->getDistanceCM();
+            //portEXIT_CRITICAL(&globalDataBusLock);  // Resume other core // TODO: We might want to add a critical section
         }
 
         vTaskDelay(pdMS_TO_TICKS(1)); 
@@ -192,6 +200,7 @@ void ControlLoopTask(void *pvParameters) {
 // ==========================================
 void NetworkTask(void *pvParameters) {
     unsigned long lastTelemetryTime = 0;
+    GlobalDataBank snapshot; // Local copy of the global data for safe reading
     
     for (;;) {
         // 1. Read CLI input securely
@@ -202,14 +211,38 @@ void NetworkTask(void *pvParameters) {
         // 2. Handle incoming WebSocket handshakes 
         logger.handleClient();
         
-        // 3. Publish the JSON State over the air
+        // 3. BROADCAST BINARY TELEMETRY (This replaces publishTelemetry!)
         unsigned long currentTime = millis();
+        
         if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
             lastTelemetryTime = currentTime;
+
+            //portENTER_CRITICAL(&globalDataBusLock);  // Pause other core // TODO: We might want to add a critical section
+            //snapshot = CurrentRobotData; // Copying the entire struct // TODO: take a snapshot of the instantaneous struct
+            //portEXIT_CRITICAL(&globalDataBusLock);  // Resume other core // TODO: We might want to add a critical section
+
+            // Blast Attitude Data (Pitch, Roll, Yaw, Motors)
+            telemetryRouter.broadcast(Comms::MsgId::ATTITUDE, CurrentRobotData.physics);
+
+            // Blast Left & Right Motor PWMs
+            telemetryRouter.broadcast(Comms::MsgId::ACTUATORS, CurrentRobotData.physics);
             
-            if (CurrentRobotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
-                logger.publishTelemetry(CurrentRobotData, brain.getActiveModeName(), SysConfig.BRAIN_ACTIVE);
-            }
+            // Blast System Health (Loop time, Heap, Hardware Bitmask, RSSI)
+            telemetryRouter.broadcast(Comms::MsgId::SYSTEM_STATUS, CurrentRobotData.health);
+
+            // Blast Sensors (Sonar distance)
+            telemetryRouter.broadcast(Comms::MsgId::DISTANCE_SONAR, CurrentRobotData.sensors);
+            char debugMsg[128];
+
+            //experimental
+            snprintf(debugMsg, sizeof(debugMsg), "Sonar: %.1f cm | Yaw: %.1f° | Pitch: %.1f° | Roll: %.1f° | L_MOTOR_PWM: %d | R_MOTOR_PWM: %d", 
+                     CurrentRobotData.sensors.distanceCM, 
+                     CurrentRobotData.physics.imuAngles.yaw, 
+                     CurrentRobotData.physics.imuAngles.pitch, 
+                     CurrentRobotData.physics.imuAngles.roll,
+                     CurrentRobotData.physics.leftMotorPWM,
+                     CurrentRobotData.physics.rightMotorPWM);
+            logger.println(debugMsg);
         }
         
         // Give the network stack breathing room
@@ -233,8 +266,10 @@ void setup() {
 
   // Register your hardware sinks (do this once in setup!)
   // telemetryRouter.registerSink(&bluetoothSink); //TO-DO: FLESH IT OUT 
-  telemetryRouter.registerSink(&wifiSink);
-  // telemetryRouter.registerSink(&serialSink); // Only if you want binary over USB
+  if (SysConfig.WIFI_ACTIVE) {telemetryRouter.registerSink(&wifiSink);}
+  
+  //telemetryRouter.registerSink(&usbSink); // Only if you want binary over USB
+  //telemetryRouter.registerSink(&debugHexSink); // Only if you want hexadecimal output
 
   // === MODEM COEXISTENCE FIX ===
   // If Bluetooth is active, the ESP32 REQUIRES Wi-Fi modem sleep to switch the antenna.

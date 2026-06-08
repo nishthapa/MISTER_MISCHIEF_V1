@@ -15,7 +15,7 @@ namespace MotorDriverConfig {
     // 2. HARDWARE LIMITS & FREQUENCIES
     // ==========================================
     // RANGE: 1000 TO 20000 // PWM frequency in Hz. High frequency = silent, but less low-end torque.
-    constexpr int PWM_FREQ = 10000;
+    constexpr int PWM_FREQ = 5000;
     
     // RANGE: 8 TO 12 // Resolution. 8-bit means speeds are 0-255. 10-bit means 0-1023.
     constexpr int PWM_RES = 10; // 10-bit resolution gives us finer control at low speeds, but may cause more EMI noise.

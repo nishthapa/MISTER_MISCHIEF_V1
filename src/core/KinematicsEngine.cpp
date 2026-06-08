@@ -7,6 +7,15 @@ KinematicsEngine::KinematicsEngine(I_MotorDriver* m, PIDController* pointPID, PI
     arcTurnPID = arcPID;
 }
 
+// 2. Implement the telemetry reporter
+void KinematicsEngine::reportTelemetry(float left, float right) {
+    //portENTER_CRITICAL(&globalDataBusLock); // TODO: We might want to add a critical section
+    // Cast float PWM to int16_t for the telemetry bus
+    CurrentRobotData.physics.leftMotorPWM = static_cast<int16_t>(left);
+    CurrentRobotData.physics.rightMotorPWM = static_cast<int16_t>(right);
+    //portEXIT_CRITICAL(&globalDataBusLock);  // TODO: end the critical section
+}
+
 float KinematicsEngine::getShortestAngle(float target, float current) {
     float delta = target - current;
     if (delta > 180.0f) delta -= 360.0f;
@@ -39,12 +48,21 @@ void KinematicsEngine::navigateToHeading(float targetYaw, float currentYaw, floa
     float rightPWM = baseSpeed - steeringCorrection;
     
     motorDriver->drive(leftPWM, rightPWM);
+
+    // 3. Update telemetry immediately after command
+    reportTelemetry(leftPWM, rightPWM);
 }
 
 void KinematicsEngine::rawDrive(float leftSpeed, float rightSpeed) {
     motorDriver->drive(leftSpeed, rightSpeed);
+
+    // 3. Update telemetry immediately after command
+    reportTelemetry(leftSpeed, rightSpeed);
 }
 
 void KinematicsEngine::stop() {
     motorDriver->stop();
+
+    // 4. Update telemetry to zero
+    reportTelemetry(0.0f, 0.0f);
 }

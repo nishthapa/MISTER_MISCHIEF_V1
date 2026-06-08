@@ -45,7 +45,11 @@ void Mode_MaintainDistance::update(const RobotMood& currentMood, const volatile 
 
     // Apply the perfectly smoothed correction to the tracks continuously
     float finalSpeed = lastCorrection * currentMood.speedMultiplier;
-    kinematics->rawDrive(-finalSpeed, -finalSpeed);
+
+    // Check if the distance sensor is okay
+    if (robotData.health.hardwareBitmask & Comms::HealthBit::SONAR_OK) {
+        kinematics->rawDrive(-finalSpeed, -finalSpeed);
+    }
 }
 
 void Mode_MaintainDistance::onExit() { 

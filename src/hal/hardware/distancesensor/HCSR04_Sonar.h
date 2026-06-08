@@ -3,13 +3,14 @@
 #include "hal/interfaces/I_DistanceSensor.h"
 #include "utils/MedianFilter.h"
 #include <NewPing.h> // using tecle12's NewPing sonar library
+
 class HCSR04_Sonar : public I_DistanceSensor {
 private:
 // We brought these back!
     int trigPin;
     int echoPin;
     NewPing* sonar; 
-    MedianFilter<6> filter;
+    MedianFilter<5> filter;
 
     float lastAcceptedRaw = 0.0f;
     int outlierStreak = 0;
