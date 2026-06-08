@@ -8,7 +8,7 @@ Mode_MaintainDistance::Mode_MaintainDistance(KinematicsEngine* k, PIDController*
     kinematics = k; pid = p;
 }
 
-void Mode_MaintainDistance::onEnter(const volatile GlobalSensorState& sensorState) {
+void Mode_MaintainDistance::onEnter(const volatile GlobalDataBank& robotData) {
     logger.println("Mister Mischief is maintaining distance!");
 
     // WIPE THE PID MEMORY! 
@@ -16,8 +16,8 @@ void Mode_MaintainDistance::onEnter(const volatile GlobalSensorState& sensorStat
     pid->reset();
 }
 
-void Mode_MaintainDistance::update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) {
-    float currentDistance = sensorState.distanceCM; // READ FROM GLOBALSENSORSTATE MEMORY!
+void Mode_MaintainDistance::update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) {
+    float currentDistance = robotData.sensors.distanceCM; // READ FROM RobotData MEMORY!
     
     // THE SOFTWARE CLUTCH
     // If the book is actually removed (jumps > 60cm), pause the motors

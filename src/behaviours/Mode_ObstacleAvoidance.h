@@ -12,7 +12,7 @@ struct RadarPing {
 
 class Mode_ObstacleAvoidance : public IRobotMode {
 private:
-    KinematicsEngine* kinematics; // NO SONAR OR IMU POINTERS! Handled by the GlobalSensorState now
+    KinematicsEngine* kinematics; // NO SONAR OR IMU POINTERS! Handled by the RobotData now
 
     // The streamlined Cockroach dance
     enum SequenceState { BACKING_UP, RADAR_SWEEP, CALCULATING, ALIGNING, ESCAPE, FINISHED };
@@ -35,8 +35,8 @@ public:
     // Dependency Injection upgraded
     Mode_ObstacleAvoidance(KinematicsEngine* k);
     
-    void onEnter(const volatile GlobalSensorState& sensorState) override;
-    void update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) override;
+    void onEnter(const volatile GlobalDataBank& robotData) override;
+    void update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) override;
     const char* getName() const override { return "MODE_OBSTACLE_AVOIDANCE"; }
     void onExit() override;
     

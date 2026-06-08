@@ -38,16 +38,16 @@ void RemoteLogger::beginSerial() {
 }
 
 // 4. ADD THE JSON PUBLISHER
-void RemoteLogger::publishTelemetry(const volatile GlobalSensorState& state, const char* mode, bool brainActive) {
+void RemoteLogger::publishTelemetry(const volatile GlobalDataBank& robotData, const char* mode, bool brainActive) {
     if (currentMode == SysConfig.DEBUG_ACTIVE) return;
     
     JsonDocument doc; 
     
     // --- 1. THE FAST PHYSICS DATA ---
-    doc["yaw"]   = (float)state.imuAngles.yaw;
-    doc["pitch"] = (float)state.imuAngles.pitch;
-    doc["roll"]  = (float)state.imuAngles.roll;
-    doc["sonar"] = (float)state.distanceCM;
+    doc["yaw"]   = (float)robotData.physics.imuAngles.yaw;
+    doc["pitch"] = (float)robotData.physics.imuAngles.pitch;
+    doc["roll"]  = (float)robotData.physics.imuAngles.roll;
+    doc["sonar"] = (float)robotData.sensors.distanceCM;
     doc["mode"]  = mode;
     doc["brain"] = brainActive;
 

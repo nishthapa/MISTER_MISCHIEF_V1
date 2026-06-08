@@ -6,7 +6,7 @@
 #include "behaviours/RobotMood.h"
 #include "core/RobotState.h"
 #include "core/EventLatchHandler.h" // <--- The new Handler!
-#include "core/GlobalSensorState.h" // <--- The new Global Sensor State!
+#include "core/GlobalDataBus.h" // <--- The new Global Sensor State!
 
 class Mode_ObstacleAvoidance;
 class Mode_NormalDriving;
@@ -39,7 +39,7 @@ private:
     float lastDistance;
     FusedAngles lastAngles;
 
-    PerceptionData gatherPerception(const volatile GlobalSensorState& sensorState);
+    PerceptionData gatherPerception(const volatile GlobalDataBank& robotData);
     IRobotMode* determineNextMode(const SemanticEvents& events);
     SystemMode mapModeToEnum(IRobotMode* mode);
 
@@ -49,7 +49,7 @@ public:
                     Mode_Dizzy* diz, Mode_DeepSleep* sleep, Mode_Teleop* teleop);
 
     void init(bool isColdBoot);
-    void update(const volatile GlobalSensorState& sensorState);
+    void update(const volatile GlobalDataBank& robotData);
     void changeMode(IRobotMode* newMode);
     
     const char* getActiveModeName() const;

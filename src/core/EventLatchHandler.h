@@ -8,6 +8,9 @@ struct PerceptionData {
     float currentDistance;
     float distanceDelta;
     float currentGForce;
+    float currentYaw;
+    float currentPitch;
+    float currentRoll;
     float totalRawEnergy;
     float rawYawEnergy;
     float rawPitchEnergy;

@@ -24,7 +24,7 @@ float Mode_AutoTune::getShortestAngle(float target, float current) {
     return delta;
 }
 
-void Mode_AutoTune::onEnter(const volatile GlobalSensorState& sensorState) {
+void Mode_AutoTune::onEnter(const volatile GlobalDataBank& robotData) {
     logger.println("\n[AUTOTUNE] Sequence Initiated. DO NOT TOUCH ROBOT.");
     kinematics->stop();
     tuneState = STATE_COUNTDOWN;
@@ -37,8 +37,8 @@ void Mode_AutoTune::onEnter(const volatile GlobalSensorState& sensorState) {
     }
 }
 
-void Mode_AutoTune::update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) {
-    float currentYaw = sensorState.imuAngles.yaw;
+void Mode_AutoTune::update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) {
+    float currentYaw = robotData.physics.imuAngles.yaw;
 
     // THE DYNAMIC LOADING INDICATOR (........)
     // If we are actively calibrating or wobbling, print a dot every 1 second!

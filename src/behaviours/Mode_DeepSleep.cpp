@@ -8,7 +8,7 @@ Mode_DeepSleep::Mode_DeepSleep(KinematicsEngine* k) {
     kinematics = k;
 }
 
-void Mode_DeepSleep::onEnter(const volatile GlobalSensorState& sensorState) {
+void Mode_DeepSleep::onEnter(const volatile GlobalDataBank& robotData) {
     logger.println("Entering Ultra Low Power Mode...");
     kinematics->stop(); // Force stop before sleeping
 
@@ -23,6 +23,6 @@ void Mode_DeepSleep::onEnter(const volatile GlobalSensorState& sensorState) {
     esp_deep_sleep_start(); 
 }
 
-void Mode_DeepSleep::update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) {
+void Mode_DeepSleep::update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) {
     // Never runs, because onEnter() kills the CPU!
 }

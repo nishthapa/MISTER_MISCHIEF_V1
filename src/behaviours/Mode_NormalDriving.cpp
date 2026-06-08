@@ -7,14 +7,14 @@ Mode_NormalDriving::Mode_NormalDriving(KinematicsEngine* k) {
     targetHeading = 0.0f;
 }
 
-void Mode_NormalDriving::onEnter(const volatile GlobalSensorState& sensorState) {
+void Mode_NormalDriving::onEnter(const volatile GlobalDataBank& robotData) {
     logger.println("Mister Mischief is cruising in Normal Driving Mode...");
-    targetHeading = sensorState.imuAngles.yaw; // Read from Memory!
+    targetHeading = robotData.physics.imuAngles.yaw; // Read from Memory!
 }
 
-void Mode_NormalDriving::update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) {
+void Mode_NormalDriving::update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) {
     float finalSpeed = SysConfig.CRUISING_SPEED * currentMood.speedMultiplier;
-    kinematics->navigateToHeading(targetHeading, sensorState.imuAngles.yaw, finalSpeed, currentMood.pidAggression);
+    kinematics->navigateToHeading(targetHeading, robotData.physics.imuAngles.yaw, finalSpeed, currentMood.pidAggression);
 }
 
 void Mode_NormalDriving::onExit() { kinematics->stop(); }

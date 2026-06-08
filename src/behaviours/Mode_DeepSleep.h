@@ -13,8 +13,8 @@ public:
     Mode_DeepSleep(KinematicsEngine* k);
 
     // The Contract
-    void onEnter(const volatile GlobalSensorState& sensorState) override;
-    void update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) override;
+    void onEnter(const volatile GlobalDataBank& robotData) override;
+    void update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) override;
     const char* getName() const override { return "MODE_DEEP_SLEEP"; }
     void onExit() override {} // Will never be called, CPU resets upon waking
 };

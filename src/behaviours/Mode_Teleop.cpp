@@ -7,12 +7,12 @@ Mode_Teleop::Mode_Teleop(KinematicsEngine* k) {
     targetHeading = 0.0f;
 }
 
-void Mode_Teleop::onEnter(const volatile GlobalSensorState& sensorState) {
+void Mode_Teleop::onEnter(const volatile GlobalDataBank& robotData) {
     kinematics->stop();
-    targetHeading = sensorState.imuAngles.yaw; // Snapshot heading for seamless PID engagement
+    targetHeading = robotData.physics.imuAngles.yaw; // Snapshot heading for seamless PID engagement
 }
 
-void Mode_Teleop::update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) {
+void Mode_Teleop::update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) {
     // 1. HARDWARE FAILSAFE: Immediate drop-dead if BLE link breaks
     if (!TeleopCommands.isConnected) {
         kinematics->stop();
@@ -49,7 +49,7 @@ void Mode_Teleop::update(const RobotMood& currentMood, const volatile GlobalSens
         float baseSpeedUncapped = y * 100.0f; 
 
         // We explicitly pass 1.0f for moodAggression to bypass the personality core completely
-        kinematics->navigateToHeading(targetHeading, sensorState.imuAngles.yaw, baseSpeedUncapped, 1.0f);
+        kinematics->navigateToHeading(targetHeading, robotData.physics.imuAngles.yaw, baseSpeedUncapped, 1.0f);
     } 
     else {
         // --- RAW OPEN-LOOP MIXING (Arcade Drive) ---

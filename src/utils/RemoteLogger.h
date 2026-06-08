@@ -3,7 +3,7 @@
 #include <WiFi.h>
 #include <WebSocketsServer.h>
 #include <ArduinoJson.h>       // <--- ADD THIS
-#include "core/GlobalSensorState.h" // <--- ADD THIS
+#include "core/GlobalDataBus.h" // <--- ADD THIS
 #include "utils/TelemetrySinks.h"   // <--- INCLUDE YOUR NEW FILE HERE
 #include <stdarg.h>
 #include <stdint.h> // For the uint8_t type
@@ -54,7 +54,7 @@ public:
     void registerSink(ITelemetrySink* newSink);
 
     // === THE NEW JSON PUBLISHER ===
-    void publishTelemetry(const volatile GlobalSensorState& state, const char* mode, bool brainActive);
+    void publishTelemetry(const volatile GlobalDataBank& robotData, const char* mode, bool brainActive);
 
     // For turning on/off from the command line
     void setMode(uint8_t newMode) { currentMode = newMode; }

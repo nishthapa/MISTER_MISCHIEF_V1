@@ -1,6 +1,6 @@
 #include "utils/RadioManager.h" 
 #include "config/ConfigurationManager.h" // The new NVS Hook!
-#include "core/GlobalSensorState.h" // We need access to TeleopCommands!
+#include "core/GlobalDataBus.h" // We need access to TeleopCommands!
 
 // These exact UUIDs match the ones in the Android App's BleManager.kt
 #define SERVICE_UUID        "0000ffe0-0000-1000-8000-00805f9b34fb"

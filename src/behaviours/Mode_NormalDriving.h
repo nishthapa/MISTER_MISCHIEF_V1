@@ -4,15 +4,15 @@
 
 class Mode_NormalDriving : public IRobotMode {
 private:
-    KinematicsEngine* kinematics; // ONLY kinematics, NO IMU! Handled by the GlobalSensorState now!
+    KinematicsEngine* kinematics; // ONLY kinematics, NO IMU! Handled by the RobotData now!
     float targetHeading; 
     float getShortestAngle(float target, float current);
 
 public:
     Mode_NormalDriving(KinematicsEngine* k);
     
-    void onEnter(const volatile GlobalSensorState& sensorState) override;
-    void update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) override;
+    void onEnter(const volatile GlobalDataBank& robotData) override;
+    void update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) override;
     const char* getName() const override { return "MODE_NORMAL_DRIVING"; }
     void onExit() override;
 };

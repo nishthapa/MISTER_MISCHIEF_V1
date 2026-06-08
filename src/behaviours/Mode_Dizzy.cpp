@@ -6,11 +6,11 @@ Mode_Dizzy::Mode_Dizzy(KinematicsEngine* k) {
     kinematics = k;
 }
 
-void Mode_Dizzy::onEnter(const volatile GlobalSensorState& sensorState) {
+void Mode_Dizzy::onEnter(const volatile GlobalDataBank& robotData) {
     logger.println("Mister Mischief is dizzy!");
 }
 
-void Mode_Dizzy::update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) {
+void Mode_Dizzy::update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) {
     // Use the ESP32's internal clock to generate a sine wave for the motors
     // This creates a wobbly, staggering drive path
     float timeSec = millis() / 1000.0f;

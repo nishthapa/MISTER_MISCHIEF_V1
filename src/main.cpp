@@ -22,7 +22,7 @@
 #include "core/CommandProcessor.h"
 #include "config/SystemConfig.h"
 #include "core/RobotState.h"
-#include "core/GlobalSensorState.h" // <--- THE NEW INCLUDE
+#include "core/GlobalDataBus.h" // <--- THE NEW INCLUDE
 
 RemoteLogger logger(SystemConfig::WEBSOCKET_PORT); 
 
@@ -32,13 +32,13 @@ RemoteLogger logger(SystemConfig::WEBSOCKET_PORT);
 volatile SystemMode GLOBAL_MODE = SystemMode::BOOTING;
 
 // Instantiate the global memory bank!
-volatile GlobalSensorState CurrentSensorState = { -1.0f, {0,0,0,0,false,0}, false };
+volatile GlobalDataBank CurrentRobotData = {};
 
 // Instantiate the low level Hardware Command Bus for sending commands from the Brain to the HAL without direct hardware access!
-volatile HardwareCommandBus HardwareCommands = { false, false, false, 0.1f }; // FIX: Added the extra falses for Accel and Mag!
+volatile HardwareCommandBus HardwareCommands = {}; // FIX: Added the extra falses for Accel and Mag!
 
 // Teleoperation memory for Phone BLE or radio Control
-volatile TeleopCommandBus TeleopCommands = {0.0f, 0.0f, false, false};
+volatile TeleopCommandBus TeleopCommands = {};
 
 // ==========================================
 // GLOBAL HARDWARE OBJECTS
@@ -113,16 +113,16 @@ void SensorTask(void *pvParameters) {
         // ==========================================
         
         // Poll the IMU as fast as possible (every frame)
-        if (CurrentSensorState.imuAlive) {
+        if (CurrentRobotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
             FusedAngles currentAngles = imu->getAngles();
             
             // C++ volatile struct fix: We must assign the fields manually!
-            CurrentSensorState.imuAngles.yaw = currentAngles.yaw;
-            CurrentSensorState.imuAngles.pitch = currentAngles.pitch;
-            CurrentSensorState.imuAngles.roll = currentAngles.roll;
-            CurrentSensorState.imuAngles.gForce = currentAngles.gForce;
-            CurrentSensorState.imuAngles.hasCompass = currentAngles.hasCompass;
-            CurrentSensorState.imuAngles.compassHeading = currentAngles.compassHeading;
+            CurrentRobotData.physics.imuAngles.yaw = currentAngles.yaw;
+            CurrentRobotData.physics.imuAngles.pitch = currentAngles.pitch;
+            CurrentRobotData.physics.imuAngles.roll = currentAngles.roll;
+            CurrentRobotData.physics.imuAngles.gForce = currentAngles.gForce;
+            CurrentRobotData.physics.imuAngles.hasCompass = currentAngles.hasCompass;
+            CurrentRobotData.physics.imuAngles.compassHeading = currentAngles.compassHeading;
         }
 
         unsigned long currentTime = millis();
@@ -130,7 +130,7 @@ void SensorTask(void *pvParameters) {
         // Poll the Sonar exactly every 50ms
         if (currentTime - lastSonarTime >= 50) { 
             lastSonarTime = currentTime;
-            CurrentSensorState.distanceCM = frontDistanceSensor->getDistanceCM();
+            CurrentRobotData.sensors.distanceCM = frontDistanceSensor->getDistanceCM();
         }
 
         vTaskDelay(pdMS_TO_TICKS(1)); 
@@ -167,8 +167,8 @@ void ControlLoopTask(void *pvParameters) {
         // -------------------------------------------
 
         // THE ISOLATION: The Brain only runs if the Gatherer says the IMU is alive!
-        if (CurrentSensorState.imuAlive) {
-            brain.update(CurrentSensorState); 
+        if (CurrentRobotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
+            brain.update(CurrentRobotData); 
         } else {
             motorDriver->stop(); 
         }
@@ -196,8 +196,8 @@ void NetworkTask(void *pvParameters) {
         if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
             lastTelemetryTime = currentTime;
             
-            if (CurrentSensorState.imuAlive) {
-                logger.publishTelemetry(CurrentSensorState, brain.getActiveModeName(), SysConfig.BRAIN_ACTIVE);
+            if (CurrentRobotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
+                logger.publishTelemetry(CurrentRobotData, brain.getActiveModeName(), SysConfig.BRAIN_ACTIVE);
             }
         }
         
@@ -256,8 +256,16 @@ void setup() {
       imuRetries++;
   }
   
-  // Set the global state!
-  CurrentSensorState.imuAlive = (imuRetries < SystemConfig::IMU_MAX_RETRIES);
+  // Set the global state by flipping the IMU bit in GlobalDataBank
+  // ADD THIS:
+  if (imuRetries < SystemConfig::IMU_MAX_RETRIES) {
+      // Turn the IMU bit ON
+      CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::IMU_OK;
+      logger.println("IMU marked as OK in Health Registry.");
+  } else {
+      // (Optional) Explicitly turn it OFF if it failed
+      CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::IMU_OK;
+  }
   
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   bool isColdBoot = (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED);

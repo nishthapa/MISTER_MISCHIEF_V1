@@ -27,7 +27,7 @@ void BehaviourEngine::init(bool isColdBoot) {
     GLOBAL_MODE = mapModeToEnum(activeMode);
     
     // FIX 1: Pass the global state to onEnter during boot!
-    activeMode->onEnter(CurrentSensorState); 
+    activeMode->onEnter(CurrentRobotData); 
     previousMode = activeMode;
 }
 
@@ -40,7 +40,7 @@ void BehaviourEngine::changeMode(IRobotMode* newMode) {
         activeMode = newMode;
         
         // Boot up the new mode immediately!
-        activeMode->onEnter(CurrentSensorState); 
+        activeMode->onEnter(CurrentRobotData); 
         
         GLOBAL_MODE = mapModeToEnum(activeMode); 
     } 
@@ -59,12 +59,21 @@ SystemMode BehaviourEngine::mapModeToEnum(IRobotMode* mode) {
     return SystemMode::MODE_NORMAL_DRIVING;
 }
 
-PerceptionData BehaviourEngine::gatherPerception(const volatile GlobalSensorState& sensorState) {
+PerceptionData BehaviourEngine::gatherPerception(const volatile GlobalDataBank& robotData) {
     PerceptionData p;
+
+    // --- HARDWARE SAFETY CHECKS (Bitmask Verification) ---
     
-    // NO MORE HARDWARE CALLS! Just read the passed-in state!
-    p.currentDistance = sensorState.distanceCM;
-    p.currentGForce = sensorState.imuAngles.gForce;
+    // 1. Sonar Safety Check
+    if (robotData.health.hardwareBitmask & Comms::HealthBit::SONAR_OK) {
+        p.currentDistance = robotData.sensors.distanceCM;
+    } else {
+        // Safe fallback if Sonar is dead or disconnected
+        p.currentDistance = -1.0f; 
+    }
+    
+
+    p.currentGForce = robotData.physics.imuAngles.gForce;
 
     p.distanceDelta = (p.currentDistance != lastDistance && lastDistance > 0.0f) ? (p.currentDistance - lastDistance) : 0.0f;
 
@@ -75,17 +84,33 @@ PerceptionData BehaviourEngine::gatherPerception(const volatile GlobalSensorStat
         return delta;
     };
     
-    p.rawYawEnergy = abs(getShortestAngleDelta(sensorState.imuAngles.yaw, lastAngles.yaw)) / 0.01f;
-    p.rawPitchEnergy = abs(getShortestAngleDelta(sensorState.imuAngles.pitch, lastAngles.pitch)) / 0.01f;
-    p.rawRollEnergy = abs(getShortestAngleDelta(sensorState.imuAngles.roll, lastAngles.roll)) / 0.01f;
-    p.totalRawEnergy = p.rawYawEnergy + p.rawPitchEnergy + p.rawRollEnergy;
-    p.isUpright = (abs(sensorState.imuAngles.pitch) < SysConfig.UPRIGHT_ANGLE_TOLERANCE && abs(sensorState.imuAngles.roll) < SysConfig.UPRIGHT_ANGLE_TOLERANCE);
+    // 2. IMU Safety Check (Wraps ALL kinematic math)
+    if (robotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
+        p.rawYawEnergy = abs(getShortestAngleDelta(robotData.physics.imuAngles.yaw, lastAngles.yaw)) / 0.01f;
+        p.rawPitchEnergy = abs(getShortestAngleDelta(robotData.physics.imuAngles.pitch, lastAngles.pitch)) / 0.01f;
+        p.rawRollEnergy = abs(getShortestAngleDelta(robotData.physics.imuAngles.roll, lastAngles.roll)) / 0.01f;
+        p.totalRawEnergy = p.rawYawEnergy + p.rawPitchEnergy + p.rawRollEnergy;
+        p.isUpright = (abs(robotData.physics.imuAngles.pitch) < SysConfig.UPRIGHT_ANGLE_TOLERANCE && abs(robotData.physics.imuAngles.roll) < SysConfig.UPRIGHT_ANGLE_TOLERANCE);
 
-    // Deep copy the volatile struct angles into our local history
-    lastAngles.yaw = sensorState.imuAngles.yaw;
-    lastAngles.pitch = sensorState.imuAngles.pitch;
-    lastAngles.roll = sensorState.imuAngles.roll;
-    lastAngles.gForce = sensorState.imuAngles.gForce;
+        // Deep copy the volatile struct angles into our local history
+        lastAngles.yaw = robotData.physics.imuAngles.yaw;
+        lastAngles.pitch = robotData.physics.imuAngles.pitch;
+        lastAngles.roll = robotData.physics.imuAngles.roll;
+        lastAngles.gForce = robotData.physics.imuAngles.gForce;
+    } else {
+        // Safe fallbacks if IMU is dead or disconnected
+        p.currentGForce = 1.0f; // 1G is normal resting gravity
+        p.currentYaw = 0.0f;
+        p.currentPitch = 0.0f;
+        p.currentRoll = 0.0f;
+
+        p.rawYawEnergy = 0.0f;
+        p.rawPitchEnergy = 0.0f;
+        p.rawRollEnergy = 0.0f;
+        p.totalRawEnergy = 0.0f;
+
+        p.isUpright = true; // Assume upright if we can't measure
+    }
     
     lastDistance = p.currentDistance;
     return p;
@@ -125,7 +150,7 @@ IRobotMode* BehaviourEngine::determineNextMode(const SemanticEvents& events) {
     return normalMode;
 }
 
-void BehaviourEngine::update(const volatile GlobalSensorState& sensorState) {
+void BehaviourEngine::update(const volatile GlobalDataBank& robotData) {
 
     // THE DYNAMIC OVERRIDE:
     // If the phone is connected via BLE, we immediately force the manual mode.
@@ -135,23 +160,23 @@ void BehaviourEngine::update(const volatile GlobalSensorState& sensorState) {
             if (activeMode != nullptr) activeMode->onExit();
             // Assuming 'teleopMode' is available here (pass it via constructor if not)
             activeMode = teleopMode; 
-            activeMode->onEnter(sensorState);
+            activeMode->onEnter(robotData);
             GLOBAL_MODE = SystemMode::MANUAL_OVERRIDE;
         }
         
         // Update the teleop mode with the physics
-        activeMode->update(activeMood, sensorState);
+        activeMode->update(activeMood, robotData);
         return;
     }
 
     if (!SysConfig.BRAIN_ACTIVE) {
         GLOBAL_MODE = SystemMode::MANUAL_OVERRIDE;
         // FIX 2: Pass sensorState to the manual override update!
-        if (activeMode) activeMode->update(activeMood, sensorState);
+        if (activeMode) activeMode->update(activeMood, robotData);
         return;
     }
 
-    PerceptionData perception = gatherPerception(sensorState);
+    PerceptionData perception = gatherPerception(robotData);
     
     // Pass the physics to the tracker to get clean boolean events!
     SemanticEvents events = latchHandler.processEvents(perception, GLOBAL_MODE);
@@ -164,7 +189,7 @@ void BehaviourEngine::update(const volatile GlobalSensorState& sensorState) {
         if (activeMode != nullptr) activeMode->onExit();
         previousMode = activeMode;
         activeMode = nextMode;
-        if (activeMode != nullptr) activeMode->onEnter(sensorState); // <--- PASS IT HERE
+        if (activeMode != nullptr) activeMode->onEnter(robotData); // <--- PASS IT HERE
         GLOBAL_MODE = mapModeToEnum(activeMode); 
     }
 
@@ -175,5 +200,5 @@ void BehaviourEngine::update(const volatile GlobalSensorState& sensorState) {
         HardwareCommands.targetFilterBeta = SysConfig.MADGWICK_FILTER_BETA;
     }
 
-    if (activeMode != nullptr) activeMode->update(activeMood, sensorState);
+    if (activeMode != nullptr) activeMode->update(activeMood, robotData);
 }

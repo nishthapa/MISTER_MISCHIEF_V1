@@ -21,15 +21,15 @@ float Mode_ObstacleAvoidance::getShortestAngle(float target, float current) {
     return delta;
 }
 
-void Mode_ObstacleAvoidance::onEnter(const volatile GlobalSensorState& sensorState) {
+void Mode_ObstacleAvoidance::onEnter(const volatile GlobalDataBank& robotData) {
     logger.println("Mister Mischief has encountered an obstacle! Initiating Radial Sweep...");
     pingCount = 0;
     lastPingTime = millis();
-    entryHeading = sensorState.imuAngles.yaw; // Snapshot from memory!
+    entryHeading = robotData.physics.imuAngles.yaw; // Snapshot from memory!
     changeState(BACKING_UP);
 }
 
-void Mode_ObstacleAvoidance::update(const RobotMood& currentMood, const volatile GlobalSensorState& sensorState) {
+void Mode_ObstacleAvoidance::update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) {
     unsigned long elapsed = millis() - stateStartTime;
     
     //float speed = ObstacleConfig::BASE_SPEED * currentMood.speedMultiplier;
@@ -46,15 +46,15 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood, const volatile
             kinematics->rawDrive(-speed, speed);
             
             if (millis() - lastPingTime > 50 && pingCount < MAX_PINGS) {
-                pointCloud[pingCount].heading = sensorState.imuAngles.yaw;
-                pointCloud[pingCount].distance = sensorState.distanceCM;
+                pointCloud[pingCount].heading = robotData.physics.imuAngles.yaw;
+                pointCloud[pingCount].distance = robotData.sensors.distanceCM;
                 pingCount++;
                 lastPingTime = millis();
             }
 
             // 2. IMU-DRIVEN SWEEP: Stop sweeping exactly when we have turned 160 degrees. 
             // (Timeout added just in case the robot gets physically stuck)
-            if (abs(getShortestAngle(sensorState.imuAngles.yaw, entryHeading)) >= SysConfig.OBSTACLE_SWEEP_ANGLE_DEG || elapsed > SysConfig.OBSTACLE_SWEEP_TIMEOUT_MS) {
+            if (abs(getShortestAngle(robotData.physics.imuAngles.yaw, entryHeading)) >= SysConfig.OBSTACLE_SWEEP_ANGLE_DEG || elapsed > SysConfig.OBSTACLE_SWEEP_TIMEOUT_MS) {
                 changeState(CALCULATING);
             }
             break;
@@ -100,10 +100,10 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood, const volatile
 
         case ALIGNING:
             {
-                float error = getShortestAngle(bestEscapeHeading, sensorState.imuAngles.yaw);
+                float error = getShortestAngle(bestEscapeHeading, robotData.physics.imuAngles.yaw);
                 
                 // Zero math here! The kinematics engine handles alignment natively now
-kinematics->navigateToHeading(bestEscapeHeading, sensorState.imuAngles.yaw, 0.0f, currentMood.pidAggression);
+kinematics->navigateToHeading(bestEscapeHeading, robotData.physics.imuAngles.yaw, 0.0f, currentMood.pidAggression);
 
                 // ADDED: The infinite loop timeout fix we discussed earlier
                 if (abs(error) < SysConfig.OBSTACLE_ALIGN_SUCCESS_TOLERANCE_DEG || 
