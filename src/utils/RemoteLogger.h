@@ -4,7 +4,7 @@
 #include <WebSocketsServer.h>
 #include <ArduinoJson.h>       // <--- ADD THIS
 #include "core/GlobalDataBus.h" // <--- ADD THIS
-#include "utils/TelemetrySinks.h"   // <--- INCLUDE YOUR NEW FILE HERE
+#include "comms/telemetry/TelemetrySinks.h"   // <--- INCLUDE YOUR NEW FILE HERE
 #include <stdarg.h>
 #include <stdint.h> // For the uint8_t type
 

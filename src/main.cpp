@@ -23,6 +23,8 @@
 #include "config/SystemConfig.h"
 #include "core/RobotState.h"
 #include "core/GlobalDataBus.h" // <--- THE NEW INCLUDE
+#include "comms/telemetry/TelemetrySinks.h"
+#include "comms/telemetry/TelemetryStreamer.h"
 
 RemoteLogger logger(SystemConfig::WEBSOCKET_PORT); 
 
@@ -76,6 +78,11 @@ Mode_Teleop teleopMode(&kinematics);
 BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode, &teleopMode); // Added teleopMode to the constructor
 CommandProcessor cliEngine;
 
+
+// ==========================================
+// SMART TELEMETRY STREAMER
+// ==========================================
+Comms::TelemetryStreamer telemetryRouter;
 
 // ==========================================
 // TASK 1: THE GATHERER (CORE 1 - APP CPU)
@@ -220,7 +227,12 @@ void setup() {
   RadioManager::initRadios();
   logger.bindRadios();
 
- // === MODEM COEXISTENCE FIX ===
+  // Register your hardware sinks (do this once in setup!)
+  // telemetryRouter.registerSink(&bluetoothSink); //TO-DO: FLESH IT OUT 
+  telemetryRouter.registerSink(&wifiSink);
+  // telemetryRouter.registerSink(&serialSink); // Only if you want binary over USB
+
+  // === MODEM COEXISTENCE FIX ===
   // If Bluetooth is active, the ESP32 REQUIRES Wi-Fi modem sleep to switch the antenna.
   // If only Wi-Fi is active, we can disable sleep to keep the connection rock solid.
   if (SysConfig.WIFI_ACTIVE) {

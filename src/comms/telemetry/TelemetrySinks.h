@@ -1,34 +1,28 @@
-// --- src/utils/TelemetrySinks.h ---
 #pragma once
 
 #include <Arduino.h>
 #include <WebSocketsServer.h>
 #include <WiFi.h>
+#include "ITelemetrySink.h"
 
-// 1. The Generic Interface
-class ITelemetrySink {
-public:
-    virtual ~ITelemetrySink() = default;
-    virtual void transmit(const char* jsonString) = 0;
-    virtual bool isReady() = 0; 
-};
-
-// 2. The USB Serial Implementation
+// 1. The USB Serial Implementation
 class USBSink : public ITelemetrySink {
 public:
-    void transmit(const char* jsonString) override {
-        Serial.println(jsonString);
+    void sendBinary(const uint8_t* buffer, size_t length) override {
+        // Direct hardware write for maximum performance
+        Serial.write(buffer, length);
     }
+    
     bool isReady() override {
         // === THE ESP32-S3 NATIVE USB FIX ===
         // 1. static_cast<bool>(Serial) checks if the DTR line is high (Terminal is open)
-        // 2. availableForWrite() checks the physical buffer. If it's less than our JSON size, 
+        // 2. availableForWrite() checks the physical buffer. If it's less than our packet size, 
         //    the PC is disconnected or lagging, and we must abort to prevent a 1-second hard lock!
-        return static_cast<bool>(Serial) && (Serial.availableForWrite() >= 256); 
+        return static_cast<bool>(Serial) && (Serial.availableForWrite() >= 64); 
     }
 };
 
-// 3. The Wi-Fi WebSocket Implementation
+// 2. The Wi-Fi WebSocket Implementation
 class WebSocketSink : public ITelemetrySink {
 private:
     WebSocketsServer& ws;
@@ -36,12 +30,12 @@ private:
     volatile unsigned long& lastConnectTime;
 
 public:
-    // We pass references so the sink can read the Logger's internal state!
     WebSocketSink(WebSocketsServer& webSocketRef, volatile int& activeClients, volatile unsigned long& connectTime) 
         : ws(webSocketRef), clientCount(activeClients), lastConnectTime(connectTime) {}
 
-    void transmit(const char* jsonString) override {
-        ws.broadcastTXT(jsonString);
+    void sendBinary(const uint8_t* buffer, size_t length) override {
+        // Using broadcastBIN for zero-overhead binary streaming
+        ws.broadcastBIN(buffer, length);
     }
 
     bool isReady() override {
@@ -49,7 +43,6 @@ public:
         return (WiFi.status() == WL_CONNECTED && clientCount > 0 && (millis() - lastConnectTime > 1000));
     }
 };
-
-/* // 4. The Bluetooth Implementation (Uncomment when BLE is ready!)
+/* // 3. The Bluetooth Implementation (Uncomment when BLE is ready!)
 class BluetoothSink : public ITelemetrySink { ... }
 */
