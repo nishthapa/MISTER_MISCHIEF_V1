@@ -1,18 +1,32 @@
 #pragma once
 
 namespace MotorDriverConfig {
+
     // === THE MUSEUM CATALOG ===
     enum MotorDriverModel {
         DRIVER_XY160D,
-        DRIVER_L298N, // For future upgrades!
-        DRIVER_TB6612 // For future upgrades!
+        DRIVER_L298N, // Alternative example
+        DRIVER_TB6612 // Alternative example
     };
+    
+    // 1. SELECT YOUR HARDWARE USING A MACRO
+    #define USE_DRIVER_XY160D
+    // #define USE_DRIVER_L298N
+    // #define USE_DRIVER_TB6612
 
-    // 1. SELECT YOUR HARDWARE
-    constexpr MotorDriverModel SELECTED_DRIVER = DRIVER_XY160D;
+    // 2. BRIDGE MACRO TO C++ ENUM
+    #if defined(USE_DRIVER_XY160D)
+        constexpr MotorDriverModel SELECTED_DRIVER = DRIVER_XY160D;
+    #elif defined(USE_DRIVER_L298N)
+        constexpr MotorDriverModel SELECTED_DRIVER = DRIVER_L298N;
+    #elif defined(USE_DRIVER_TB6612)
+        constexpr MotorDriverModel SELECTED_DRIVER = DRIVER_TB6612;
+    #else
+        constexpr MotorDriverModel SELECTED_DRIVER = DRIVER_NONE;
+    #endif
 
     // ==========================================
-    // 2. HARDWARE LIMITS & FREQUENCIES
+    // 3. HARDWARE LIMITS & FREQUENCIES
     // ==========================================
     // RANGE: 1000 TO 20000 // PWM frequency in Hz. High frequency = silent, but less low-end torque.
     constexpr int PWM_FREQ = 5000;
@@ -25,8 +39,9 @@ namespace MotorDriverConfig {
     constexpr int MIN_DUTY = 0;
 
     // ==========================================
-    // 3. PHYSICAL FRICTION DEAD-BAND
+    // 4. PHYSICAL FRICTION DEAD-BAND
     // ==========================================
     // RANGE: 0.0f TO 30.0f // The minimum requested speed required to overcome the gearbox friction. 
     //constexpr float DRIVER_DEADBAND = 10.0f; // Moved to our Dynamic ConfigurationManager and FactoryDefaults
+
 }

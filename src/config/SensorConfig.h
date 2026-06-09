@@ -2,7 +2,36 @@
 #include <Arduino.h>
 
 // ==========================================
-// 1. DISTANCE SENSOR CONFIG
+// 1. HARDWARE SELECTION MACROS
+// ==========================================
+
+// Select ONE Distance Sensor:
+// #define USE_SENSOR_NONE
+#define USE_SENSOR_HCSR04
+// #define USE_SENSOR_VL53L0X // For later upgrades!
+
+// Select ONE IMU setup:
+#define USE_IMU_MPU6050    // The old I2C sensor
+// #define USE_COMBO_GY91        // The new SPI IMU Combo module with mag and baro
+
+// Select ONE Barometer if using standalone Baro mchip/module
+// #define USE_BARO_NONE
+// #define USE_BARO_BMP280 // Already available in the GY91 Combo module.
+
+// ==========================================
+// 2. SMART COMBO RESOLUTION (Betaflight Style)
+// ==========================================
+// If a combo board is selected, automatically define its individual components and bus.
+#if defined(USE_COMBO_GY91)
+    #define USE_IMU_MPU9250
+    #define USE_BARO_BMP280
+    #define USE_SPI_BUS
+#elif defined(USE_IMU_MPU6050)
+    #define USE_I2C_BUS
+#endif
+
+// ==========================================
+// 3. DISTANCE SENSOR CONFIG
 // ==========================================
 namespace DistanceSensorConfig {
     // === THE MUSEUM CATALOG ===
@@ -12,8 +41,14 @@ namespace DistanceSensorConfig {
         SENSOR_VL53L0X // Laser Time-of-Flight (For later!)
     };
 
-    // 1. SELECT YOUR SENSOR HARDWARE
-    constexpr DistanceModel SELECTED_SENSOR = SENSOR_HCSR04;
+    // 1. SELECT YOUR DISTANCE SENSOR HARDWARE
+    #if defined(USE_SENSOR_NONE)
+        constexpr DistanceModel SELECTED_SENSOR = SENSOR_NONE;
+    #elif defined(USE_SENSOR_HCSR04)
+        constexpr DistanceModel SELECTED_SENSOR = SENSOR_HCSR04;
+    #elif defined(USE_SENSOR_VL53L0X)
+        constexpr DistanceModel SELECTED_SENSOR = SENSOR_VL53L0X;   
+    #endif
 
     // --- HC-SR04 (ULTRASONIC) Specific Tuning ---
         // RANGE: 0.0330f TO 0.0350f // Speed of sound in air (cm per microsecond).
@@ -37,12 +72,27 @@ namespace IMUConfig {
     enum IMUModel {
         IMU_NONE,
         IMU_MPU6050,
-        IMU_BNO055, // For later! // Has Compass
-        IMU_MPU9250 // For later! // Has Compass
+        IMU_MPU9250, // For later! // Has Compass
+        IMU_BNO055 // For later! // Has Compass
     };
 
     // 1. SELECT YOUR IMU HARDWARE
-    constexpr IMUModel SELECTED_IMU = IMU_MPU6050;
+    #if defined(USE_IMU_NONE)
+        constexpr IMUModel SELECTED_IMU = IMU_NONE;
+    #elif defined(USE_IMU_MPU6050)
+        constexpr IMUModel SELECTED_IMU = IMU_MPU6050;
+    #elif defined(USE_IMU_MPU9250)
+        constexpr IMUModel SELECTED_IMU = IMU_MPU9250;
+    #elif defined(USE_IMU_BNO055)
+        constexpr IMUModel SELECTED_IMU = IMU_BNO055;
+    #endif
+
+    // ==========================================
+    // 3. COMPASS SETTINGS
+    // ==========================================
+    // If you select an IMU with a compass, this automatically becomes true!
+    constexpr bool HAS_COMPASS = (SELECTED_IMU == IMU_BNO055 ||
+                                  SELECTED_IMU == IMU_MPU9250);
 
     // ==========================================
     // MPU6050 SPECIFIC SETTINGS
@@ -72,14 +122,22 @@ namespace IMUConfig {
     constexpr int16_t ACCEL_CALIBRATION_SAMPLES = 500;
 
     // ==========================================
-    // COMPASS SETTINGS
-    // ==========================================
-    // If you select an IMU with a compass, this automatically becomes true!
-    constexpr bool HAS_COMPASS = (SELECTED_IMU == IMU_BNO055 || SELECTED_IMU == IMU_MPU9250);
-
-    // ==========================================
     // 4. SOFTWARE FILTER TUNING (Raw Data Mode)
     // ==========================================
     // To-do: Move to Configurable Parameters in EEPROM for real-time tuning without code changes!
     constexpr float MADGWICK_BETA = 0.04f; // governs how much to trust the accelerometer // Lowered to kill the twitching!
+}
+namespace BarometerConfig {
+    // === THE MUSEUM CATALOG ===
+    enum BarometerModel {
+        BARO_NONE,
+        BARO_BMP280
+    };
+
+    // 1. SELECT YOUR BAROMETER HARDWARE
+    #if defined(USE_BARO_NONE)
+        constexpr BarometerModel SELECTED_BAROMETER = BARO_NONE;
+    #elif defined(USE_BARO_BMP280)
+        constexpr BarometerModel SELECTED_BAROMETER = BARO_BMP280;
+    #endif
 }
