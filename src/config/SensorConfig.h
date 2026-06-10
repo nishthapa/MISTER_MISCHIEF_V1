@@ -76,6 +76,7 @@ namespace IMUConfig {
     // FOR INVENSENSE IMUS (MPU6050/6500/9250/9255)
     // ==========================================
     constexpr bool MPU6050_USE_HARDWARE_DMP = false;
+    constexpr bool MPU6500_USE_HARDWARE_DMP = true;
     constexpr uint8_t MPU6050_I2C_READ_TIMEOUT_MS = 50;
 
     constexpr float ACCEL_SCALE_FACTOR = 16384.0f;

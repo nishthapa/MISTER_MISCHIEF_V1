@@ -107,9 +107,14 @@ FusedAngles MPU6500_IMU::getAngles() {
                 
                 lastKnownAngles.gForce = sqrt((ax_g * ax_g) + (ay_g * ay_g) + (az_g * az_g));
 
-                lastKnownAngles.roll  = imu.roll  * (SysConfig.IMU_INVERT_ROLL ? -1.0f : 1.0f);
-                lastKnownAngles.pitch = imu.pitch * (SysConfig.IMU_INVERT_PITCH ? -1.0f : 1.0f);
-                lastKnownAngles.yaw   = imu.yaw   * (SysConfig.IMU_INVERT_YAW ? -1.0f : 1.0f);
+                // lastKnownAngles.roll  = imu.roll  * (SysConfig.IMU_INVERT_ROLL ? -1.0f : 1.0f);
+                // lastKnownAngles.pitch = imu.pitch * (SysConfig.IMU_INVERT_PITCH ? -1.0f : 1.0f);
+                // lastKnownAngles.yaw   = imu.yaw   * (SysConfig.IMU_INVERT_YAW ? -1.0f : 1.0f);
+
+                // FIX: Convert Radians to Degrees by multiplying by (180.0f / M_PI)
+                lastKnownAngles.roll  = (imu.roll  * (180.0f / M_PI)) * (SysConfig.IMU_INVERT_ROLL ? -1.0f : 1.0f);
+                lastKnownAngles.pitch = (imu.pitch * (180.0f / M_PI)) * (SysConfig.IMU_INVERT_PITCH ? -1.0f : 1.0f);
+                lastKnownAngles.yaw   = (imu.yaw   * (180.0f / M_PI)) * (SysConfig.IMU_INVERT_YAW ? -1.0f : 1.0f);
             }
         }
     } else {

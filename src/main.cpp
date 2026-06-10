@@ -239,13 +239,14 @@ void NetworkTask(void *pvParameters) {
             char debugMsg[128];
 
             //experimental
-            snprintf(debugMsg, sizeof(debugMsg), "Sonar: %.1f cm | Yaw: %.1f° | Pitch: %.1f° | Roll: %.1f° | L_MOTOR_PWM: %d | R_MOTOR_PWM: %d", 
+            snprintf(debugMsg, sizeof(debugMsg), "Sonar: %.1f cm | Yaw: %.1f° | Pitch: %.1f° | Roll: %.1f° | L_MOTOR_PWM: %d | R_MOTOR_PWM: %d | MODE: %s", 
                      CurrentRobotData.sensors.distanceCM, 
                      CurrentRobotData.physics.imuAngles.yaw, 
                      CurrentRobotData.physics.imuAngles.pitch, 
                      CurrentRobotData.physics.imuAngles.roll,
                      CurrentRobotData.physics.leftMotorPWM,
-                     CurrentRobotData.physics.rightMotorPWM);
+                     CurrentRobotData.physics.rightMotorPWM,
+                     brain.getActiveModeName());
             logger.println(debugMsg);
         }
         
@@ -327,9 +328,9 @@ void setup() {
   
   brain.init(isColdBoot);
 
-  // Temporary testing override
-//   SysConfig.BRAIN_ACTIVE = false;       
-//   brain.changeMode(&autotuneMode);   
+// Temporary testing override
+  //SysConfig.BRAIN_ACTIVE = false;       
+  //brain.changeMode(&autotuneMode);   
   
   logger.println("Mister Mischief V1 Booting...");
   delay(1000); 
