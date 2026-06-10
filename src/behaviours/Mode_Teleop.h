@@ -8,6 +8,10 @@ private:
     KinematicsEngine* kinematics;
     float targetHeading; // Memory for PID drive
 
+    // For the EMA filter for joystick smoothing to avoid derivative kick on sudden stick movements
+    float smoothedX;
+    float smoothedY;
+
 public:
     Mode_Teleop(KinematicsEngine* k);
     
