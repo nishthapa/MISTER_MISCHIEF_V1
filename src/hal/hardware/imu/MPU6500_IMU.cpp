@@ -39,7 +39,7 @@ bool MPU6500_IMU::init() {
         }
 
         // Attempt to boot the DMP firmware onto the chip using the xreef library
-        if (imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL, 100) == INV_SUCCESS) {
+        if (imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL, IMUConfig::IMU_DMP_SAMPLE_RATE_HZ) == INV_SUCCESS) {
             logger.println("Hardware DMP Booted Successfully! Quaternion math offloaded.");
             usingDMP = true;
         } else {
@@ -62,7 +62,7 @@ bool MPU6500_IMU::init() {
         imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL);
         imu.setGyroFSR(2000);
         imu.setAccelFSR(2);
-        imu.setSampleRate(500);
+        imu.setSampleRate(IMUConfig::IMU_RAW_SAMPLE_RATE_HZ);
         imu.setLPF(42); // 42Hz digital low pass filter to kill mechanical chassis vibrations
     }
 

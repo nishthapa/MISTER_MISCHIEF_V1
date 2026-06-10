@@ -87,7 +87,15 @@ namespace IMUConfig {
     constexpr int16_t GYRO_CALIBRATION_SAMPLES = 500; 
     constexpr int16_t ACCEL_CALIBRATION_SAMPLES = 500;
 
-    constexpr float MADGWICK_BETA = 0.04f; 
+    constexpr float MADGWICK_BETA = 0.04f;
+
+    // ==========================================
+    // SENSOR HARDWARE TIMINGS
+    // ==========================================
+    // Synchronize this with the MAIN_LOOP_TICK_RATE_MS (10ms = 100Hz)
+    // 100Hz provides incredibly smooth Madgwick tracking without wasting CPU.
+    constexpr uint16_t IMU_DMP_SAMPLE_RATE_HZ = 100; // Must be equal to or faster than the main loop tick rate for optimal performance
+    constexpr uint16_t IMU_RAW_SAMPLE_RATE_HZ = 200; // If DMP fails, we can still get good performance at 200Hz with the Madgwick filter (just more CPU load)
 }
 
 // ==========================================
