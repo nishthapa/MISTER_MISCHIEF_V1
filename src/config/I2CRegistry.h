@@ -8,6 +8,7 @@
 namespace I2CRegistry {
     
 constexpr uint8_t I2C_ADDR_MPU6050 = 0x68;
+constexpr uint8_t I2C_ADDR_MPU6500 = 0x68;
 
 constexpr uint8_t I2C_MPU6050_REG_TEMP_OUT_H = 0x41; // Register address for temperature data
 

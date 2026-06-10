@@ -139,6 +139,11 @@ void SensorTask(void *pvParameters) {
             CurrentRobotData.physics.imuAngles.gForce = currentAngles.gForce;
             CurrentRobotData.physics.imuAngles.hasCompass = currentAngles.hasCompass;
             CurrentRobotData.physics.imuAngles.compassHeading = currentAngles.compassHeading;
+
+            // <-- This is the C++11 way to copy the entire struct atomically,
+            // but it requires that the struct only contains simple data types and no pointers!
+            // CurrentRobotData.physics.imuAngles = currentAngles;
+            
             //portEXIT_CRITICAL(&globalDataBusLock);  // Resume other core // TODO: We might want to add a critical section
         //}
 
@@ -193,7 +198,6 @@ void ControlLoopTask(void *pvParameters) {
         }
     }
 }
-
 
 // ==========================================
 // TASK 3: NETWORK & TELEMETRY PUBLISHER (CORE 1 - APP CPU)

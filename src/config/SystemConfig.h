@@ -45,4 +45,6 @@ namespace SystemConfig {
     constexpr int TELNET_PORT = 23; // Moved from the old WiFiConfig!
 
     constexpr int WEBSOCKET_PORT = 81;
+
+    constexpr uint32_t I2C_CLOCK_SPEED_HZ = 400000; // 400kHz I2C clock speed for faster sensor reads (if not using DMP)
 }

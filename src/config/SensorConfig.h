@@ -1,34 +1,27 @@
 #pragma once
+
 #include <Arduino.h>
 
 // ==========================================
-// 1. HARDWARE SELECTION MACROS
+// 1. SMART COMBO CATALOG (The "Board" Level)
 // ==========================================
+enum class ComboModule {
+    NONE,
+    MODULE_MPU6050,    // The old I2C sensor
+    MODULE_GY91,       // The new SPI/I2C Combo module (MPU9250 + Mag + Baro)
+    MODULE_GY91_CLONE  // The clone module (MPU6500 + BMP280, No Mag)
+};
 
-// Select ONE Distance Sensor:
-// #define USE_SENSOR_NONE
-#define USE_SENSOR_HCSR04
-// #define USE_SENSOR_VL53L0X // For later upgrades!
-
-// Select ONE IMU setup:
-#define USE_IMU_MPU6050    // The old I2C sensor
-// #define USE_COMBO_GY91        // The new SPI IMU Combo module with mag and baro
-
-// Select ONE Barometer if using standalone Baro mchip/module
-// #define USE_BARO_NONE
-// #define USE_BARO_BMP280 // Already available in the GY91 Combo module.
+enum class BusType { I2C, SPI };
 
 // ==========================================
-// 2. SMART COMBO RESOLUTION (Betaflight Style)
+// 2. ACTIVE HARDWARE SELECTION
 // ==========================================
-// If a combo board is selected, automatically define its individual components and bus.
-#if defined(USE_COMBO_GY91)
-    #define USE_IMU_MPU9250
-    #define USE_BARO_BMP280
-    #define USE_SPI_BUS
-#elif defined(USE_IMU_MPU6050)
-    #define USE_I2C_BUS
-#endif
+// Select your main IMU/Sensor board here:
+constexpr ComboModule ACTIVE_MODULE = ComboModule::MODULE_GY91_CLONE;
+
+// Select how the module is wired to the ESP32:
+constexpr BusType ACTIVE_BUS = BusType::I2C; 
 
 // ==========================================
 // 3. DISTANCE SENSOR CONFIG
@@ -41,92 +34,65 @@ namespace DistanceSensorConfig {
         SENSOR_VL53L0X // Laser Time-of-Flight (For later!)
     };
 
-    // 1. SELECT YOUR DISTANCE SENSOR HARDWARE
-    #if defined(USE_SENSOR_NONE)
-        constexpr DistanceModel SELECTED_SENSOR = SENSOR_NONE;
-    #elif defined(USE_SENSOR_HCSR04)
-        constexpr DistanceModel SELECTED_SENSOR = SENSOR_HCSR04;
-    #elif defined(USE_SENSOR_VL53L0X)
-        constexpr DistanceModel SELECTED_SENSOR = SENSOR_VL53L0X;   
-    #endif
+    // SELECT YOUR DISTANCE SENSOR HARDWARE
+    constexpr DistanceModel SELECTED_SENSOR = SENSOR_HCSR04;
 
     // --- HC-SR04 (ULTRASONIC) Specific Tuning ---
-        // RANGE: 0.0330f TO 0.0350f // Speed of sound in air (cm per microsecond).
-    // Note: 0.0343 is standard for sea level at 20°C. Cold/high altitude requires adjustment!
     constexpr float SPEED_OF_SOUND_CM_US = 0.0343f;
-
-    // RANGE: 10000 TO 30000 // Microseconds to wait before giving up. 25,000us = ~400cm max range.
     constexpr unsigned long ECHO_TIMEOUT_US = 25000;
-    
-    // --- Hardware Pin Timings ---
-    constexpr unsigned int TRIGGER_CLEAR_DELAY_US = 2;  // Time to stabilize the pin LOW
-    constexpr unsigned int TRIGGER_PULSE_DELAY_US = 10; // Time to hold the pin HIGH to fire the pulse
+    constexpr unsigned int TRIGGER_CLEAR_DELAY_US = 2;  
+    constexpr unsigned int TRIGGER_PULSE_DELAY_US = 10; 
     constexpr unsigned int SONAR_MAX_DIST = 350;
 }
 
 // ==========================================
-// 2. INERTIAL MEASUREMENT UNIT (IMU)
+// 4. INERTIAL MEASUREMENT UNIT (IMU)
 // ==========================================
 namespace IMUConfig {
     // === THE MUSEUM CATALOG ===
     enum IMUModel {
         IMU_NONE,
         IMU_MPU6050,
-        IMU_MPU9250, // For later! // Has Compass
-        IMU_BNO055 // For later! // Has Compass
+        IMU_MPU6500,
+        IMU_MPU9250, 
+        IMU_BNO055 
     };
 
-    // 1. SELECT YOUR IMU HARDWARE
-    #if defined(USE_IMU_NONE)
-        constexpr IMUModel SELECTED_IMU = IMU_NONE;
-    #elif defined(USE_IMU_MPU6050)
-        constexpr IMUModel SELECTED_IMU = IMU_MPU6050;
-    #elif defined(USE_IMU_MPU9250)
-        constexpr IMUModel SELECTED_IMU = IMU_MPU9250;
-    #elif defined(USE_IMU_BNO055)
-        constexpr IMUModel SELECTED_IMU = IMU_BNO055;
-    #endif
+    // --- SMART COMBO RESOLUTION ---
+    // Automatically deduces the correct internal IMU silicon based on the ACTIVE_MODULE
+    constexpr IMUModel SELECTED_IMU = 
+        (ACTIVE_MODULE == ComboModule::MODULE_GY91) ? IMU_MPU9250 :
+        (ACTIVE_MODULE == ComboModule::MODULE_GY91_CLONE) ? IMU_MPU6500 :
+        (ACTIVE_MODULE == ComboModule::MODULE_MPU6050) ? IMU_MPU6050 :
+        IMU_NONE;
 
     // ==========================================
-    // 3. COMPASS SETTINGS
+    // COMPASS SETTINGS
     // ==========================================
-    // If you select an IMU with a compass, this automatically becomes true!
-    constexpr bool HAS_COMPASS = (SELECTED_IMU == IMU_BNO055 ||
+    constexpr bool HAS_COMPASS = (SELECTED_IMU == IMU_BNO055 || 
                                   SELECTED_IMU == IMU_MPU9250);
 
     // ==========================================
-    // MPU6050 SPECIFIC SETTINGS
+    // FOR INVENSENSE IMUS (MPU6050/6500/9250/9255)
     // ==========================================
-    // true = Hardware DMP (Firmware upload, 100kHz I2C limit, requires shielded wires)
-    // false = Raw Data + ESP32 Software Filter (10ms Boot, 400kHz I2C, Bulletproof)
     constexpr bool MPU6050_USE_HARDWARE_DMP = false;
-
-    // Time to wait for I2C reads before giving up and returning the last known angles. Prevents hard lock if the sensor becomes unresponsive.
     constexpr uint8_t MPU6050_I2C_READ_TIMEOUT_MS = 50;
 
-    // --- Physical Scale Factors ---
-    // 16384.0 = +/- 2G | 8192.0 = +/- 4G | 4096.0 = +/- 8G | 2048.0 = +/- 16G
     constexpr float ACCEL_SCALE_FACTOR = 16384.0f;
-    
-    // 131.0 = +/- 250 deg/s | 65.5 = +/- 500 deg/s | 32.8 = +/- 1000 deg/s
     constexpr float GYRO_SCALE_FACTOR = 131.0f;
-
-    // --- Noise Filtering ---
-    // Ignore microscopic vibrations below this threshold (in radians/sec)
     constexpr float GYRO_DEADBAND_RAD_S = 0.005f;
 
-    // --- Calibration ---
     constexpr uint8_t AUTO_CALIBRATION_SAMPLES = 6;
     constexpr int16_t DEFAULT_ZACCEL_OFFSET = 1688;
-    constexpr int16_t GYRO_CALIBRATION_SAMPLES = 500; // Number of samples to take when calibrating gyro offsets
+    constexpr int16_t GYRO_CALIBRATION_SAMPLES = 500; 
     constexpr int16_t ACCEL_CALIBRATION_SAMPLES = 500;
 
-    // ==========================================
-    // 4. SOFTWARE FILTER TUNING (Raw Data Mode)
-    // ==========================================
-    // To-do: Move to Configurable Parameters in EEPROM for real-time tuning without code changes!
-    constexpr float MADGWICK_BETA = 0.04f; // governs how much to trust the accelerometer // Lowered to kill the twitching!
+    constexpr float MADGWICK_BETA = 0.04f; 
 }
+
+// ==========================================
+// 5. BAROMETER CONFIG
+// ==========================================
 namespace BarometerConfig {
     // === THE MUSEUM CATALOG ===
     enum BarometerModel {
@@ -134,10 +100,10 @@ namespace BarometerConfig {
         BARO_BMP280
     };
 
-    // 1. SELECT YOUR BAROMETER HARDWARE
-    #if defined(USE_BARO_NONE)
-        constexpr BarometerModel SELECTED_BAROMETER = BARO_NONE;
-    #elif defined(USE_BARO_BMP280)
-        constexpr BarometerModel SELECTED_BAROMETER = BARO_BMP280;
-    #endif
+    // --- SMART COMBO RESOLUTION ---
+    // Automatically deduces if a barometer is present on the board
+    constexpr BarometerModel SELECTED_BAROMETER = 
+        (ACTIVE_MODULE == ComboModule::MODULE_GY91 || 
+         ACTIVE_MODULE == ComboModule::MODULE_GY91_CLONE) 
+         ? BARO_BMP280 : BARO_NONE;
 }

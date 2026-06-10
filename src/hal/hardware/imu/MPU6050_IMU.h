@@ -1,4 +1,5 @@
 #pragma once
+
 #include <Arduino.h>
 #include "hal/interfaces/I_IMU.h" 
 #include "core/MadgwickFilter.h" 
@@ -12,12 +13,12 @@ private:
     FusedAngles lastKnownAngles;
 
     // A window of 5 will instantly swallow random bit-flip spikes!
-    MedianFilter<25> filterAx;
-    MedianFilter<25> filterAy;
-    MedianFilter<25> filterAz;
-    MedianFilter<25> filterGx;
-    MedianFilter<25> filterGy;
-    MedianFilter<25> filterGz;
+    MedianFilter<5> filterAx;
+    MedianFilter<5> filterAy;
+    MedianFilter<5> filterAz;
+    MedianFilter<5> filterGx;
+    MedianFilter<5> filterGy;
+    MedianFilter<5> filterGz;
 
     MadgwickFilter* filter;
 

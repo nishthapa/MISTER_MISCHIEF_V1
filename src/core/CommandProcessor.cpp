@@ -2,6 +2,7 @@
 #include "config/ConfigurationManager.h"
 #include "config/FactoryDefaults.h"
 #include "config/PinConfig.h"
+#include "config/SensorConfig.h"
 #include "config/I2CRegistry.h"
 #include "config/ChannelRegistry.h"
 #include "config/SystemConfig.h"
@@ -1223,7 +1224,19 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     else if (varName == "PIN_SONAR_ECHO") { logger.printf("[PIN_SONAR_ECHO] Static: %d\n", HardwarePins::PIN_SONAR_ECHO); }
     else if (varName == "PIN_I2C_SCL") { logger.printf("[PIN_I2C_SCL] Static: %d\n", HardwarePins::PIN_I2C_SCL); }
     else if (varName == "PIN_I2C_SDA") { logger.printf("[PIN_I2C_SDA] Static: %d\n", HardwarePins::PIN_I2C_SDA); }
-    else if (varName == "PIN_IMU_INT") { logger.printf("[PIN_IMU_INT] Static: %d\n", HardwarePins::PIN_IMU_INT); }
+    else if (varName == "PIN_IMU_INT"){
+        // if(IMUConfig::SELECTED_IMU == IMU_MPU6050) {
+        //     logger.printf("[PIN_IMU_INT] Static: %d\n", HardwarePins::PIN_IMU_INT);
+        // }
+        // else {
+        //     logger.printf("[PIN_IMU_INT]: N/A (Not used for selected IMU)\n");
+        // }
+        #if defined(USE_IMU_MPU6050)
+            logger.printf("[PIN_IMU_INT] Static: %d\n", HardwarePins::PIN_IMU_INT);
+        #else
+            logger.printf("[PIN_IMU_INT]: N/A (Not used for selected IMU)\n");
+        #endif
+    }
 
     // --- I2C & PWM CHANNELS ---
     else if (varName == "I2C_ADDR_MPU6050") { logger.printf("[I2C_ADDR_MPU6050] Static: 0x%02X\n", I2CRegistry::I2C_ADDR_MPU6050); }
