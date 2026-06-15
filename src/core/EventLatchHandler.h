@@ -62,4 +62,19 @@ public:
     
     // Takes the raw physics, updates the timers, and outputs clean True/False events
     SemanticEvents processEvents(const PerceptionData& p, SystemMode currentMode);
+
+    // Getters for internal metrics to populate the Global Data Bus
+    float getDizzyBarYaw() const { return dizzyBarYaw; }
+    float getDizzyBarPitch() const { return dizzyBarPitch; }
+    float getDizzyBarRoll() const { return dizzyBarRoll; }
+    float getSmoothedTotalEnergy() const { return smoothedTotalEnergy; }
+    float getFrustrationLevel() const { return frustrationLevel; }
+    
+    bool getIsHandTeasing() const { return isHandTeasing; }
+    bool getIsHandVanishing() const { return isHandVanishing; }
+    bool getIsHandling() const { return isHandling; }
+    bool getHasExperiencedLift() const { return hasExperiencedLift; }
+    bool getIsLowering() const { return isLowering; }
+    bool getHasLanded() const { return hasLanded; }
+    bool getIsDizzy() const { return isDizzy; }
 };

@@ -1,11 +1,12 @@
 #pragma once
 
+#include <Arduino.h> // <--- for the FreeRTOS definitions
 #include "hal/interfaces/I_IMU.h"
 #include <stdint.h>
 #include "config/PacketIDRegistry.h" // <-- Brings in your Comms::HealthBit definitions!
 
 // =========================================================================
-// 1. OUTBOUND TELEMETRY (The Absolute Truth of the Robot)
+// 1. STATE DATA (The Absolute Truth of the Robot)
 // =========================================================================
 struct PhysicsState {
     FusedAngles imuAngles = {0.0f, 0.0f, 0.0f, 0.0f, false, 0}; // Safe zeroes      // MsgId 101: Attitude & G-Force
@@ -27,11 +28,52 @@ struct SystemHealthState {
     int8_t bleRSSI = 0;             // MsgId 132: Bluetooth Signal Strength
 };
 
+// NEW: Unified Event State
+struct EventState {
+    // 1. Semantic Events (The final triggers)
+    bool hazardDetected = false;       
+    bool teaseConfirmed = false;       
+    bool targetVanished = false;       
+    bool dizzyTriggered = false;       
+    bool dizzyFinished = false;        
+    bool readyForCompassLock = false;  
+    bool safelyLanded = false;         
+    bool frustrationPeaked = false;    
+
+    // 2. Internal Metrics & States (Continuous variables from the handler)
+    float dizzyBarYaw = 0.0f;
+    float dizzyBarPitch = 0.0f;
+    float dizzyBarRoll = 0.0f;
+    float smoothedTotalEnergy = 0.0f;
+    float frustrationLevel = 0.0f;
+    
+    // 3. Internal Latches
+    bool isHandTeasing = false;
+    bool isHandVanishing = false;
+    bool isHandling = false;
+    bool hasExperiencedLift = false;
+    bool isLowering = false;
+    bool hasLanded = false;
+    bool isDizzy = false;
+};
+
+// FOR TELEMETRY (Intermediate Math & Tuning Metrics)
+struct PerceptionMetrics {
+    float distanceDelta = 0.0f;
+    float totalRawEnergy = 0.0f;
+    float rawYawEnergy = 0.0f;
+    float rawPitchEnergy = 0.0f;
+    float rawRollEnergy = 0.0f;
+    float currentGForce = 0.0f;
+};
+
 // The Master Wrapper
 struct GlobalDataBank {
     PhysicsState physics;
     SensorState sensors;
     SystemHealthState health;
+    EventState events; // <-- New centralized semantic events
+    PerceptionMetrics perception; // <-- The new tuning mirror in the telemetry
 };
 
 // =========================================================================
@@ -57,6 +99,20 @@ struct TeleopCommandBus {
 // =========================================================================
 // GLOBAL CROSS-CORE INSTANCES
 // =========================================================================
-extern volatile GlobalDataBank CurrentRobotData;
-extern volatile HardwareCommandBus HardwareCommands;
-extern volatile TeleopCommandBus TeleopCommands;
+// extern volatile GlobalDataBank CurrentRobotData;
+// extern volatile HardwareCommandBus HardwareCommands;
+// extern volatile TeleopCommandBus TeleopCommands;
+
+// =========================================================================
+// GLOBAL CROSS-CORE INSTANCES (attemp at implementing spinlocks
+// and removing "volatile")
+// =========================================================================
+// CRITICAL FIX: Removed 'volatile'. The Spinlocks will handle memory safety.
+extern GlobalDataBank CurrentRobotData;
+extern HardwareCommandBus HardwareCommands;
+extern TeleopCommandBus TeleopCommands;
+
+// The FreeRTOS hardware spinlocks to prevent memory tearing between cores
+extern portMUX_TYPE globalDataBusLock;
+extern portMUX_TYPE hardwareCmdLock;
+extern portMUX_TYPE teleopCmdLock;

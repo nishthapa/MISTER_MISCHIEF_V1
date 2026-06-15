@@ -21,7 +21,7 @@ float Mode_ObstacleAvoidance::getShortestAngle(float target, float current) {
     return delta;
 }
 
-void Mode_ObstacleAvoidance::onEnter(const volatile GlobalDataBank& robotData) {
+void Mode_ObstacleAvoidance::onEnter(const GlobalDataBank& robotData) {
     logger.println("Mister Mischief has encountered an obstacle! Initiating Radial Sweep...");
     pingCount = 0;
     lastPingTime = millis();
@@ -29,7 +29,7 @@ void Mode_ObstacleAvoidance::onEnter(const volatile GlobalDataBank& robotData) {
     changeState(BACKING_UP);
 }
 
-void Mode_ObstacleAvoidance::update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) {
+void Mode_ObstacleAvoidance::update(const RobotMood& currentMood, const GlobalDataBank& robotData) {
     unsigned long elapsed = millis() - stateStartTime;
     
     //float speed = ObstacleConfig::BASE_SPEED * currentMood.speedMultiplier;

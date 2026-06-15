@@ -6,14 +6,14 @@ Mode_CompassLock::Mode_CompassLock(KinematicsEngine* k) {
     targetYaw = 0.0f;
 }
 
-void Mode_CompassLock::onEnter(const volatile GlobalDataBank& robotData) {
+void Mode_CompassLock::onEnter(const GlobalDataBank& robotData) {
     // 1. Take the Snapshot! 
     // The exact moment you pick him up, remember where he is looking.
     targetYaw = robotData.physics.imuAngles.yaw; 
     logger.printf("Compass Lock engaged! Locking heading to: %.1f degrees\n", targetYaw);
 }
 
-void Mode_CompassLock::update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) {
+void Mode_CompassLock::update(const RobotMood& currentMood, const GlobalDataBank& robotData) {
     
     // --- THE HARDWARE SAFETY FIREWALL ---
     // Compass Lock cannot function without an IMU. 

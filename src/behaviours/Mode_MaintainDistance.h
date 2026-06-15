@@ -12,8 +12,8 @@ private:
 public:
     Mode_MaintainDistance(KinematicsEngine* k, PIDController* p);
     
-    void onEnter(const volatile GlobalDataBank& robotData) override;
-    void update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) override;
+    void onEnter(const GlobalDataBank& robotData) override;
+    void update(const RobotMood& currentMood, const GlobalDataBank& robotData) override;
     const char* getName() const override { return "MODE_MAINTAIN_DISTANCE"; }
     void onExit() override;
 };

@@ -27,7 +27,12 @@ namespace Comms {
         SYSTEM_STATUS       = 130,  // Loop time (us), Free heap memory, Core temperature, HealthBitmask
         ROBOT_STATE         = 131,  // Current Global Mode, Active Mood
         NETWORK_LINK        = 132,  // Wi-Fi RSSI (int8_t), BLE RSSI (int8_t)
+        EVENT_STATE         = 135,  // Semantic latches, Dizzy bars, Frustration levels
+        PERCEPTION_METRICS  = 136,  // Real-time math derivatives for tuning (latches + energies)
         TRANSIENT_ALERTS    = 140   // Flushes the instantaneous error/alert queue
+
+        // Timers and Event Latches
+
     };
 
     // =========================================================================
@@ -115,9 +120,11 @@ namespace Comms {
     enum class CmdId : uint8_t {
         SET_MODE            = 1,   // Change operational mode (payload: RobotMode)
         TRIGGER_CALIBRATION = 2,   // Re-zero IMU gyro offsets
+
         TUNING_UPDATE_P     = 10,  // Update Proportional gain (payload: float)
         TUNING_UPDATE_I     = 11,  // Update Integral gain (payload: float)
         TUNING_UPDATE_D     = 12,  // Update Derivative gain (payload: float)
+
         CLEAR_ALERT_QUEUE   = 99   // Resets the error counters on the robot
     };
 

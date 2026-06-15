@@ -39,7 +39,7 @@ private:
     float lastDistance;
     FusedAngles lastAngles;
 
-    PerceptionData gatherPerception(const volatile GlobalDataBank& robotData);
+    PerceptionData gatherPerception(const GlobalDataBank& robotData); // Removed volatile
     IRobotMode* determineNextMode(const SemanticEvents& events);
     SystemMode mapModeToEnum(IRobotMode* mode);
 
@@ -49,7 +49,8 @@ public:
                     Mode_Dizzy* diz, Mode_DeepSleep* sleep, Mode_Teleop* teleop);
 
     void init(bool isColdBoot);
-    void update(const volatile GlobalDataBank& robotData);
+    //void update(const volatile GlobalDataBank& robotData);
+    void update(const GlobalDataBank& robotData); // Removed 'volatile'
     void changeMode(IRobotMode* newMode);
     
     const char* getActiveModeName() const;

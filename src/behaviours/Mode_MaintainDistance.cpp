@@ -8,7 +8,7 @@ Mode_MaintainDistance::Mode_MaintainDistance(KinematicsEngine* k, PIDController*
     kinematics = k; pid = p;
 }
 
-void Mode_MaintainDistance::onEnter(const volatile GlobalDataBank& robotData) {
+void Mode_MaintainDistance::onEnter(const GlobalDataBank& robotData) {
     logger.println("Mister Mischief is maintaining distance!");
 
     // WIPE THE PID MEMORY! 
@@ -16,7 +16,7 @@ void Mode_MaintainDistance::onEnter(const volatile GlobalDataBank& robotData) {
     pid->reset();
 }
 
-void Mode_MaintainDistance::update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) {
+void Mode_MaintainDistance::update(const RobotMood& currentMood, const GlobalDataBank& robotData) {
     float currentDistance = robotData.sensors.distanceCM; // READ FROM RobotData MEMORY!
     
     // THE SOFTWARE CLUTCH

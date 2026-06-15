@@ -1,6 +1,7 @@
 #include "behaviours/Mode_Teleop.h"
 #include "config/ConfigurationManager.h"
 #include "config/SystemConfig.h" // Added to access MAIN_LOOP_TICK_RATE_MS for dt
+#include "core/GlobalDataBus.h"
 #include <Arduino.h>
 
 Mode_Teleop::Mode_Teleop(KinematicsEngine* k) {
@@ -8,24 +9,40 @@ Mode_Teleop::Mode_Teleop(KinematicsEngine* k) {
     targetHeading = 0.0f;
 }
 
-void Mode_Teleop::onEnter(const volatile GlobalDataBank& robotData) {
+void Mode_Teleop::onEnter(const GlobalDataBank& robotData) { // Removed volatile
     kinematics->stop();
     targetHeading = robotData.physics.imuAngles.yaw;
     // Snapshot heading for seamless PID engagement
 }
 
-void Mode_Teleop::update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) {
+void Mode_Teleop::update(const RobotMood& currentMood, const GlobalDataBank& robotData) {
+    
+    // --- THREAD SAFETY: Take a clean snapshot of the incoming commands ---
+    TeleopCommandBus teleopSnapshot;
+    portENTER_CRITICAL(&teleopCmdLock);
+    teleopSnapshot = TeleopCommands;
+    portEXIT_CRITICAL(&teleopCmdLock);
+    // ---------------------------------------------------------------------
+
     // 1. HARDWARE FAILSAFE: Immediate drop-dead if BLE link breaks
-    if (!TeleopCommands.isConnected) {
+    if (!teleopSnapshot.isConnected) {
         kinematics->stop();
         return;
     }
 
     // 2. Read raw joystick values directly from the cross-core memory bank
-    float rawY = TeleopCommands.joyY;
+    //float rawY = TeleopCommands.joyY;
     // Forward / Reverse (-1.0f to 1.0f)
-    float rawX = TeleopCommands.joyX;
+    // float rawX = TeleopCommands.joyX;
     // Left / Right (-1.0f to 1.0f)
+
+    // 2. Read raw joystick values directly from the safe local snapshot
+    float rawY = teleopSnapshot.joyY;
+    // Forward / Reverse (-1.0f to 1.0f)
+    float rawX = teleopSnapshot.joyX;
+    // Left / Right (-1.0f to 1.0f)
+
+
 
     // 3. Hardware Deadband Filter (Cleans up mechanical centering slop)
     if (abs(rawY) < 0.10f) rawY = 0.0f;
@@ -43,7 +60,7 @@ void Mode_Teleop::update(const RobotMood& currentMood, const volatile GlobalData
         // FIX 1: Only completely kill the robot if we are in manual Arcade mode.
         // If PID drive is ON, we want to bypass this return so the heading-hold PID 
         // can actively run and fight being pushed around while parked!
-        if (!TeleopCommands.usePIDDrive) {
+        if (!teleopSnapshot.usePIDDrive) {
             kinematics->stop(); 
             // Reset memory so the robot doesn't aggressively snap back to an old target when you touch the stick again!
             targetHeading = robotData.physics.imuAngles.yaw; 
@@ -65,7 +82,7 @@ void Mode_Teleop::update(const RobotMood& currentMood, const volatile GlobalData
     float y = smoothedY;
 
     // 4. Operational Routing Logic
-    if (TeleopCommands.usePIDDrive) {
+    if (teleopSnapshot.usePIDDrive) {
         // --- PID-ASSISTED DRIVE (Heading Hold) ---
         float dt = SystemConfig::MAIN_LOOP_TICK_RATE_MS / 1000.0f;
         

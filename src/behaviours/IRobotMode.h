@@ -6,11 +6,11 @@
 class IRobotMode {
 public:
     // Called once when the robot switches INTO this mood
-    virtual void onEnter(const volatile GlobalDataBank& robotData) = 0; // <-- Added state
+    virtual void onEnter(const GlobalDataBank& robotData) = 0; // <-- Added state
 
     // Called continuously in the FreeRTOS loop (like 100 times a second)
     // 💥 NEW: Every mode now receives the current mood!
-    virtual void update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) = 0; // <-- Added state
+    virtual void update(const RobotMood& currentMood, const GlobalDataBank& robotData) = 0; // <-- Added state
 
     // NEW: Force every mode to return its name!
     virtual const char* getName() const = 0;

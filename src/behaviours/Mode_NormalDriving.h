@@ -12,8 +12,8 @@ private:
 public:
     Mode_NormalDriving(KinematicsEngine* k);
     
-    void onEnter(const volatile GlobalDataBank& robotData) override;
-    void update(const RobotMood& currentMood, const volatile GlobalDataBank& robotData) override;
+    void onEnter(const GlobalDataBank& robotData) override;
+    void update(const RobotMood& currentMood, const GlobalDataBank& robotData) override;
     const char* getName() const override { return "MODE_NORMAL_DRIVING"; }
     void onExit() override;
 };

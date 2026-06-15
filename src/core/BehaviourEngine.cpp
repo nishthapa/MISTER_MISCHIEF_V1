@@ -59,7 +59,7 @@ SystemMode BehaviourEngine::mapModeToEnum(IRobotMode* mode) {
     return SystemMode::MODE_NORMAL_DRIVING;
 }
 
-PerceptionData BehaviourEngine::gatherPerception(const volatile GlobalDataBank& robotData) {
+PerceptionData BehaviourEngine::gatherPerception(const GlobalDataBank& robotData) {
     PerceptionData p;
 
     // --- HARDWARE SAFETY CHECKS (Bitmask Verification) ---
@@ -150,16 +150,21 @@ IRobotMode* BehaviourEngine::determineNextMode(const SemanticEvents& events) {
     return normalMode;
 }
 
-void BehaviourEngine::update(const volatile GlobalDataBank& robotData) {
+void BehaviourEngine::update(const GlobalDataBank& robotData) {
 
-    // THE DYNAMIC OVERRIDE:
+    // THE SAFE DYNAMIC OVERRIDE:
+    // 1. Take a safe snapshot of the teleop bus
+    TeleopCommandBus teleopSnapshot;
+    portENTER_CRITICAL(&teleopCmdLock);
+    teleopSnapshot = TeleopCommands;
+    portEXIT_CRITICAL(&teleopCmdLock);
+
     // If the phone is connected via BLE, we immediately force the manual mode.
     // This ignores whatever Config.BRAIN_ACTIVE is set to.
-    if (TeleopCommands.isConnected) {
+    if (teleopSnapshot.isConnected) {
         if (GLOBAL_MODE != SystemMode::MANUAL_OVERRIDE) {
             if (activeMode != nullptr) activeMode->onExit();
-            // Assuming 'teleopMode' is available here (pass it via constructor if not)
-            activeMode = teleopMode; 
+            activeMode = teleopMode;
             activeMode->onEnter(robotData);
             GLOBAL_MODE = SystemMode::MANUAL_OVERRIDE;
         }
@@ -177,11 +182,60 @@ void BehaviourEngine::update(const volatile GlobalDataBank& robotData) {
     }
 
     PerceptionData perception = gatherPerception(robotData);
-    
-    // Pass the physics to the tracker to get clean boolean events!
-    SemanticEvents events = latchHandler.processEvents(perception, GLOBAL_MODE);
 
-    IRobotMode* nextMode = determineNextMode(events);
+    // Map the internal metrics for Foxglove Tuning
+    // CurrentRobotData.perception.distanceDelta = perception.distanceDelta;
+    // CurrentRobotData.perception.totalRawEnergy = perception.totalRawEnergy;
+    // CurrentRobotData.perception.rawYawEnergy = perception.rawYawEnergy;
+    // CurrentRobotData.perception.rawPitchEnergy = perception.rawPitchEnergy;
+    // CurrentRobotData.perception.rawRollEnergy = perception.rawRollEnergy;
+    // CurrentRobotData.perception.currentGForce = perception.currentGForce;
+    
+    // Process physical data into semantic meaning
+    SemanticEvents recentEvents = latchHandler.processEvents(perception, GLOBAL_MODE);
+
+    // TAKE THE LOCK
+    portENTER_CRITICAL(&globalDataBusLock);
+
+    // 1. Map the internal metrics for live telemetry Tuning (MOVED INSIDE THE LOCK)
+    CurrentRobotData.perception.distanceDelta = perception.distanceDelta;
+    CurrentRobotData.perception.totalRawEnergy = perception.totalRawEnergy;
+    CurrentRobotData.perception.rawYawEnergy = perception.rawYawEnergy;
+    CurrentRobotData.perception.rawPitchEnergy = perception.rawPitchEnergy;
+    CurrentRobotData.perception.rawRollEnergy = perception.rawRollEnergy;
+    CurrentRobotData.perception.currentGForce = perception.currentGForce;
+    
+    // Map the Triggers
+    CurrentRobotData.events.hazardDetected = recentEvents.hazardDetected;
+    CurrentRobotData.events.teaseConfirmed = recentEvents.teaseConfirmed;
+    CurrentRobotData.events.targetVanished = recentEvents.targetVanished;
+    CurrentRobotData.events.dizzyTriggered = recentEvents.dizzyTriggered;
+    CurrentRobotData.events.dizzyFinished = recentEvents.dizzyFinished;
+    CurrentRobotData.events.readyForCompassLock = recentEvents.readyForCompassLock;
+    CurrentRobotData.events.safelyLanded = recentEvents.safelyLanded;
+    CurrentRobotData.events.frustrationPeaked = recentEvents.frustrationPeaked;
+
+    // Map the Internal Metrics using the getters
+    CurrentRobotData.events.dizzyBarYaw = latchHandler.getDizzyBarYaw();
+    CurrentRobotData.events.dizzyBarPitch = latchHandler.getDizzyBarPitch();
+    CurrentRobotData.events.dizzyBarRoll = latchHandler.getDizzyBarRoll();
+    CurrentRobotData.events.smoothedTotalEnergy = latchHandler.getSmoothedTotalEnergy();
+    CurrentRobotData.events.frustrationLevel = latchHandler.getFrustrationLevel();
+
+    CurrentRobotData.events.isHandTeasing = latchHandler.getIsHandTeasing();
+    CurrentRobotData.events.isHandVanishing = latchHandler.getIsHandVanishing();
+    CurrentRobotData.events.isHandling = latchHandler.getIsHandling();
+    CurrentRobotData.events.hasExperiencedLift = latchHandler.getHasExperiencedLift();
+    CurrentRobotData.events.isLowering = latchHandler.getIsLowering();
+    CurrentRobotData.events.hasLanded = latchHandler.getHasLanded();
+    CurrentRobotData.events.isDizzy = latchHandler.getIsDizzy();
+    
+    // RELEASE THE LOCK
+    portEXIT_CRITICAL(&globalDataBusLock);
+
+    // Proceed to mode switching...
+
+    IRobotMode* nextMode = determineNextMode(recentEvents);
 
     // ... Determine next mode ...
 
@@ -193,12 +247,14 @@ void BehaviourEngine::update(const volatile GlobalDataBank& robotData) {
         GLOBAL_MODE = mapModeToEnum(activeMode); 
     }
 
-    // FIX 3: Use the Command Bus to change the IMU filter, NOT the hardware pointer!
+    // FIX 3: Use the Command Bus to change the IMU filter, safely locked!
+    portENTER_CRITICAL(&hardwareCmdLock);
     if (activeMode == normalMode || activeMode == obstacleMode) {
         HardwareCommands.targetFilterBeta = 0.01f;
     } else {
         HardwareCommands.targetFilterBeta = SysConfig.MADGWICK_FILTER_BETA;
     }
+    portEXIT_CRITICAL(&hardwareCmdLock);
 
     if (activeMode != nullptr) activeMode->update(activeMood, robotData);
 }

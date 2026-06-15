@@ -44,17 +44,22 @@ Comms::TelemetryStreamer telemetryRouter;
 // ==========================================
 volatile SystemMode GLOBAL_MODE = SystemMode::BOOTING;
 
+// Initialize the Hardware Spinlocks
+portMUX_TYPE globalDataBusLock = portMUX_INITIALIZER_UNLOCKED;
+portMUX_TYPE hardwareCmdLock = portMUX_INITIALIZER_UNLOCKED;
+portMUX_TYPE teleopCmdLock = portMUX_INITIALIZER_UNLOCKED;
+
 // portMUX_TYPE globalDataBusLock = portMUX_INITIALIZER_UNLOCKED; // TODO: We might want to add a spinlock for the global data bus
 
 // Instantiate the global memory bank!
 // TODO: Use Spinlock (critical sections) & remove volatile to protect this shared memory in the future:
-volatile GlobalDataBank CurrentRobotData = {};
+GlobalDataBank CurrentRobotData = {};
 
 // Instantiate the low level Hardware Command Bus for sending commands from the Brain to the HAL without direct hardware access!
-volatile HardwareCommandBus HardwareCommands = {}; // FIX: Added the extra falses for Accel and Mag!
+HardwareCommandBus HardwareCommands = {}; // FIX: Added the extra falses for Accel and Mag!
 
 // Teleoperation memory for Phone BLE or radio Control
-volatile TeleopCommandBus TeleopCommands = {};
+TeleopCommandBus TeleopCommands = {};
 
 // ==========================================
 // GLOBAL HARDWARE OBJECTS
@@ -100,26 +105,39 @@ void SensorTask(void *pvParameters) {
 
     for (;;) {
         // ==========================================
-        // 0. EXECUTE HARDWARE COMMANDS FROM THE BRAIN
+        // 0. SAFEELY EXECUTE HARDWARE COMMANDS FROM THE BRAIN
         // ==========================================
-        if (HardwareCommands.requestGyroCalibration) {
+
+        // Take a rapid snapshot of requested commands
+        HardwareCommandBus cmdSnapshot;
+        portENTER_CRITICAL(&hardwareCmdLock);
+        cmdSnapshot = HardwareCommands;
+        portEXIT_CRITICAL(&hardwareCmdLock);
+
+        if (cmdSnapshot.requestGyroCalibration) {
             if (imu) imu->calibrateGyro();
-            HardwareCommands.requestGyroCalibration = false; // Reset the flag!
+            portENTER_CRITICAL(&hardwareCmdLock);
+            HardwareCommands.requestGyroCalibration = false; // Reset safely
+            portEXIT_CRITICAL(&hardwareCmdLock);
         }
 
-        if (HardwareCommands.requestAccelCalibration) {
+        if (cmdSnapshot.requestAccelCalibration) {
             if (imu) imu->calibrateAccel();
-            HardwareCommands.requestAccelCalibration = false; // Reset the flag!
+            portENTER_CRITICAL(&hardwareCmdLock);
+            HardwareCommands.requestAccelCalibration = false; // Reset safely
+            portEXIT_CRITICAL(&hardwareCmdLock);
         }
 
-        if (HardwareCommands.requestMagCalibration) {
+        if (cmdSnapshot.requestMagCalibration) {
             if (imu) imu->calibrateMag();
-            HardwareCommands.requestMagCalibration = false; // Reset the flag!
+            portENTER_CRITICAL(&hardwareCmdLock);
+            HardwareCommands.requestMagCalibration = false; // Reset safely
+            portEXIT_CRITICAL(&hardwareCmdLock);
         }
         
         static float currentBeta = -1.0f;
-        if (currentBeta != HardwareCommands.targetFilterBeta) {
-            currentBeta = HardwareCommands.targetFilterBeta;
+        if (currentBeta != cmdSnapshot.targetFilterBeta) {
+            currentBeta = cmdSnapshot.targetFilterBeta;
             if (imu) imu->setFilterBeta(currentBeta);
         }
 
@@ -131,7 +149,9 @@ void SensorTask(void *pvParameters) {
         //if (CurrentRobotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
             FusedAngles currentAngles = imu->getAngles();
 
-            //portENTER_CRITICAL(&globalDataBusLock); // Pause other core // TODO: We might want to add a critical section
+            // Enter critical section to update the update the global SensorState struct inside the GlobalDataBus
+            portENTER_CRITICAL(&globalDataBusLock); // lock the GlobalDataBus
+
             // C++ volatile struct fix: We must assign the fields manually!
             CurrentRobotData.physics.imuAngles.yaw = currentAngles.yaw;
             CurrentRobotData.physics.imuAngles.pitch = currentAngles.pitch;
@@ -143,8 +163,9 @@ void SensorTask(void *pvParameters) {
             // <-- This is the C++11 way to copy the entire struct atomically,
             // but it requires that the struct only contains simple data types and no pointers!
             // CurrentRobotData.physics.imuAngles = currentAngles;
-            
-            //portEXIT_CRITICAL(&globalDataBusLock);  // Resume other core // TODO: We might want to add a critical section
+
+            // Come out of critical section  
+            portEXIT_CRITICAL(&globalDataBusLock);  // unlock the GlobalDataBus
         //}
 
         unsigned long currentTime = millis();
@@ -152,9 +173,9 @@ void SensorTask(void *pvParameters) {
         // Poll the Sonar exactly every 50ms
         if (currentTime - lastSonarTime >= 50) { 
             lastSonarTime = currentTime;
-            //portENTER_CRITICAL(&globalDataBusLock); // Pause other core // TODO: We might want to add a critical section
+            portENTER_CRITICAL(&globalDataBusLock); // Pause other tasks
             CurrentRobotData.sensors.distanceCM = frontDistanceSensor->getDistanceCM();
-            //portEXIT_CRITICAL(&globalDataBusLock);  // Resume other core // TODO: We might want to add a critical section
+            portEXIT_CRITICAL(&globalDataBusLock);  // Resume other tasks
         }
 
         vTaskDelay(pdMS_TO_TICKS(1)); 
@@ -176,26 +197,49 @@ void ControlLoopTask(void *pvParameters) {
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
 
         // --- THE TELEOPERATION OVERRIDE WATCHDOG ---
-        if (TeleopCommands.isConnected && !wasBleConnected) {
+        // 1. Take a safe snapshot of the teleop bus
+        // so that we can check if Teleop was requested
+        TeleopCommandBus teleopSnapshot;
+        portENTER_CRITICAL(&teleopCmdLock);
+        teleopSnapshot = TeleopCommands;
+        portEXIT_CRITICAL(&teleopCmdLock);
+
+        // 2. Evaluate the snapshot
+        if (teleopSnapshot.isConnected && !wasBleConnected) {
             wasBleConnected = true;
-            SysConfig.BRAIN_ACTIVE = false;       // Shut down autonomous decision engine
-            brain.changeMode(&teleopMode);     // Force the manual kinematic mixer
+            SysConfig.BRAIN_ACTIVE = false;    // Shut down autonomous decision engine
+            brain.changeMode(&teleopMode);
+            // Force the manual kinematic mixer
             logger.println("[SYSTEM] BLE Connected. Manual Override Engaged.");
         } 
-        else if (!TeleopCommands.isConnected && wasBleConnected) {
+        else if (!teleopSnapshot.isConnected && wasBleConnected) {
             wasBleConnected = false;
-            SysConfig.BRAIN_ACTIVE = true;        // Turn autonomous brain back on
-            brain.changeMode(&normalMode);     // Safely recover to normal driving
+            SysConfig.BRAIN_ACTIVE = true;     // Turn autonomous brain back on
+            brain.changeMode(&normalMode);
+            // Safely recover to normal driving
             logger.println("[SYSTEM] BLE Disconnected. Autonomous Brain Resumed.");
         }
         // -------------------------------------------
+        
+        // 1. Take a clean, instantaneous snapshot of the entire robot state
+        GlobalDataBank physicsSnapshot;
+        portENTER_CRITICAL(&globalDataBusLock);
+        physicsSnapshot = CurrentRobotData; 
+        portEXIT_CRITICAL(&globalDataBusLock);
 
-        // THE ISOLATION: The Brain only runs if the Gatherer says the IMU is alive!
-        if (CurrentRobotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
-            brain.update(CurrentRobotData); 
+        // 2. Feed the clean snapshot into the Brain
+        if (physicsSnapshot.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
+            brain.update(physicsSnapshot); 
         } else {
             motorDriver->stop(); 
         }
+
+        // // THE ISOLATION: The Brain only runs if the Gatherer says the IMU is alive!
+        // if (CurrentRobotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
+        //     brain.update(CurrentRobotData); 
+        // } else {
+        //     motorDriver->stop(); 
+        // }
     }
 }
 
@@ -204,7 +248,6 @@ void ControlLoopTask(void *pvParameters) {
 // ==========================================
 void NetworkTask(void *pvParameters) {
     unsigned long lastTelemetryTime = 0;
-    GlobalDataBank snapshot; // Local copy of the global data for safe reading
     
     for (;;) {
         // 1. Read CLI input securely
@@ -221,31 +264,39 @@ void NetworkTask(void *pvParameters) {
         if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
             lastTelemetryTime = currentTime;
 
-            //portENTER_CRITICAL(&globalDataBusLock);  // Pause other core // TODO: We might want to add a critical section
-            //snapshot = CurrentRobotData; // Copying the entire struct // TODO: take a snapshot of the instantaneous struct
-            //portEXIT_CRITICAL(&globalDataBusLock);  // Resume other core // TODO: We might want to add a critical section
+            // --- THE SNAPSHOT SPINLOCK ---
+            GlobalDataBank snapshot; // Local copy created on the stack
+            
+            portENTER_CRITICAL(&globalDataBusLock); 
+            snapshot = CurrentRobotData; // Atomic memory block copy (takes nanoseconds)
+            portEXIT_CRITICAL(&globalDataBusLock);  
+            // -----------------------------
 
             // Blast Attitude Data (Pitch, Roll, Yaw, Motors)
-            telemetryRouter.broadcast(Comms::MsgId::ATTITUDE, CurrentRobotData.physics);
+            telemetryRouter.broadcast(Comms::MsgId::ATTITUDE, snapshot.physics);
 
             // Blast Left & Right Motor PWMs
-            telemetryRouter.broadcast(Comms::MsgId::ACTUATORS, CurrentRobotData.physics);
+            telemetryRouter.broadcast(Comms::MsgId::ACTUATORS, snapshot.physics);
             
             // Blast System Health (Loop time, Heap, Hardware Bitmask, RSSI)
-            telemetryRouter.broadcast(Comms::MsgId::SYSTEM_STATUS, CurrentRobotData.health);
+            telemetryRouter.broadcast(Comms::MsgId::SYSTEM_STATUS, snapshot.health);
 
             // Blast Sensors (Sonar distance)
-            telemetryRouter.broadcast(Comms::MsgId::DISTANCE_SONAR, CurrentRobotData.sensors);
+            telemetryRouter.broadcast(Comms::MsgId::DISTANCE_SONAR, snapshot.sensors);
+
+            // Blast Perception data (event latches + energies)
+            telemetryRouter.broadcast(Comms::MsgId::PERCEPTION_METRICS, snapshot.perception);
+
             char debugMsg[128];
 
             //experimental
             snprintf(debugMsg, sizeof(debugMsg), "Sonar: %.1f cm | Yaw: %.1f° | Pitch: %.1f° | Roll: %.1f° | L_MOTOR_PWM: %d | R_MOTOR_PWM: %d | MODE: %s", 
-                     CurrentRobotData.sensors.distanceCM, 
-                     CurrentRobotData.physics.imuAngles.yaw, 
-                     CurrentRobotData.physics.imuAngles.pitch, 
-                     CurrentRobotData.physics.imuAngles.roll,
-                     CurrentRobotData.physics.leftMotorPWM,
-                     CurrentRobotData.physics.rightMotorPWM,
+                     snapshot.sensors.distanceCM, 
+                     snapshot.physics.imuAngles.yaw, 
+                     snapshot.physics.imuAngles.pitch, 
+                     snapshot.physics.imuAngles.roll,
+                     snapshot.physics.leftMotorPWM,
+                     snapshot.physics.rightMotorPWM,
                      brain.getActiveModeName());
             logger.println(debugMsg);
         }
