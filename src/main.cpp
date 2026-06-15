@@ -26,6 +26,15 @@
 #include "comms/telemetry/TelemetrySinks.h"
 #include "comms/telemetry/TelemetryStreamer.h"
 
+#include "tasks/Task_ControlLoop.h"
+#include "tasks/Task_Sensor.h"
+#include "tasks/Task_Network.h"
+
+// 1. Declare the context struct globally so it doesn't get destroyed after setup()
+ControlLoopContext controlCtx;
+SensorContext sensorCtx;            // <-- NEW
+NetworkContext networkCtx;          // <-- NEW
+
 RemoteLogger logger(SystemConfig::WEBSOCKET_PORT);
 
 // --- 2. ADD THE SINK INSTANTIATIONS HERE ---
@@ -100,218 +109,21 @@ CommandProcessor cliEngine;
 // ==========================================
 // TASK 1: THE GATHERER (CORE 1 - APP CPU)
 // ==========================================
-void SensorTask(void *pvParameters) {
-    unsigned long lastSonarTime = 0;
-
-    for (;;) {
-        // ==========================================
-        // 0. SAFEELY EXECUTE HARDWARE COMMANDS FROM THE BRAIN
-        // ==========================================
-
-        // Take a rapid snapshot of requested commands
-        HardwareCommandBus cmdSnapshot;
-        portENTER_CRITICAL(&hardwareCmdLock);
-        cmdSnapshot = HardwareCommands;
-        portEXIT_CRITICAL(&hardwareCmdLock);
-
-        if (cmdSnapshot.requestGyroCalibration) {
-            if (imu) imu->calibrateGyro();
-            portENTER_CRITICAL(&hardwareCmdLock);
-            HardwareCommands.requestGyroCalibration = false; // Reset safely
-            portEXIT_CRITICAL(&hardwareCmdLock);
-        }
-
-        if (cmdSnapshot.requestAccelCalibration) {
-            if (imu) imu->calibrateAccel();
-            portENTER_CRITICAL(&hardwareCmdLock);
-            HardwareCommands.requestAccelCalibration = false; // Reset safely
-            portEXIT_CRITICAL(&hardwareCmdLock);
-        }
-
-        if (cmdSnapshot.requestMagCalibration) {
-            if (imu) imu->calibrateMag();
-            portENTER_CRITICAL(&hardwareCmdLock);
-            HardwareCommands.requestMagCalibration = false; // Reset safely
-            portEXIT_CRITICAL(&hardwareCmdLock);
-        }
-        
-        static float currentBeta = -1.0f;
-        if (currentBeta != cmdSnapshot.targetFilterBeta) {
-            currentBeta = cmdSnapshot.targetFilterBeta;
-            if (imu) imu->setFilterBeta(currentBeta);
-        }
-
-        // ==========================================
-        // 1. ISOLATED HARDWARE POLLING
-        // ==========================================
-        
-        // Poll the IMU as fast as possible (every frame)
-        //if (CurrentRobotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
-            FusedAngles currentAngles = imu->getAngles();
-
-            // Enter critical section to update the update the global SensorState struct inside the GlobalDataBus
-            portENTER_CRITICAL(&globalDataBusLock); // lock the GlobalDataBus
-
-            // C++ volatile struct fix: We must assign the fields manually!
-            CurrentRobotData.physics.imuAngles.yaw = currentAngles.yaw;
-            CurrentRobotData.physics.imuAngles.pitch = currentAngles.pitch;
-            CurrentRobotData.physics.imuAngles.roll = currentAngles.roll;
-            CurrentRobotData.physics.imuAngles.gForce = currentAngles.gForce;
-            CurrentRobotData.physics.imuAngles.hasCompass = currentAngles.hasCompass;
-            CurrentRobotData.physics.imuAngles.compassHeading = currentAngles.compassHeading;
-
-            // <-- This is the C++11 way to copy the entire struct atomically,
-            // but it requires that the struct only contains simple data types and no pointers!
-            // CurrentRobotData.physics.imuAngles = currentAngles;
-
-            // Come out of critical section  
-            portEXIT_CRITICAL(&globalDataBusLock);  // unlock the GlobalDataBus
-        //}
-
-        unsigned long currentTime = millis();
-
-        // Poll the Sonar exactly every 50ms
-        if (currentTime - lastSonarTime >= 50) { 
-            lastSonarTime = currentTime;
-            portENTER_CRITICAL(&globalDataBusLock); // Pause other tasks
-            CurrentRobotData.sensors.distanceCM = frontDistanceSensor->getDistanceCM();
-            portEXIT_CRITICAL(&globalDataBusLock);  // Resume other tasks
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(1)); 
-    }
-}
-
 
 // ==========================================
 // TASK 2: THE MAIN CONTROL LOOP (CORE 1 - APP CPU)
 // ==========================================
-void ControlLoopTask(void *pvParameters) { 
-    const TickType_t xFrequency = pdMS_TO_TICKS(SystemConfig::MAIN_LOOP_TICK_RATE_MS);
-    TickType_t xLastWakeTime = xTaskGetTickCount();
-
-    // State tracker to detect the moment the app connects or drops
-    static bool wasBleConnected = false; 
-
-    for (;;) {
-        vTaskDelayUntil(&xLastWakeTime, xFrequency);
-
-        // --- THE TELEOPERATION OVERRIDE WATCHDOG ---
-        // 1. Take a safe snapshot of the teleop bus
-        // so that we can check if Teleop was requested
-        TeleopCommandBus teleopSnapshot;
-        portENTER_CRITICAL(&teleopCmdLock);
-        teleopSnapshot = TeleopCommands;
-        portEXIT_CRITICAL(&teleopCmdLock);
-
-        // 2. Evaluate the snapshot
-        if (teleopSnapshot.isConnected && !wasBleConnected) {
-            wasBleConnected = true;
-            SysConfig.BRAIN_ACTIVE = false;    // Shut down autonomous decision engine
-            brain.changeMode(&teleopMode);
-            // Force the manual kinematic mixer
-            logger.println("[SYSTEM] BLE Connected. Manual Override Engaged.");
-        } 
-        else if (!teleopSnapshot.isConnected && wasBleConnected) {
-            wasBleConnected = false;
-            SysConfig.BRAIN_ACTIVE = true;     // Turn autonomous brain back on
-            brain.changeMode(&normalMode);
-            // Safely recover to normal driving
-            logger.println("[SYSTEM] BLE Disconnected. Autonomous Brain Resumed.");
-        }
-        // -------------------------------------------
-        
-        // 1. Take a clean, instantaneous snapshot of the entire robot state
-        GlobalDataBank physicsSnapshot;
-        portENTER_CRITICAL(&globalDataBusLock);
-        physicsSnapshot = CurrentRobotData; 
-        portEXIT_CRITICAL(&globalDataBusLock);
-
-        // 2. Feed the clean snapshot into the Brain
-        if (physicsSnapshot.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
-            brain.update(physicsSnapshot); 
-        } else {
-            motorDriver->stop(); 
-        }
-
-        // // THE ISOLATION: The Brain only runs if the Gatherer says the IMU is alive!
-        // if (CurrentRobotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
-        //     brain.update(CurrentRobotData); 
-        // } else {
-        //     motorDriver->stop(); 
-        // }
-    }
-}
 
 // ==========================================
 // TASK 3: NETWORK & TELEMETRY PUBLISHER (CORE 1 - APP CPU)
 // ==========================================
-void NetworkTask(void *pvParameters) {
-    unsigned long lastTelemetryTime = 0;
-    
-    for (;;) {
-        // 1. Read CLI input securely
-        while (Serial.available()) {
-            cliEngine.processChar(Serial.read());
-        }
-
-        // 2. Handle incoming WebSocket handshakes 
-        logger.handleClient();
-        
-        // 3. BROADCAST BINARY TELEMETRY (This replaces publishTelemetry!)
-        unsigned long currentTime = millis();
-        
-        if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
-            lastTelemetryTime = currentTime;
-
-            // --- THE SNAPSHOT SPINLOCK ---
-            GlobalDataBank snapshot; // Local copy created on the stack
-            
-            portENTER_CRITICAL(&globalDataBusLock); 
-            snapshot = CurrentRobotData; // Atomic memory block copy (takes nanoseconds)
-            portEXIT_CRITICAL(&globalDataBusLock);  
-            // -----------------------------
-
-            // Blast Attitude Data (Pitch, Roll, Yaw, Motors)
-            telemetryRouter.broadcast(Comms::MsgId::ATTITUDE, snapshot.physics);
-
-            // Blast Left & Right Motor PWMs
-            telemetryRouter.broadcast(Comms::MsgId::ACTUATORS, snapshot.physics);
-            
-            // Blast System Health (Loop time, Heap, Hardware Bitmask, RSSI)
-            telemetryRouter.broadcast(Comms::MsgId::SYSTEM_STATUS, snapshot.health);
-
-            // Blast Sensors (Sonar distance)
-            telemetryRouter.broadcast(Comms::MsgId::DISTANCE_SONAR, snapshot.sensors);
-
-            // Blast Perception data (event latches + energies)
-            telemetryRouter.broadcast(Comms::MsgId::PERCEPTION_METRICS, snapshot.perception);
-
-            char debugMsg[128];
-
-            //experimental
-            snprintf(debugMsg, sizeof(debugMsg), "Sonar: %.1f cm | Yaw: %.1f° | Pitch: %.1f° | Roll: %.1f° | L_MOTOR_PWM: %d | R_MOTOR_PWM: %d | MODE: %s", 
-                     snapshot.sensors.distanceCM, 
-                     snapshot.physics.imuAngles.yaw, 
-                     snapshot.physics.imuAngles.pitch, 
-                     snapshot.physics.imuAngles.roll,
-                     snapshot.physics.leftMotorPWM,
-                     snapshot.physics.rightMotorPWM,
-                     brain.getActiveModeName());
-            logger.println(debugMsg);
-        }
-        
-        // Give the network stack breathing room
-        vTaskDelay(pdMS_TO_TICKS(10)); 
-    }
-}
 
 // ==========================================
 // SETUP
 // ==========================================
 TaskHandle_t SensorTaskHandle;
 TaskHandle_t ControlLoopTaskHandle;
-TaskHandle_t TelemetryTaskHandle; // FIX: Added the 3rd task handle!
+// TaskHandle_t TelemetryTaskHandle; // FIX: Added the 3rd task handle!
 TaskHandle_t NetworkTaskHandle; // FIX: Added the 4th task handle!
 
 void setup() {
@@ -384,14 +196,27 @@ void setup() {
   //brain.changeMode(&autotuneMode);   
   
   logger.println("Mister Mischief V1 Booting...");
-  delay(1000); 
+  delay(1000);
+  
+  // Pack needed contexts for the new isolated ColtrolLoopTask
+  controlCtx.brain = &brain;
+  controlCtx.motorDriver = motorDriver;
 
-  // === THE NEW 4-TASK ISOLATED ARCHITECTURE ===
+  // Pack needed contexts for the new isolated SensorTask
+  sensorCtx.imu = imu;
+  sensorCtx.sonar = frontDistanceSensor;
+
+  // Pack needed contexts for the new isolated NetworkTask
+  networkCtx.cli = &cliEngine;
+  networkCtx.router = &telemetryRouter;
+  networkCtx.brain = &brain;
+
+  // === THE NEW 3-TASK ISOLATED ARCHITECTURE ===
 
   // App CPU (Core 1)
-  xTaskCreatePinnedToCore(SensorTask, "SensorTask", SystemConfig::TASK_STACK_SENSOR, NULL, SystemConfig::SENSOR_TASK_PRIORITY, &SensorTaskHandle, SystemConfig::SENSOR_TASK_CORE_AFFINITY);
-  xTaskCreatePinnedToCore(ControlLoopTask, "ControlLoopTask", SystemConfig::TASK_STACK_PHYSICS, NULL, SystemConfig::CONTROL_LOOP_TASK_PRIORITY, &ControlLoopTaskHandle, SystemConfig::CONTROL_LOOP_TASK_CORE_AFFINITY);
-  xTaskCreatePinnedToCore(NetworkTask, "NetworkTask", SystemConfig::TASK_STACK_NETWORK, NULL, SystemConfig::NETWORK_TASK_PRIORITY, &NetworkTaskHandle, SystemConfig::NETWORK_TASK_CORE_AFFINITY); 
+  xTaskCreatePinnedToCore(SensorTask, "SensorTask", SystemConfig::TASK_STACK_SENSOR, &sensorCtx, SystemConfig::SENSOR_TASK_PRIORITY, &SensorTaskHandle, SystemConfig::SENSOR_TASK_CORE_AFFINITY);
+  xTaskCreatePinnedToCore(ControlLoopTask, "ControlLoopTask", SystemConfig::TASK_STACK_PHYSICS, &controlCtx, SystemConfig::CONTROL_LOOP_TASK_PRIORITY, &ControlLoopTaskHandle, SystemConfig::CONTROL_LOOP_TASK_CORE_AFFINITY);
+  xTaskCreatePinnedToCore(NetworkTask, "NetworkTask", SystemConfig::TASK_STACK_NETWORK, &networkCtx, SystemConfig::NETWORK_TASK_PRIORITY, &NetworkTaskHandle, SystemConfig::NETWORK_TASK_CORE_AFFINITY); 
 }
 
 void loop() { vTaskDelete(NULL); }
