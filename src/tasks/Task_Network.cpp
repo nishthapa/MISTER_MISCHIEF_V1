@@ -50,7 +50,10 @@ void NetworkTask(void *pvParameters) {
                 // Blast Sensors (Sonar distance)
                 ctx->router->broadcast(Comms::MsgId::DISTANCE_SONAR, snapshot.sensors);
 
-                // Blast Perception data (event latches + energies)
+                // Blast Semantic Events (latches & Continuous Metrics
+                ctx->router->broadcast(Comms::MsgId::EVENT_STATE, snapshot.events);
+
+                // Blast Perception data (raw energies)
                 ctx->router->broadcast(Comms::MsgId::PERCEPTION_METRICS, snapshot.perception);
             }
 
