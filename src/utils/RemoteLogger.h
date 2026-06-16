@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Arduino.h> // <--- MAKE SURE THIS IS INCLUDED!
 #include <WiFi.h>
 #include <WebSocketsServer.h>
 #include <stdarg.h>
@@ -38,6 +39,10 @@ public:
     void print(const char* message);
     void println(const char* message);
     void printf(const char* format, ...);
+
+    // NEW: Add these two overloads so it natively supports Arduino Strings!
+    void print(const String& message);
+    void println(const String& message);
 };
 
 // This tells all other files that "logger" exists globally!

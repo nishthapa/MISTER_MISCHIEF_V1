@@ -158,6 +158,39 @@ void RadioManager::initRadios() {
 
 // --- NEW DYNAMIC COMMAND LINE CONTROLS ---
 
+// void RadioManager::connectWiFi(String ssid, String password) {
+//     bool printLogs = (SysConfig.ACTIVE_DEBUG_MODE & SysConfig.DEBUG_USB);
+//     if (ssid == "") return;
+    
+//     // Disconnect if already connected before trying new credentials
+//     if (WiFi.status() == WL_CONNECTED) {
+//         disconnectWiFi();
+//     }
+
+//     if (printLogs) {
+//         Serial.print("\n[WIFI] CLI Attempting to connect to: ");
+//         Serial.println(ssid);
+//     }
+
+//     WiFi.begin(ssid.c_str(), password.c_str());
+    
+//     int attempts = 0;
+//     while (WiFi.status() != WL_CONNECTED && attempts < 30) {
+//         delay(500);
+//         if (printLogs) Serial.print(".");
+//         attempts++;
+//     }
+    
+//     if (printLogs) {
+//         if (WiFi.status() == WL_CONNECTED) {
+//             Serial.print("\n[WIFI] ONLINE | IP: ");
+//             Serial.println(WiFi.localIP());
+//         } else {
+//             Serial.println("\n[WIFI] FAILED TO CONNECT");
+//         }
+//     }
+// }
+
 void RadioManager::connectWiFi(String ssid, String password) {
     bool printLogs = (SysConfig.ACTIVE_DEBUG_MODE & SysConfig.DEBUG_USB);
     if (ssid == "") return;
@@ -168,32 +201,34 @@ void RadioManager::connectWiFi(String ssid, String password) {
     }
 
     if (printLogs) {
-        Serial.print("\n[WIFI] CLI Attempting to connect to: ");
+        Serial.print("\n[WIFI] CLI Requesting connection to: ");
         Serial.println(ssid);
+        //Serial.println("[WIFI] Handshake running in background. Network Task is free!");
     }
 
+    // MANDATORY: Explicitly ensure the stack is active before beginning
+    WiFi.mode(WIFI_STA);
+    
+    // 1. Tell Core 0 to start the connection process
     WiFi.begin(ssid.c_str(), password.c_str());
     
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 30) {
-        delay(500);
-        if (printLogs) Serial.print(".");
-        attempts++;
-    }
-    
-    if (printLogs) {
-        if (WiFi.status() == WL_CONNECTED) {
-            Serial.print("\n[WIFI] ONLINE | IP: ");
-            Serial.println(WiFi.localIP());
-        } else {
-            Serial.println("\n[WIFI] FAILED TO CONNECT");
-        }
-    }
+    // 2. WE ARE DONE! NO WHILE LOOPS! NO DELAYS! 
+    // Task_Network instantly goes back to listening to Foxglove and the CLI.
 }
 
+// void RadioManager::disconnectWiFi() {
+//     WiFi.disconnect(true);
+//     WiFi.mode(WIFI_OFF);
+// }
+
 void RadioManager::disconnectWiFi() {
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_OFF);
+    // 1. Soft disconnect: Drops the connection and erases credentials.
+    WiFi.disconnect(true); 
+    
+    // 2. DO NOT USE WiFi.mode(WIFI_OFF)! 
+    // We leave the mode in WIFI_STA so the TCP/IP stack stays alive 
+    // and doesn't violently rip the sockets away from the WebSocketsServer!
+    WiFi.mode(WIFI_STA); 
 }
 
 void RadioManager::connectBluetooth(String name) {

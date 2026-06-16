@@ -31,7 +31,10 @@ bool MPU6500_IMU::init() {
         // I2C MODE 
         // =======================================
         Wire.begin(sdaPin, sclPin);
-        Wire.setClock(SystemConfig::I2C_CLOCK_SPEED_HZ); 
+        Wire.setClock(SystemConfig::I2C_CLOCK_SPEED_HZ);
+
+        // Never wait more than 50ms for a stuck I2C bus!
+        Wire.setTimeOut(50);
 
         if (imu.begin() != INV_SUCCESS) {
             logger.println("CRITICAL: MPU6500 I2C connection failed!");

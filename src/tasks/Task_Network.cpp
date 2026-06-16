@@ -61,17 +61,17 @@ void NetworkTask(void *pvParameters) {
             }
 
             //experimental: just to view in serial monitor for now
-            char debugMsg[128];
-            snprintf(debugMsg, sizeof(debugMsg), "Sonar: %.1f cm | Yaw: %.1f° | Pitch: %.1f° | Roll: %.1f° | L_MOTOR_PWM: %d | R_MOTOR_PWM: %d | MODE: %s", 
-                     snapshot.sensors.distanceCM, 
-                     snapshot.physics.imuAngles.yaw, 
-                     snapshot.physics.imuAngles.pitch, 
-                     snapshot.physics.imuAngles.roll,
-                     snapshot.physics.leftMotorPWM,
-                     snapshot.physics.rightMotorPWM,
-                     ctx->brain ? ctx->brain->getActiveModeName() : "UNKNOWN");
+            // char debugMsg[128];
+            // snprintf(debugMsg, sizeof(debugMsg), "Sonar: %.1f cm | Yaw: %.1f° | Pitch: %.1f° | Roll: %.1f° | L_MOTOR_PWM: %d | R_MOTOR_PWM: %d | MODE: %s", 
+            //          snapshot.sensors.distanceCM, 
+            //          snapshot.physics.imuAngles.yaw, 
+            //          snapshot.physics.imuAngles.pitch, 
+            //          snapshot.physics.imuAngles.roll,
+            //          snapshot.physics.leftMotorPWM,
+            //          snapshot.physics.rightMotorPWM,
+            //          ctx->brain ? ctx->brain->getActiveModeName() : "UNKNOWN");
                      
-            logger.println(debugMsg);
+            // logger.println(debugMsg);
         }
         
         // Give the network stack breathing room

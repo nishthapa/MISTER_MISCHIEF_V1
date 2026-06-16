@@ -91,6 +91,19 @@ void RemoteLogger::printf(const char* format, ...) {
 }
 
 // ==========================================
+// STRING OVERLOADS
+// ==========================================
+void RemoteLogger::print(const String& message) {
+    // Extracts the C-string and passes it to your original function
+    print(message.c_str()); 
+}
+
+void RemoteLogger::println(const String& message) {
+    // Extracts the C-string and passes it to your original function
+    println(message.c_str()); 
+}
+
+// ==========================================
 // WEBSOCKET EVENT HANDLER
 // ==========================================
 void RemoteLogger::webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {

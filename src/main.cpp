@@ -116,6 +116,14 @@ TaskHandle_t NetworkTaskHandle; // FIX: Added the 4th task handle!
 
 void setup() {
   ConfigSys.init(); 
+
+  int imuRetries = 0;
+  while (!imu->init() && imuRetries < SystemConfig::IMU_MAX_RETRIES) {
+      logger.println("IMU failed to initialize. Rebooting I2C bus...");
+      delay(SystemConfig::IMU_RETRY_DELAY_MS); 
+      imuRetries++;
+  }
+  
   logger.beginSerial();
   RadioManager::initRadios();
   logger.bindRadios();
@@ -158,12 +166,12 @@ void setup() {
   motorDriver->init();
 
   logger.println("Waking up the IMU...");
-  int imuRetries = 0;
-  while (!imu->init() && imuRetries < SystemConfig::IMU_MAX_RETRIES) {
-      logger.println("IMU failed to initialize. Rebooting I2C bus...");
-      delay(SystemConfig::IMU_RETRY_DELAY_MS); 
-      imuRetries++;
-  }
+//   int imuRetries = 0;
+//   while (!imu->init() && imuRetries < SystemConfig::IMU_MAX_RETRIES) {
+//       logger.println("IMU failed to initialize. Rebooting I2C bus...");
+//       delay(SystemConfig::IMU_RETRY_DELAY_MS); 
+//       imuRetries++;
+//   }
   
   // Set the global state by flipping the IMU bit in GlobalDataBank
   // ADD THIS:
@@ -187,6 +195,22 @@ void setup() {
   
   logger.println("Mister Mischief V1 Booting...");
   delay(1000);
+
+  bool isWifiConnected = false;
+
+  // Listen for the ESP32 background Wi-Fi events asynchronously
+  WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info){
+    logger.print("\n[WIFI-EVENT] SUCCESS! Robot is ONLINE at IP: ");
+    logger.println(WiFi.localIP().toString());
+  }, ARDUINO_EVENT_WIFI_STA_GOT_IP);
+
+  WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info){
+    // USE RAW SERIAL HERE! 
+      // Do not use logger.println, otherwise it will attempt a WebSocket 
+      // broadcast over a dead interface and crash the memory!
+      Serial.println("\n[WIFI-EVENT] Disconnected from AP.");
+      //logger.println("\n[WIFI-EVENT] Disconnected from AP.");
+  }, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   
   // Pack needed contexts for the new isolated ColtrolLoopTask
   controlCtx.brain = &brain;
