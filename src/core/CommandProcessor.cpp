@@ -454,6 +454,7 @@ void CommandProcessor::processInput(String input) {
 // THE SPECIFIC HANDLERS
 // ==========================================
 void CommandProcessor::handleSet(String varName, String valStr) {
+    varName.toUpperCase(); // Normalize to uppercase
     if (varName == "") {
         logger.println("Usage: set <VARIABLE> <VALUE>");
         return;
@@ -678,6 +679,11 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     }
 
     else if (varName == "ACTIVE_DEBUG_MODE") { SysConfig.ACTIVE_DEBUG_MODE = (valStr == "on" || valStr == "1" || valStr == "true"); }
+
+    // SMART DEBUG MODE (MEDIUM) SWITCHER
+    else if (varName.startsWith("DEBUG_") || varName == "ACTIVE_DEBUG_MODE") {
+        logger.setMode(SysConfig.ACTIVE_DEBUG_MODE);
+    }
     
     /* FOR LATER: Granular debug controls for each subsystem!
     else if (varName == "SERIAL_DEBUG_IMU") { 
@@ -698,7 +704,6 @@ void CommandProcessor::handleSet(String varName, String valStr) {
         return;
     }
 
-    ConfigSys.save();
     logger.printf("Successfully set %s to %s\n", varName.c_str(), valStr.c_str());
 
     // ==========================================
@@ -709,40 +714,51 @@ void CommandProcessor::handleSet(String varName, String valStr) {
     // SUPER CLEVER WORKAROUND OF APPLYING ALL PIDS OF A MODE IN ONE GO BY CHECKING THE PREFIX OF THE VARIABLE NAME!
     // OTHERWISE, WE'D NEED TO WRITE A TON OF REDUNDANT CODE TO CHECK FOR EACH INDIVIDUAL PID VARIABLE AND THEN RE-APPLY THE TUNINGS,
     // WHICH WOULD BE ANNOYING TO MAINTAIN AND EASY TO SCREW UP BY FORGETTING ONE!
-    
+    bool requiresPIDReload = false;
+
     if (varName.startsWith("PID_POINT")) {
-        pointTurnPID.setTunings(SysConfig.PID_POINT_P, SysConfig.PID_POINT_I, SysConfig.PID_POINT_D, SysConfig.PID_POINT_ILIM, SysConfig.PID_POINT_LIM);
+        //pointTurnPID.setTunings(SysConfig.PID_POINT_P, SysConfig.PID_POINT_I, SysConfig.PID_POINT_D, SysConfig.PID_POINT_ILIM, SysConfig.PID_POINT_LIM);
         logger.printf("UPDATED UNIFIED POINT TURN PID: P=%.2f | I=%.2f | D=%.2f\n", SysConfig.PID_POINT_P, SysConfig.PID_POINT_I, SysConfig.PID_POINT_D);
+        requiresPIDReload = true;
     }
     else if (varName.startsWith("PID_ARC")) {
-        arcTurnPID.setTunings(SysConfig.PID_ARC_P, SysConfig.PID_ARC_I, SysConfig.PID_ARC_D, SysConfig.PID_ARC_ILIM, SysConfig.PID_ARC_LIM);
+        //arcTurnPID.setTunings(SysConfig.PID_ARC_P, SysConfig.PID_ARC_I, SysConfig.PID_ARC_D, SysConfig.PID_ARC_ILIM, SysConfig.PID_ARC_LIM);
         logger.printf("UPDATED UNIFIED ARC TURN PID: P=%.2f | I=%.2f | D=%.2f\n", SysConfig.PID_ARC_P, SysConfig.PID_ARC_I, SysConfig.PID_ARC_D);
+        requiresPIDReload = true;
     }
 
     /*
     if (varName.startsWith("PID_HEADING")) {
-        headingPID.setTunings(SysConfig.PID_HEADING_P, SysConfig.PID_HEADING_I, SysConfig.PID_HEADING_D, SysConfig.PID_HEADING_ILIM, SysConfig.PID_HEADING_LIM);
+        //headingPID.setTunings(SysConfig.PID_HEADING_P, SysConfig.PID_HEADING_I, SysConfig.PID_HEADING_D, SysConfig.PID_HEADING_ILIM, SysConfig.PID_HEADING_LIM);
         logger.printf("UPDATED HEADING PID. NEW TUNINGS: P = %.2f | I = %.2f | D=%.2f\n", SysConfig.PID_HEADING_P, SysConfig.PID_HEADING_I, SysConfig.PID_HEADING_D);
+        requiresPIDReload = true;
     }
     else if (varName.startsWith("PID_COMPASS")) {
-        compassPID.setTunings(SysConfig.PID_COMPASS_P, SysConfig.PID_COMPASS_I, SysConfig.PID_COMPASS_D, SysConfig.PID_COMPASS_ILIM, SysConfig.PID_COMPASS_LIM);
+        //compassPID.setTunings(SysConfig.PID_COMPASS_P, SysConfig.PID_COMPASS_I, SysConfig.PID_COMPASS_D, SysConfig.PID_COMPASS_ILIM, SysConfig.PID_COMPASS_LIM);
         logger.printf("UPDATED COMPASS PID. NEW TUNINGS: P = %.2f | I = %.2f | D=%.2f\n", SysConfig.PID_COMPASS_P, SysConfig.PID_COMPASS_I, SysConfig.PID_COMPASS_D);
+        requiresPIDReload = true;
     }*/
     else if (varName.startsWith("PID_DIST")) {
-        distancePID.setTunings(SysConfig.PID_DIST_P, SysConfig.PID_DIST_I, SysConfig.PID_DIST_D, SysConfig.PID_DIST_ILIM, SysConfig.PID_DIST_LIM);
+        //distancePID.setTunings(SysConfig.PID_DIST_P, SysConfig.PID_DIST_I, SysConfig.PID_DIST_D, SysConfig.PID_DIST_ILIM, SysConfig.PID_DIST_LIM);
         logger.printf("UPDATED DISTANCE PID. NEW TUNINGS: P = %.2f | I = %.2f | D=%.2f\n", SysConfig.PID_DIST_P, SysConfig.PID_DIST_I, SysConfig.PID_DIST_D);
+        requiresPIDReload = true;
     }
 
     /*
     else if (varName.startsWith("PID_OBSTACLE")) {
-        obstacleAvoidancePID.setTunings(SysConfig.PID_OBSTACLE_P, SysConfig.PID_OBSTACLE_I, SysConfig.PID_OBSTACLE_D, SysConfig.PID_OBSTACLE_ILIM, SysConfig.PID_OBSTACLE_LIM);
+        //obstacleAvoidancePID.setTunings(SysConfig.PID_OBSTACLE_P, SysConfig.PID_OBSTACLE_I, SysConfig.PID_OBSTACLE_D, SysConfig.PID_OBSTACLE_ILIM, SysConfig.PID_OBSTACLE_LIM);
         logger.printf("UPDATED OBSTACLE PID. NEW TUNINGS: P = %.2f | I = %.2f | D=%.2f\n", SysConfig.PID_OBSTACLE_P, SysConfig.PID_OBSTACLE_I, SysConfig.PID_OBSTACLE_D);
+        requiresPIDReload = true;
     }*/
 
-    // SMART DEBUG MODE (MEDIUM) SWITCHER
-    else if (varName.startsWith("DEBUG_") || varName == "ACTIVE_DEBUG_MODE") {
-    logger.setMode(SysConfig.ACTIVE_DEBUG_MODE);
-}
+    ConfigSys.save();
+
+    // 4. SAFELY TELL THE CONTROL LOOP TO REFRESH THE LIVE MATH
+    if (requiresPIDReload) {
+        portENTER_CRITICAL(&hardwareCmdLock);
+        HardwareCommands.reloadPIDTunings = true;
+        portEXIT_CRITICAL(&hardwareCmdLock);
+    }
 }
 
 void CommandProcessor::handleGet(String varName, String valStr) {
@@ -1288,19 +1304,53 @@ void CommandProcessor::handleReset(String varName, String dummyVal) {
     }
 }
 
+// void CommandProcessor::handleCalib(String varName, String dummyVal) {
+//     varName.toLowerCase();
+//     if (varName == "gyro" || varName == "g") {
+//         imu->calibrateGyro();
+//     } 
+//     else if (varName == "ACCEL") {
+//         imu->calibrateAccel();
+//     } 
+//     else if (varName == "MAG") {
+//         imu->calibrateMag();
+//     } 
+//     else {
+//         logger.println("Usage: calib GYRO | calib ACCEL | calib MAG");
+//     }
+// }
+
+
+// ==========================================
+// HARDWARE CALIBRATION COMMAND HANDLER
+// NOTE: WE JUST SET THE FLAGS IN GlobalDataBus
+// ==========================================
 void CommandProcessor::handleCalib(String varName, String dummyVal) {
-    if (varName == "GYRO") {
-        imu->calibrateGyro();
+    varName.toLowerCase();
+
+    //portENTER_CRITICAL(&hardwareCmdLock);
+    if (varName == "gyro" || varName == "g") {
+        portENTER_CRITICAL(&hardwareCmdLock);
+        HardwareCommands.requestGyroCalibration = true;
+        portEXIT_CRITICAL(&hardwareCmdLock);
+        logger.println("[CALIB] Gyro calibration requested via Bus...");
     } 
-    else if (varName == "ACCEL") {
-        imu->calibrateAccel();
+    else if (varName == "accel" || varName == "a") {
+        portENTER_CRITICAL(&hardwareCmdLock);
+        HardwareCommands.requestAccelCalibration = true;
+        portEXIT_CRITICAL(&hardwareCmdLock);
+        logger.println("[CALIB] Accel calibration requested via Bus...");
     } 
-    else if (varName == "MAG") {
-        imu->calibrateMag();
+    else if (varName == "mag" || varName == "m") {
+        portENTER_CRITICAL(&hardwareCmdLock);
+        HardwareCommands.requestMagCalibration = true;
+        portEXIT_CRITICAL(&hardwareCmdLock);
+        logger.println("[CALIB] Mag calibration requested via Bus...");
     } 
     else {
-        logger.println("Usage: calib GYRO | calib ACCEL | calib MAG");
+        logger.println("Usage: calib <gyro|accel|mag>");
     }
+    //portEXIT_CRITICAL(&hardwareCmdLock);
 }
 
 // ==========================================

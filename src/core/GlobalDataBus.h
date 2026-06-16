@@ -103,6 +103,7 @@ struct HardwareCommandBus {
     bool requestMotorTest = false;
     uint8_t diagnosticAnswer = 0; // <--- 0 = waiting, 1-5 = user answer
     bool requestAutotune = false; // <--- NEW: Flag for Autotune
+    bool reloadPIDTunings = false; // <--- NEW: Safety flag or PID tuning changes
 };
 
 struct TeleopCommandBus {

@@ -1,5 +1,6 @@
 #include "core/KinematicsEngine.h"
-#include "config/SystemConfig.h" 
+#include "config/SystemConfig.h"
+#include "config/ConfigurationManager.h"
 
 // 1. Constructor Updated
 KinematicsEngine::KinematicsEngine(PIDController* pointPID, PIDController* arcPID) {
@@ -15,6 +16,20 @@ KinematicsEngine::KinematicsEngine(PIDController* pointPID, PIDController* arcPI
 //     CurrentRobotData.physics.rightMotorPWM = static_cast<int16_t>(right);
 //     //portEXIT_CRITICAL(&globalDataBusLock);  // TODO: end the critical section
 // }
+
+void KinematicsEngine::reloadPIDTunings() {
+    // 1. Unified sync of the Point Turn PID
+    pointTurnPID->setTunings(
+        SysConfig.PID_POINT_P, SysConfig.PID_POINT_I, SysConfig.PID_POINT_D,
+        SysConfig.PID_POINT_ILIM, SysConfig.PID_POINT_LIM
+    );
+
+    // 2. Unified sync of the Arc Turn PID
+    arcTurnPID->setTunings(
+        SysConfig.PID_ARC_P, SysConfig.PID_ARC_I, SysConfig.PID_ARC_D,
+        SysConfig.PID_ARC_ILIM, SysConfig.PID_ARC_LIM
+    );
+}
 
 float KinematicsEngine::getShortestAngle(float target, float current) {
     float delta = target - current;

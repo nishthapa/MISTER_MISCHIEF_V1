@@ -24,7 +24,7 @@ public:
     float compute(float setpoint, float measuredValue, float dt);
 
     public:
-    // Allows live updating of PID tunings (call this from the CommandProcessor)
+    // Allows live updating of PID tunings
     void setTunings(float p, float i, float d, float max_i, float max_out);
 
     // Resets the integral and memory (call this if the robot falls over to clear its brain)

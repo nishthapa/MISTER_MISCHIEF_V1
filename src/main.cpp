@@ -192,6 +192,7 @@ void setup() {
   controlCtx.brain = &brain;
   controlCtx.motorDriver = motorDriver;
   controlCtx.kinematics = &kinematicsEngine;
+  controlCtx.distancePID = &distancePID; // for tuning Distance hold PID from the command line
 
   // Pack needed contexts for the new isolated SensorTask
   sensorCtx.imu = imu;

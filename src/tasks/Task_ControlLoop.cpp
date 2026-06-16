@@ -2,6 +2,7 @@
 #include "core/GlobalDataBus.h" // For CurrentRobotData and spinlocks
 #include "config/SystemConfig.h"
 #include "utils/RemoteLogger.h"
+#include "config/ConfigurationManager.h"
 
 extern RemoteLogger logger; // Logger is safely thread-safe, so extern is okay here
 
@@ -39,6 +40,29 @@ void ControlLoopTask(void *pvParameters) {
             wasBleConnected = false;
             SysConfig.BRAIN_ACTIVE = true;     // Turn autonomous brain back on
             logger.println("[SYSTEM] BLE Disconnected. Autonomous Brain Resumed.");
+        }
+
+        // 1. Check for Math Tuning Updates
+        bool needsPIDReload = false;
+        portENTER_CRITICAL(&hardwareCmdLock);
+        if (HardwareCommands.reloadPIDTunings) {
+            needsPIDReload = true;
+            HardwareCommands.reloadPIDTunings = false; // Lower the flag
+        }
+        portEXIT_CRITICAL(&hardwareCmdLock);
+
+        if (needsPIDReload) {
+            // 1. Update Point and Arc
+            if (ctx->kinematics) ctx->kinematics->reloadPIDTunings(); 
+            
+            // 2. Update Distance
+            if (ctx->distancePID) {
+                ctx->distancePID->setTunings(
+                    SysConfig.PID_DIST_P, SysConfig.PID_DIST_I, SysConfig.PID_DIST_D,
+                    SysConfig.PID_DIST_ILIM, SysConfig.PID_DIST_LIM
+                );
+            }
+            logger.println("[SYSTEM] All Math Engines (Point, Arc, Dist) Unified Reload Complete.");
         }
         
         // --- SNAPSHOT & BRAIN UPDATE ---

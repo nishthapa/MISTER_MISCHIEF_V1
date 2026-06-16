@@ -20,6 +20,7 @@ public:
     // Removed the I_MotorDriver!
     KinematicsEngine(PIDController* pointPID, PIDController* arcPID);
     
+    void reloadPIDTunings();
     void navigateToHeading(float targetYaw, float currentYaw, float baseSpeed, float moodAggression = 1.0f);
     void rawDrive(float leftSpeed, float rightSpeed);
     void stop();

@@ -232,6 +232,9 @@ void Mode_AutoTune::calculateAndSavePID() {
     // 5. Update the live object instantly so Phase 3 can use it!
     pointTurnPID.setTunings(newKp, newKi, newKd, SysConfig.PID_POINT_ILIM, SysConfig.PID_POINT_LIM);
     arcTurnPID.setTunings(arcKp, arcKi, arcKd, SysConfig.PID_ARC_ILIM, SysConfig.PID_ARC_LIM);
+
+    // 6. Instantly tell the engine to refresh ALL its controllers
+    kinematics->reloadPIDTunings();
 }
 
 void Mode_AutoTune::onExit() {
