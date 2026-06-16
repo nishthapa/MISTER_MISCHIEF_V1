@@ -1,5 +1,4 @@
 #include <Arduino.h>
-
 #include "config/ConfigurationManager.h"
 #include "config/PinConfig.h"         
 #include "hal/factories/MotorDriverFactory.h"
@@ -22,29 +21,28 @@
 #include "core/CommandProcessor.h"
 #include "config/SystemConfig.h"
 #include "core/RobotState.h"
-#include "core/GlobalDataBus.h" // <--- THE NEW INCLUDE
+#include "core/GlobalDataBus.h"
 #include "comms/telemetry/TelemetrySinks.h"
 #include "comms/telemetry/TelemetryStreamer.h"
-
 #include "tasks/Task_ControlLoop.h"
 #include "tasks/Task_Sensor.h"
 #include "tasks/Task_Network.h"
 
 // 1. Declare the context struct globally so it doesn't get destroyed after setup()
 ControlLoopContext controlCtx;
-SensorContext sensorCtx;            // <-- NEW
-NetworkContext networkCtx;          // <-- NEW
+SensorContext sensorCtx;
+NetworkContext networkCtx;
 
 RemoteLogger logger(SystemConfig::WEBSOCKET_PORT);
 
-// --- 2. ADD THE SINK INSTANTIATIONS HERE ---
+// --- TELEMETRY SINK INSTANTIATIONS ---
 USBSink usbSink;
 DebugHexSink debugHexSink;
 // We pass references from the logger so the WebSocketSink knows the server state
 WebSocketSink wifiSink(logger.getServer(), logger.getClientCount(), logger.getLastConnectTime());
 
 // ==========================================
-// SMART TELEMETRY STREAMER
+// SMART TELEMETRY ROUTER / STREAMER
 // ==========================================
 Comms::TelemetryStreamer telemetryRouter;
 
@@ -58,10 +56,7 @@ portMUX_TYPE globalDataBusLock = portMUX_INITIALIZER_UNLOCKED;
 portMUX_TYPE hardwareCmdLock = portMUX_INITIALIZER_UNLOCKED;
 portMUX_TYPE teleopCmdLock = portMUX_INITIALIZER_UNLOCKED;
 
-// portMUX_TYPE globalDataBusLock = portMUX_INITIALIZER_UNLOCKED; // TODO: We might want to add a spinlock for the global data bus
-
-// Instantiate the global memory bank!
-// TODO: Use Spinlock (critical sections) & remove volatile to protect this shared memory in the future:
+// Instantiate the Global Robot State Data bus
 GlobalDataBank CurrentRobotData = {};
 
 // Instantiate the low level Hardware Command Bus for sending commands from the Brain to the HAL without direct hardware access!
@@ -107,20 +102,10 @@ BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode, &
 CommandProcessor cliEngine;
 
 // ==========================================
-// TASK 1: THE GATHERER (CORE 1 - APP CPU)
+// TASKS HAVE BEEN MOVED OUT OF main.cpp
 // ==========================================
 
-// ==========================================
-// TASK 2: THE MAIN CONTROL LOOP (CORE 1 - APP CPU)
-// ==========================================
-
-// ==========================================
-// TASK 3: NETWORK & TELEMETRY PUBLISHER (CORE 1 - APP CPU)
-// ==========================================
-
-// ==========================================
-// SETUP
-// ==========================================
+// Global Task Handles
 TaskHandle_t SensorTaskHandle;
 TaskHandle_t ControlLoopTaskHandle;
 // TaskHandle_t TelemetryTaskHandle; // FIX: Added the 3rd task handle!
@@ -149,6 +134,8 @@ void setup() {
           WiFi.setSleep(false); // Only safe if BT is OFF
       }
   }
+
+  // PID tunes for Point (in-place) Turns, Arc turns and the distance hold game
   pointTurnPID.setTunings(SysConfig.PID_POINT_P, SysConfig.PID_POINT_I, SysConfig.PID_POINT_D, SysConfig.PID_POINT_ILIM, SysConfig.PID_POINT_LIM);
   arcTurnPID.setTunings(SysConfig.PID_ARC_P, SysConfig.PID_ARC_I, SysConfig.PID_ARC_D, SysConfig.PID_ARC_ILIM, SysConfig.PID_ARC_LIM);
   distancePID.setTunings(SysConfig.PID_DIST_P, SysConfig.PID_DIST_I, SysConfig.PID_DIST_D, SysConfig.PID_DIST_ILIM, SysConfig.PID_DIST_LIM);
@@ -191,7 +178,7 @@ void setup() {
   
   brain.init(isColdBoot);
 
-// Temporary testing override
+  // Temporary testing override
   //SysConfig.BRAIN_ACTIVE = false;       
   //brain.changeMode(&autotuneMode);   
   
@@ -212,8 +199,6 @@ void setup() {
   networkCtx.brain = &brain;
 
   // === THE NEW 3-TASK ISOLATED ARCHITECTURE ===
-
-  // App CPU (Core 1)
   xTaskCreatePinnedToCore(SensorTask, "SensorTask", SystemConfig::TASK_STACK_SENSOR, &sensorCtx, SystemConfig::SENSOR_TASK_PRIORITY, &SensorTaskHandle, SystemConfig::SENSOR_TASK_CORE_AFFINITY);
   xTaskCreatePinnedToCore(ControlLoopTask, "ControlLoopTask", SystemConfig::TASK_STACK_PHYSICS, &controlCtx, SystemConfig::CONTROL_LOOP_TASK_PRIORITY, &ControlLoopTaskHandle, SystemConfig::CONTROL_LOOP_TASK_CORE_AFFINITY);
   xTaskCreatePinnedToCore(NetworkTask, "NetworkTask", SystemConfig::TASK_STACK_NETWORK, &networkCtx, SystemConfig::NETWORK_TASK_PRIORITY, &NetworkTaskHandle, SystemConfig::NETWORK_TASK_CORE_AFFINITY); 
