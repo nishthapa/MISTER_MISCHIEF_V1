@@ -13,6 +13,7 @@
 #include "behaviours/Mode_DeepSleep.h"
 #include "behaviours/Mode_AutoTune.h"
 #include "behaviours/Mode_Teleop.h"
+#include "behaviours/Mode_Diagnostics.h"
 #include "core/BehaviourEngine.h"
 #include "core/KinematicsEngine.h"
 #include "utils/RadioManager.h"
@@ -80,25 +81,27 @@ PIDController pointTurnPID = PIDControllerFactory::createPointTurnPID();
 PIDController arcTurnPID   = PIDControllerFactory::createArcTurnPID();
 PIDController distancePID = PIDControllerFactory::createDistanceHoldPID();
 
-KinematicsEngine kinematics(motorDriver, &pointTurnPID, &arcTurnPID);
+KinematicsEngine kinematicsEngine(&pointTurnPID, &arcTurnPID);
 
 // ==========================================
 // GLOBAL MODE OBJECTS
 // ==========================================
-Mode_ObstacleAvoidance obstacleMode(&kinematics); // Removed 'frontDistanceSensor' and imu
-Mode_NormalDriving normalMode(&kinematics);  // Removed 'imu'
-Mode_CompassLock compassMode(&kinematics); // Removed 'imu'
-Mode_MaintainDistance distanceMode(&kinematics, &distancePID); // Removed 'frontDistanceSensor'
-Mode_Dizzy dizzyMode(&kinematics); // standardized dependency injection from direct motor driver access level to kinematics engine level
-Mode_DeepSleep sleepMode(&kinematics); // standardized dependency injection from direct motor driver access level to kinematics engine level
-Mode_AutoTune autotuneMode(&kinematics); // Removed 'imu'
-Mode_Teleop teleopMode(&kinematics);
+Mode_ObstacleAvoidance obstacleMode(&kinematicsEngine); // Removed 'frontDistanceSensor' and imu
+Mode_NormalDriving normalMode(&kinematicsEngine);  // Removed 'imu'
+Mode_CompassLock compassMode(&kinematicsEngine); // Removed 'imu'
+Mode_MaintainDistance distanceMode(&kinematicsEngine, &distancePID); // Removed 'frontDistanceSensor'
+Mode_Dizzy dizzyMode(&kinematicsEngine); // standardized dependency injection from direct motor driver access level to kinematics engine level
+Mode_DeepSleep sleepMode(&kinematicsEngine); // standardized dependency injection from direct motor driver access level to kinematics engine level
+Mode_AutoTune autotuneMode(&kinematicsEngine); // Removed 'imu'
+Mode_Teleop teleopMode(&kinematicsEngine);
+Mode_Diagnostics diagnosticMode(&kinematicsEngine);
+
 
 // ==========================================
 // MODE SWITCHER (The Brain)
 // ==========================================
 // Note: It still takes the hardware pointers right now, but we will remove them in the next step!
-BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode, &teleopMode); // Added teleopMode to the constructor
+BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode, &teleopMode, &diagnosticMode, &autotuneMode); // Added teleopMode to the constructor
 CommandProcessor cliEngine;
 
 // ==========================================
@@ -188,6 +191,7 @@ void setup() {
   // Pack needed contexts for the new isolated ColtrolLoopTask
   controlCtx.brain = &brain;
   controlCtx.motorDriver = motorDriver;
+  controlCtx.kinematics = &kinematicsEngine;
 
   // Pack needed contexts for the new isolated SensorTask
   sensorCtx.imu = imu;

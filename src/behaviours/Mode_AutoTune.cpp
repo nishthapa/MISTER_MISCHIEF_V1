@@ -110,6 +110,10 @@ void Mode_AutoTune::update(const RobotMood& currentMood, const GlobalDataBank& r
                 kinematics->stop();
                 logger.println("\n\n[AUTOTUNE] Failed. Please check if hardware is properly connected/working and try again.");
                 tuneState = STATE_FINISHED;
+                // Safely lower the flag!
+                portENTER_CRITICAL(&hardwareCmdLock);
+                HardwareCommands.requestAutotune = false;
+                portEXIT_CRITICAL(&hardwareCmdLock);
                 break; 
             }
             float error = getShortestAngle(startYaw, currentYaw);
@@ -170,6 +174,11 @@ void Mode_AutoTune::update(const RobotMood& currentMood, const GlobalDataBank& r
                 kinematics->stop();
                 logger.println("[AUTOTUNE] Sequence Success! Returning to normal ops.");
                 tuneState = STATE_FINISHED;
+                
+                // Safely lower the flag!
+                portENTER_CRITICAL(&hardwareCmdLock);
+                HardwareCommands.requestAutotune = false;
+                portEXIT_CRITICAL(&hardwareCmdLock);
             }
             break;
         }

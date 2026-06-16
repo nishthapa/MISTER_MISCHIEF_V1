@@ -15,6 +15,8 @@ class Mode_MaintainDistance;
 class Mode_Dizzy;
 class Mode_DeepSleep;
 class Mode_Teleop; // <--- Forward declaration of the new Teleop mode
+class Mode_Diagnostics;
+class Mode_AutoTune;
 
 class BehaviourEngine {
 private:
@@ -28,6 +30,8 @@ private:
     Mode_Dizzy* dizzyMode;
     Mode_DeepSleep* sleepMode;
     Mode_Teleop* teleopMode; // <--- ADD THIS
+    Mode_Diagnostics* diagnosticMode;
+    Mode_AutoTune* autotuneMode;
     IRobotMode* activeMode;
     IRobotMode* previousMode;
     RobotMood activeMood;
@@ -46,7 +50,8 @@ private:
 public:
     BehaviourEngine(Mode_ObstacleAvoidance* obs, Mode_NormalDriving* norm, 
                     Mode_CompassLock* comp, Mode_MaintainDistance* dist, 
-                    Mode_Dizzy* diz, Mode_DeepSleep* sleep, Mode_Teleop* teleop);
+                    Mode_Dizzy* diz, Mode_DeepSleep* sleep, Mode_Teleop* teleop,
+                    Mode_Diagnostics* diag, Mode_AutoTune* autot);
 
     void init(bool isColdBoot);
     //void update(const volatile GlobalDataBank& robotData);

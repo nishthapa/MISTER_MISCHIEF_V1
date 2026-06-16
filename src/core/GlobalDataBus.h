@@ -30,6 +30,12 @@ struct SystemHealthState {
     int8_t bleRSSI = 0;             // MsgId 132: Bluetooth Signal Strength
 };
 
+// CONTROL DEBUG (PID & Target tracking)
+struct ControlDebugState {
+    float targetHeading = 0.0f; 
+    float headingError = 0.0f;  
+};
+
 // NEW: Unified Event State
 struct EventState {
     // 1. Semantic Events (The final triggers)
@@ -83,6 +89,7 @@ struct GlobalDataBank {
     EventState events; // <-- New centralized semantic events
     PerceptionMetrics perception; // <-- The new tuning mirror in the telemetry
     CognitiveState cognition; // <-- Mode and Mood
+    ControlDebugState controlDebug; // <-- For PID Target and error
 };
 
 // =========================================================================
@@ -93,6 +100,9 @@ struct HardwareCommandBus {
     bool requestAccelCalibration = false;
     bool requestMagCalibration = false;
     float targetFilterBeta = 0.0f;
+    bool requestMotorTest = false;
+    uint8_t diagnosticAnswer = 0; // <--- 0 = waiting, 1-5 = user answer
+    bool requestAutotune = false; // <--- NEW: Flag for Autotune
 };
 
 struct TeleopCommandBus {

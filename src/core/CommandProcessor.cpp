@@ -16,10 +16,12 @@
 extern RemoteLogger logger;
 extern I_IMU* imu; // Reaches into main.cpp to grab the global IMU!
 
-extern BehaviourEngine brain;
-extern Mode_AutoTune autotuneMode;
+// Not needed now as we dont directly trigger it from here
+// we only change test or autotune flags in GlobalDataBus
+// extern BehaviourEngine brain;
+// extern Mode_AutoTune autotuneMode;
 
-extern KinematicsEngine kinematics; // for testing the motors
+extern KinematicsEngine kinematicsEngine; // for testing the motors
 
 // --- All the PID controllers for live-tuning access in the CLI ---
 extern PIDController pointTurnPID;
@@ -299,10 +301,26 @@ void CommandProcessor::processInput(String input) {
 
     // --- STATE MACHINE: Are we waiting for Y/N? ---
     if (waitingForResetConfirm) { handleResetConfirm(input); return; }
-    if (waitingForAutotuneConfirm) { handleAutotuneConfirm(input); return; } // Waiting for autotune y/n confirmation
+    // if (waitingForAutotuneConfirm) { handleAutotuneConfirm(input); return; } // Waiting for autotune y/n confirmation
 
-    // WAITING FOR Y/N CONFIRMATION DURING MOTOR TEST WIZARD START
-    if (motorWizardState > 0) { handleMotorWizardInput(input); return; }
+    // // WAITING FOR Y/N CONFIRMATION DURING MOTOR TEST WIZARD START
+    // if (motorWizardState > 0) {
+    //     handleMotorWizardInput(input);
+    //     return;
+    // }
+
+    // Check if the Behaviour Engine is currently running a hardware test
+    // (e.g. MOTOR test) by accessing the Hardware test request flag from the GlobalDataBus
+    bool isTestingActive = false;
+    portENTER_CRITICAL(&hardwareCmdLock);
+    isTestingActive = HardwareCommands.requestMotorTest;
+    portEXIT_CRITICAL(&hardwareCmdLock);
+
+    // If a test is active, route the user's typing directly to the wizard handler!
+    if (isTestingActive) {
+        handleMotorWizardInput(input);
+        return; // Stop processing this command as normal text
+    }
 
     // 1. EXTRACT COMMAND
     int firstSpace = input.indexOf(' ');
@@ -1291,27 +1309,41 @@ void CommandProcessor::handleCalib(String varName, String dummyVal) {
 void CommandProcessor::handleTest(String varName, String dummyVal) {
     varName.toUpperCase();
 
+    // if (varName == "MOTOR" || varName == "motor") {
+    //     logger.println("\n=== INTERACTIVE MOTOR DIAGNOSTIC WIZARD ===");
+    //     logger.println("WARNING: Ensure robot is elevated (Props Off!).");
+    //     logger.println("Testing Left Motor Channel (Positive PWM) in 2 seconds...");
+    //     vTaskDelay(pdMS_TO_TICKS(2000));
+
+    //     // Spin Left Channel Positive
+    //     kinematicsEngine.rawDrive(50.0f, 0.0f);
+    //     vTaskDelay(pdMS_TO_TICKS(5000)); 
+    //     kinematicsEngine.rawDrive(0.0f, 0.0f);
+
+    //     logger.println("\nWhat physically happened on the robot?");
+    //     logger.println("  1 = Left track moved FORWARD");
+    //     logger.println("  2 = Left track moved REVERSE");
+    //     logger.println("  3 = Right track moved FORWARD");
+    //     logger.println("  4 = Right track moved REVERSE");
+    //     logger.println("  5 = Nothing moved at all");
+    //     logger.print("Enter your answer (1-5): ");
+        
+    //     motorWizardState = 1; // Tell the CLI to route the next keystroke to the Wizard!
+    // }
+
     if (varName == "MOTOR" || varName == "motor") {
         logger.println("\n=== INTERACTIVE MOTOR DIAGNOSTIC WIZARD ===");
         logger.println("WARNING: Ensure robot is elevated (Props Off!).");
-        logger.println("Testing Left Motor Channel (Positive PWM) in 2 seconds...");
-        vTaskDelay(pdMS_TO_TICKS(2000));
+        logger.println("Handing control over to Behaviour Engine...");
 
-        // Spin Left Channel Positive
-        kinematics.rawDrive(50.0f, 0.0f);
-        vTaskDelay(pdMS_TO_TICKS(5000)); 
-        kinematics.rawDrive(0.0f, 0.0f);
-
-        logger.println("\nWhat physically happened on the robot?");
-        logger.println("  1 = Left track moved FORWARD");
-        logger.println("  2 = Left track moved REVERSE");
-        logger.println("  3 = Right track moved FORWARD");
-        logger.println("  4 = Right track moved REVERSE");
-        logger.println("  5 = Nothing moved at all");
-        logger.print("Enter your answer (1-5): ");
+        // Safely throw the flag to trigger Mode_Diagnostics
+        portENTER_CRITICAL(&hardwareCmdLock);
+        HardwareCommands.requestMotorTest = true;
+        HardwareCommands.diagnosticAnswer = 0;
+        portEXIT_CRITICAL(&hardwareCmdLock);
         
-        motorWizardState = 1; // Tell the CLI to route the next keystroke to the Wizard!
-    } 
+        //motorWizardState = 1; // Tell the CLI to route the next keystroke to the Wizard!
+    }
     else if (varName == "IMU" || varName == "imu") {
         logger.println("\n=== IMU ALIGNMENT WIZARD ===");
         logger.println("Coming soon...");
@@ -1323,74 +1355,28 @@ void CommandProcessor::handleTest(String varName, String dummyVal) {
     }
 }
 
+// ==========================================
+// THE INTERACTIVE DIAGNOSTIC WIZARDS
+// Logic moved to Mode_Diagnostics
+// ==========================================
 void CommandProcessor::handleMotorWizardInput(String input) {
     int ans = input.toInt();
+    
     if (ans < 1 || ans > 5) {
         logger.print("\nInvalid input. Please enter a number between 1 and 5: ");
         return;
     }
 
-    if (motorWizardState == 1) {
-        leftMotorTestAns = ans; // Save the answer for the final diagnosis
-        
-        logger.println("\nGot it. Now testing Right Motor Channel (Positive PWM) in 2 seconds...");
-        vTaskDelay(pdMS_TO_TICKS(2000));
+    // Safely drop the valid answer onto the Central Nervous System
+    portENTER_CRITICAL(&hardwareCmdLock);
+    HardwareCommands.diagnosticAnswer = ans;
+    portEXIT_CRITICAL(&hardwareCmdLock);
 
-        // Spin Right Channel Positive
-        kinematics.rawDrive(0.0f, 50.0f);
-        vTaskDelay(pdMS_TO_TICKS(5000)); 
-        kinematics.rawDrive(0.0f, 0.0f);
-
-        logger.println("\nWhat physically happened on the robot?");
-        logger.println("  1 = Left track moved FORWARD");
-        logger.println("  2 = Left track moved REVERSE");
-        logger.println("  3 = Right track moved FORWARD");
-        logger.println("  4 = Right track moved REVERSE");
-        logger.println("  5 = Nothing moved at all");
-        logger.print("Enter your answer (1-5): ");
-        
-        motorWizardState = 2; // Move to the final phase
-    } 
-    else if (motorWizardState == 2) {
-        int rightMotorTestAns = ans;
-        motorWizardState = 0; // Release the CLI back to normal operations
-        
-        logger.println("\n\n=== DIAGNOSIS RESULTS ===");
-        
-        if (leftMotorTestAns == 5 && rightMotorTestAns == 5) {
-            logger.println("[DEAD] Neither motor moved.");
-            logger.println("Check ENA/ENB wiring, main battery power, and ensure the XY-160D logic pins are connected.");
-        } 
-        else if (leftMotorTestAns == 1 && rightMotorTestAns == 3) {
-            logger.println("[PERFECT] Your motors are wired flawlessly! No changes needed.");
-        } 
-        else {
-            logger.println("[ISSUE DETECTED] Incorrect wiring mapped.");
-            logger.println("\n--- HOW TO FIX IT ---");
-            logger.println("Open src/config/PinConfig.h and update these pins:\n");
-            
-            // Analyze Left Channel
-            logger.print("LEFT CHANNEL is currently driving: ");
-            if (leftMotorTestAns == 1) logger.println("Left Forward (Correct)");
-            else if (leftMotorTestAns == 2) logger.println("Left Reverse. \n  -> FIX: Swap PIN_MOTOR_LEFT_FWD and PIN_MOTOR_LEFT_REV");
-            else if (leftMotorTestAns == 3) logger.println("Right Forward. \n  -> FIX: This channel is swapped with the right side!");
-            else if (leftMotorTestAns == 4) logger.println("Right Reverse. \n  -> FIX: Swapped sides AND reversed polarity.");
-            
-            // Analyze Right Channel
-            logger.print("RIGHT CHANNEL is currently driving: ");
-            if (rightMotorTestAns == 3) logger.println("Right Forward (Correct)");
-            else if (rightMotorTestAns == 4) logger.println("Right Reverse. \n  -> FIX: Swap PIN_MOTOR_RIGHT_FWD and PIN_MOTOR_RIGHT_REV");
-            else if (rightMotorTestAns == 1) logger.println("Left Forward. \n  -> FIX: This channel is swapped with the left side!");
-            else if (rightMotorTestAns == 2) logger.println("Left Reverse. \n  -> FIX: Swapped sides AND reversed polarity.");
-            
-            // Master Swap Check
-            if ((leftMotorTestAns == 3 || leftMotorTestAns == 4) && (rightMotorTestAns == 1 || rightMotorTestAns == 2)) {
-                logger.println("\n[MASTER FIX] You completely crossed the Left and Right sides.");
-                logger.println("  -> The easiest fix is to physically swap the Left and Right motor wires where they screw into the XY160D green terminal blocks.");
-            }
-        }
-        logger.println("=== WIZARD COMPLETE ===\n");
-    }
+    // THAT IS IT! 
+    // We don't print anything. We don't wait. We don't calculate.
+    // Mode_Diagnostics is constantly watching the bus. The microsecond this 
+    // variable changes from 0 to 'ans', the Brain takes over, handles the 
+    // diagnosis, prints the results, and moves to the next state automatically!
 }
 
 
@@ -1400,25 +1386,20 @@ void CommandProcessor::handleAutotune(String varName, String dummyVal) {
     waitingForAutotuneConfirm = true;
 }
 
+// Thread safe now
 void CommandProcessor::handleAutotuneConfirm(String input) {
-    waitingForAutotuneConfirm = false;
-    input.trim();
-    input.toLowerCase();
-    
-    if (input == "y" || input == "yes") {
-        logger.println("Accepted. Disabling Autonomous Brain...");
+    if (input == "Y" || input == "y") {
+        logger.println("\n[AUTOTUNE] Requesting Brain to enter Autotune Mode...");
         
-        // Use the centralized BRAIN_ACTIVE variable flag to disable the brain during autotuning
-        // 1. Temporarily disable the brain in RAM (Do not save to NVS!)
-        // We don't want to save this to permanent flash memory,
-        // just in case the robot loses power during the tune and wakes up brain-dead!
-        SysConfig.BRAIN_ACTIVE = false; 
-        
-        // 2. Force the state transition
-        brain.changeMode(&autotuneMode); 
+        // Safely throw the flag to the Behaviour Engine!
+        portENTER_CRITICAL(&hardwareCmdLock);
+        HardwareCommands.requestAutotune = true;
+        portEXIT_CRITICAL(&hardwareCmdLock);
     } else {
-        logger.println("Autotune aborted.");
+        logger.println("\n[AUTOTUNE] Cancelled.");
     }
+    
+    waitingForAutotuneConfirm = false; // Free the CLI
 }
 
 void CommandProcessor::handleResetConfirm(String input) {

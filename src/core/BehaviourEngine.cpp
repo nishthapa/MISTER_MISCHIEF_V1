@@ -1,5 +1,5 @@
-#include "core/BehaviourEngine.h"
 #include <Arduino.h>
+#include "core/BehaviourEngine.h"
 #include "behaviours/Mode_ObstacleAvoidance.h"
 #include "behaviours/Mode_NormalDriving.h"
 #include "behaviours/Mode_CompassLock.h"
@@ -7,13 +7,17 @@
 #include "behaviours/Mode_Dizzy.h"
 #include "behaviours/Mode_DeepSleep.h"
 #include "behaviours/Mode_Teleop.h" // <--- NEW TELEOP MODE
+#include "behaviours/Mode_Diagnostics.h"
+#include "behaviours/Mode_Autotune.h"
 #include "config/ConfigurationManager.h" 
 
 BehaviourEngine::BehaviourEngine(Mode_ObstacleAvoidance* obs, Mode_NormalDriving* norm, 
                                  Mode_CompassLock* comp, Mode_MaintainDistance* dist, 
-                                 Mode_Dizzy* diz, Mode_DeepSleep* sleep, Mode_Teleop* teleop) {
+                                 Mode_Dizzy* diz, Mode_DeepSleep* sleep, Mode_Teleop* teleop,
+                                 Mode_Diagnostics* diag, Mode_AutoTune* autot) {
     obstacleMode = obs; normalMode = norm; compassMode = comp;
     distanceMode = dist; dizzyMode = diz; sleepMode = sleep; teleopMode = teleop;
+    diagnosticMode = diag; autotuneMode = autot;
 
     activeMode = normalMode; previousMode = nullptr; activeMood = Moods::HAPPY;
     isGroggyPhase = false; lastDistance = -1.0f; lastAngles = {0,0,0,0,false,0};
@@ -124,8 +128,21 @@ PerceptionData BehaviourEngine::gatherPerception(const GlobalDataBank& robotData
 
 // === THE PURE DECISION SWITCHBOARD ===
 IRobotMode* BehaviourEngine::determineNextMode(const SemanticEvents& events) {
+
+    // 1. Check the Command Bus for System Overrides
+    bool isDiagnosticRequested = false;
+    bool isAutotuneRequested = false;
+
+    portENTER_CRITICAL(&hardwareCmdLock);
+    isDiagnosticRequested = HardwareCommands.requestMotorTest;
+    isAutotuneRequested = HardwareCommands.requestAutotune;
+    portEXIT_CRITICAL(&hardwareCmdLock);
+
+    // 2. Highest Priority: Developer Overrides
+    if (isDiagnosticRequested) return diagnosticMode;
+    if (isAutotuneRequested) return autotuneMode;
     
-    // Priority 1: Survival Sequences (Cannot be interrupted easily)
+    // Priority 3: Survival Sequences (Cannot be interrupted easily)
     if (activeMode == obstacleMode && !obstacleMode->isSequenceComplete()) return obstacleMode; 
     
     if (activeMode == dizzyMode) {
@@ -133,7 +150,7 @@ IRobotMode* BehaviourEngine::determineNextMode(const SemanticEvents& events) {
         return dizzyMode;
     }
 
-    // Priority 2: Handling Interrupts
+    // Priority 4: Handling Interrupts
     if (events.dizzyTriggered) return dizzyMode;
     
     if (activeMode == compassMode) {
@@ -141,7 +158,7 @@ IRobotMode* BehaviourEngine::determineNextMode(const SemanticEvents& events) {
         return compassMode;
     } else if (events.readyForCompassLock) return compassMode;
 
-    // Priority 3: The Games
+    // Priority 5: The Games
     if (activeMode == distanceMode) {
         if (events.frustrationPeaked) return dizzyMode;
         if (events.targetVanished) return normalMode;
@@ -259,7 +276,7 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
         previousMode = activeMode; // Mode context switch
         activeMode = nextMode;
         if (activeMode != nullptr) activeMode->onEnter(robotData); // <--- PASS IT HERE
-        // GLOBAL_MODE = mapModeToEnum(activeMode); 
+        // GLOBAL_MODE = mapModeToEnum(activeMode); // GLOBAL_MODE now directly resides in GlobalDataBus
     }
 
     // FIX 3: Use the Command Bus to change the IMU filter, safely locked!

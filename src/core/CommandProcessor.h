@@ -26,8 +26,9 @@ private:
     bool waitingForAutotuneConfirm = false;
 
     // --- FOR THE MOTOR TEST WIZARD ---
-    int motorWizardState = 0; 
-    int leftMotorTestAns = 0;
+    // Handled by Mode_Diagnostics now
+    // int motorWizardState = 0; 
+    // int leftMotorTestAns = 0;
     void handleMotorWizardInput(String input);
 
     // Autotuning state handlers

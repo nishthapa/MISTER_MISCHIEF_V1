@@ -4,13 +4,13 @@
 #include "core/BehaviourEngine.h"
 #include "hal/interfaces/I_MotorDriver.h"
 #include "config/ConfigurationManager.h" // Needed for SysConfig
+#include "core/KinematicsEngine.h" // For instructing the Motor Driver to follow the GlobalDataBus Actuation values
 
 // 1. Define the minimal Context Struct
 struct ControlLoopContext {
     BehaviourEngine* brain;
     I_MotorDriver* motorDriver;
-    // Removed teleopMode and normalMode! as mode switching
-    // is done by BehaviourEngine
+    KinematicsEngine* kinematics;
 };
 
 // 2. The FreeRTOS task signature

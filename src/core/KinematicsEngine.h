@@ -1,28 +1,32 @@
 #pragma once
 
-#include "hal/interfaces/I_MotorDriver.h"
+#include <Arduino.h>
 #include "core/PIDController.h"
-#include "core/GlobalDataBus.h" // For reporting telemetry to the global memory bank
 
 class KinematicsEngine {
 private:
-    I_MotorDriver* motorDriver;
     PIDController* pointTurnPID;
     PIDController* arcTurnPID;
 
-    // Helper to safely report telemetry
-    void reportTelemetry(float left, float right);
+    // NEW: Memory to hold the final mathematical answers
+    int16_t outLeftPWM = 0;
+    int16_t outRightPWM = 0;
+    float outTargetHeading = 0.0f;
+    float outHeadingError = 0.0f;
 
     float getShortestAngle(float target, float current);
 
 public:
-    KinematicsEngine(I_MotorDriver* m, PIDController* pointPID, PIDController* arcPID);
+    // Removed the I_MotorDriver!
+    KinematicsEngine(PIDController* pointPID, PIDController* arcPID);
     
-    // The main entry point for closed-loop navigation
     void navigateToHeading(float targetYaw, float currentYaw, float baseSpeed, float moodAggression = 1.0f);
-    
-    // Direct hardware override for open-loop maneuvers (Maneuvers, sweeps, etc.)
     void rawDrive(float leftSpeed, float rightSpeed);
-    
     void stop();
+
+    // NEW: Getters for the Task to pull the answers
+    int16_t getLeftPWM() const { return outLeftPWM; }
+    int16_t getRightPWM() const { return outRightPWM; }
+    float getTargetHeading() const { return outTargetHeading; }
+    float getHeadingError() const { return outHeadingError; }
 };

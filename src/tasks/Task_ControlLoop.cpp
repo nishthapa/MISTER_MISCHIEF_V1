@@ -47,10 +47,41 @@ void ControlLoopTask(void *pvParameters) {
         physicsSnapshot = CurrentRobotData; 
         portEXIT_CRITICAL(&globalDataBusLock);
 
+        // ==========================================
+        // 3. PLAN (Run Brain & Kinematics Math)
+        // ==========================================
+        int16_t finalLeftPWM = 0;
+        int16_t finalRightPWM = 0;
+
         if (physicsSnapshot.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
-            ctx->brain->update(physicsSnapshot); // <-- Using ctx pointer
+            // This runs the state machine. The active mode will internally 
+            // call ctx->kinematics->navigateToHeading(), doing the math!
+            ctx->brain->update(physicsSnapshot); 
+            
+            // Pull the answers from the math engine
+            finalLeftPWM = ctx->kinematics->getLeftPWM();
+            finalRightPWM = ctx->kinematics->getRightPWM();
         } else {
-            ctx->motorDriver->stop();            // <-- Using ctx pointer
+            // IMU Failure Failsafe
+            ctx->kinematics->stop();
+        }
+
+        // ==========================================
+        // 4. SAFELY WRITE INTENT TO CENTRAL NERVOUS SYSTEM
+        // ==========================================
+        portENTER_CRITICAL(&globalDataBusLock);
+        CurrentRobotData.physics.leftMotorPWM = finalLeftPWM;
+        CurrentRobotData.physics.rightMotorPWM = finalRightPWM;
+        CurrentRobotData.controlDebug.targetHeading = ctx->kinematics->getTargetHeading();
+        CurrentRobotData.controlDebug.headingError = ctx->kinematics->getHeadingError();
+        portEXIT_CRITICAL(&globalDataBusLock);
+
+        // ==========================================
+        // 5. ACT (Pulse the Hardware)
+        // ==========================================
+        if (ctx->motorDriver) {
+            // THIS is the only place hardware is touched!
+            ctx->motorDriver->drive(finalLeftPWM, finalRightPWM);
         }
     }
 }

@@ -12,7 +12,8 @@ enum class SystemMode {
     MODE_COMPASS_LOCK,
     MODE_DIZZY,
     MODE_DEEP_SLEEP,
-    MODE_AUTOTUNE
+    MODE_AUTOTUNE,
+    MODE_DIAGNOSTICS
 };
 
 // The global runtime variable
