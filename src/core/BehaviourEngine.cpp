@@ -24,14 +24,17 @@ void BehaviourEngine::init(bool isColdBoot) {
     else { activeMood = Moods::HAPPY; isGroggyPhase = false; }
     
     latchHandler.reset();
-    GLOBAL_MODE = mapModeToEnum(activeMode);
+    
+    // SAFELY PROJECT INITIAL STATE TO THE BUS
+    portENTER_CRITICAL(&globalDataBusLock);
+    CurrentRobotData.cognition.systemMode = mapModeToEnum(activeMode);
+    CurrentRobotData.cognition.robotMood = activeMood;
+    portEXIT_CRITICAL(&globalDataBusLock);
     
     // FIX 1: Pass the global state to onEnter during boot!
     activeMode->onEnter(CurrentRobotData); 
     previousMode = activeMode;
 }
-
-// void BehaviourEngine::changeMode(IRobotMode* newMode) { if (newMode != nullptr) activeMode = newMode; }
 
 void BehaviourEngine::changeMode(IRobotMode* newMode) { 
     if (newMode != nullptr && newMode != activeMode) {
@@ -42,7 +45,11 @@ void BehaviourEngine::changeMode(IRobotMode* newMode) {
         // Boot up the new mode immediately!
         activeMode->onEnter(CurrentRobotData); 
         
-        GLOBAL_MODE = mapModeToEnum(activeMode); 
+        // SAFELY PROJECT NEW COMMANDED STATE TO THE BUS
+        portENTER_CRITICAL(&globalDataBusLock);
+        CurrentRobotData.cognition.systemMode = mapModeToEnum(activeMode);
+        CurrentRobotData.cognition.robotMood = activeMood;
+        portEXIT_CRITICAL(&globalDataBusLock);
     } 
 }
 
@@ -72,7 +79,6 @@ PerceptionData BehaviourEngine::gatherPerception(const GlobalDataBank& robotData
         p.currentDistance = -1.0f; 
     }
     
-
     p.currentGForce = robotData.physics.imuAngles.gForce;
 
     p.distanceDelta = (p.currentDistance != lastDistance && lastDistance > 0.0f) ? (p.currentDistance - lastDistance) : 0.0f;
@@ -162,20 +168,31 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     // If the phone is connected via BLE, we immediately force the manual mode.
     // This ignores whatever Config.BRAIN_ACTIVE is set to.
     if (teleopSnapshot.isConnected) {
-        if (GLOBAL_MODE != SystemMode::MANUAL_OVERRIDE) {
+        if (activeMode != teleopMode) { // Changed from GLOBAL_MODE check
             if (activeMode != nullptr) activeMode->onExit();
+            previousMode = activeMode;
             activeMode = teleopMode;
             activeMode->onEnter(robotData);
-            GLOBAL_MODE = SystemMode::MANUAL_OVERRIDE;
         }
         
-        // Update the teleop mode with the physics
         activeMode->update(activeMood, robotData);
+
+        // SAFELY PROJECT OVERRIDE STATE TO THE BUS
+        portENTER_CRITICAL(&globalDataBusLock);
+        CurrentRobotData.cognition.systemMode = SystemMode::MANUAL_OVERRIDE;
+        CurrentRobotData.cognition.robotMood = activeMood;
+        portEXIT_CRITICAL(&globalDataBusLock);
+
         return;
     }
 
     if (!SysConfig.BRAIN_ACTIVE) {
-        GLOBAL_MODE = SystemMode::MANUAL_OVERRIDE;
+        // SAFELY PROJECT OVERRIDE STATE TO THE BUS
+        portENTER_CRITICAL(&globalDataBusLock);
+        CurrentRobotData.cognition.systemMode = SystemMode::MANUAL_OVERRIDE;
+        CurrentRobotData.cognition.robotMood = activeMood;
+        portEXIT_CRITICAL(&globalDataBusLock);
+
         // FIX 2: Pass sensorState to the manual override update!
         if (activeMode) activeMode->update(activeMood, robotData);
         return;
@@ -183,16 +200,11 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
 
     PerceptionData perception = gatherPerception(robotData);
 
-    // Map the internal metrics for Foxglove Tuning
-    // CurrentRobotData.perception.distanceDelta = perception.distanceDelta;
-    // CurrentRobotData.perception.totalRawEnergy = perception.totalRawEnergy;
-    // CurrentRobotData.perception.rawYawEnergy = perception.rawYawEnergy;
-    // CurrentRobotData.perception.rawPitchEnergy = perception.rawPitchEnergy;
-    // CurrentRobotData.perception.rawRollEnergy = perception.rawRollEnergy;
-    // CurrentRobotData.perception.currentGForce = perception.currentGForce;
+    // Get the current enum locally
+    SystemMode currentSysMode = mapModeToEnum(activeMode);
     
     // Process physical data into semantic meaning
-    SemanticEvents recentEvents = latchHandler.processEvents(perception, GLOBAL_MODE);
+    SemanticEvents recentEvents = latchHandler.processEvents(perception, currentSysMode);
 
     // TAKE THE LOCK
     portENTER_CRITICAL(&globalDataBusLock);
@@ -222,6 +234,7 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     CurrentRobotData.events.smoothedTotalEnergy = latchHandler.getSmoothedTotalEnergy();
     CurrentRobotData.events.frustrationLevel = latchHandler.getFrustrationLevel();
 
+    // Map the Human Interaction triggers / latches using the getters
     CurrentRobotData.events.isHandTeasing = latchHandler.getIsHandTeasing();
     CurrentRobotData.events.isHandVanishing = latchHandler.getIsHandVanishing();
     CurrentRobotData.events.isHandling = latchHandler.getIsHandling();
@@ -229,22 +242,24 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     CurrentRobotData.events.isLowering = latchHandler.getIsLowering();
     CurrentRobotData.events.hasLanded = latchHandler.getHasLanded();
     CurrentRobotData.events.isDizzy = latchHandler.getIsDizzy();
+
+    // Map the Cognitive State
+    CurrentRobotData.cognition.systemMode = currentSysMode;
+    CurrentRobotData.cognition.robotMood = activeMood;
     
     // RELEASE THE LOCK
     portEXIT_CRITICAL(&globalDataBusLock);
 
     // Proceed to mode switching...
-
     IRobotMode* nextMode = determineNextMode(recentEvents);
 
-    // ... Determine next mode ...
-
+    // ... Determine the next mode ...
     if (nextMode != activeMode) {
         if (activeMode != nullptr) activeMode->onExit();
-        previousMode = activeMode;
+        previousMode = activeMode; // Mode context switch
         activeMode = nextMode;
         if (activeMode != nullptr) activeMode->onEnter(robotData); // <--- PASS IT HERE
-        GLOBAL_MODE = mapModeToEnum(activeMode); 
+        // GLOBAL_MODE = mapModeToEnum(activeMode); 
     }
 
     // FIX 3: Use the Command Bus to change the IMU filter, safely locked!

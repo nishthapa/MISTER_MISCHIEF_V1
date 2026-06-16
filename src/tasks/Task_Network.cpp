@@ -47,6 +47,9 @@ void NetworkTask(void *pvParameters) {
                 // Blast System Health (Loop time, Heap, Hardware Bitmask, RSSI)
                 ctx->router->broadcast(Comms::MsgId::SYSTEM_STATUS, snapshot.health);
 
+                // Blast Cognitive State (Mode & Mood)
+                ctx->router->broadcast(Comms::MsgId::ROBOT_STATE, snapshot.cognition);
+
                 // Blast Sensors (Sonar distance)
                 ctx->router->broadcast(Comms::MsgId::DISTANCE_SONAR, snapshot.sensors);
 

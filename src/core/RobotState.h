@@ -16,4 +16,5 @@ enum class SystemMode {
 };
 
 // The global runtime variable
-extern volatile SystemMode GLOBAL_MODE;
+// Not volatile anymore and centralized in GlobalDataBus
+// extern volatile SystemMode GLOBAL_MODE; 

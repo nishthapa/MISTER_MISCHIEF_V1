@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Arduino.h> // <--- for the FreeRTOS definitions
+#include "core/RobotState.h"       // For SystemMode enum
+#include "behaviours/RobotMood.h"  // For RobotMood enum
 #include "hal/interfaces/I_IMU.h"
 #include <stdint.h>
 #include "config/PacketIDRegistry.h" // <-- Brings in your Comms::HealthBit definitions!
@@ -67,6 +69,12 @@ struct PerceptionMetrics {
     float currentGForce = 0.0f;
 };
 
+// COGNITIVE STATE (MODE & MOOD)
+struct CognitiveState {
+    SystemMode systemMode = SystemMode::BOOTING;
+    RobotMood robotMood = Moods::HAPPY; // Default mood
+};
+
 // The Master Wrapper
 struct GlobalDataBank {
     PhysicsState physics;
@@ -74,6 +82,7 @@ struct GlobalDataBank {
     SystemHealthState health;
     EventState events; // <-- New centralized semantic events
     PerceptionMetrics perception; // <-- The new tuning mirror in the telemetry
+    CognitiveState cognition; // <-- Mode and Mood
 };
 
 // =========================================================================

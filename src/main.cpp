@@ -49,7 +49,7 @@ Comms::TelemetryStreamer telemetryRouter;
 // ==========================================
 // INTER-CORE COMMUNICATION (THE BRIDGE)
 // ==========================================
-volatile SystemMode GLOBAL_MODE = SystemMode::BOOTING;
+//volatile SystemMode GLOBAL_MODE = SystemMode::BOOTING;
 
 // Initialize the Hardware Spinlocks
 portMUX_TYPE globalDataBusLock = portMUX_INITIALIZER_UNLOCKED;
