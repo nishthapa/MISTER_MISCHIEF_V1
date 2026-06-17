@@ -1,36 +1,38 @@
 #pragma once
 
 #include <Arduino.h> // <--- MAKE SURE THIS IS INCLUDED!
-#include <WiFi.h>
-#include <WebSocketsServer.h>
+//#include <WiFi.h>
+//#include <WebSocketsServer.h>
 #include <stdarg.h>
 #include <stdint.h>
 
 class RemoteLogger {
 private:
-    WebSocketsServer webSocket; 
-    bool isBluetoothConnected;
+    // WebSocketsServer webSocket; 
+    // bool isBluetoothConnected;
     uint8_t currentMode;
 
     // === THE GATEKEEPER SECRETS ===
-    static volatile int activeWebSocketClients;
-    static volatile unsigned long lastConnectTime;
+    // static volatile int activeWebSocketClients;
+    // static volatile unsigned long lastConnectTime;
 
-    // Helper to handle client connections
-    static void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length);
+    // // Helper to handle client connections
+    // static void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length);
 
 public:
-    RemoteLogger(int port);
+    // RemoteLogger(int port);
+
+    RemoteLogger();
     
-    // Gives the Telemetry Sinks access to the raw server for binary blasting
-    WebSocketsServer& getServer() { return webSocket; }
-    volatile int& getClientCount() { return activeWebSocketClients; }
-    volatile unsigned long& getLastConnectTime() { return lastConnectTime; }
+    // // Gives the Telemetry Sinks access to the raw server for binary blasting
+    // WebSocketsServer& getServer() { return webSocket; }
+    // volatile int& getClientCount() { return activeWebSocketClients; }
+    // volatile unsigned long& getLastConnectTime() { return lastConnectTime; }
 
     // Boot stages
     void beginSerial();
     void bindRadios();
-    void handleClient();
+    //void handleClient();
 
     // For turning on/off from the command line
     void setMode(uint8_t newMode) { currentMode = newMode; }

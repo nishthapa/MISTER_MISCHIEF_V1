@@ -34,13 +34,17 @@ ControlLoopContext controlCtx;
 SensorContext sensorCtx;
 NetworkContext networkCtx;
 
-RemoteLogger logger(SystemConfig::WEBSOCKET_PORT);
+// RemoteLogger logger(SystemConfig::WEBSOCKET_PORT);
+RemoteLogger logger; // IT DOESNT OWN THE WEBSOCKET ANYMORE SO NO PORT NUMBER
 
 // --- TELEMETRY SINK INSTANTIATIONS ---
 USBSink usbSink;
 DebugHexSink debugHexSink;
 // We pass references from the logger so the WebSocketSink knows the server state
-WebSocketSink wifiSink(logger.getServer(), logger.getClientCount(), logger.getLastConnectTime());
+//WebSocketSink wifiSink(logger.getServer(), logger.getClientCount(), logger.getLastConnectTime());
+
+// The Sink now completely owns the port and the server!
+WebSocketSink wifiSink(SystemConfig::WEBSOCKET_PORT);
 
 // ==========================================
 // SMART TELEMETRY ROUTER / STREAMER
@@ -115,7 +119,9 @@ TaskHandle_t ControlLoopTaskHandle;
 TaskHandle_t NetworkTaskHandle; // FIX: Added the 4th task handle!
 
 void setup() {
-  ConfigSys.init(); 
+  ConfigSys.init();
+
+  logger.beginSerial();
 
   int imuRetries = 0;
   while (!imu->init() && imuRetries < SystemConfig::IMU_MAX_RETRIES) {
@@ -124,13 +130,15 @@ void setup() {
       imuRetries++;
   }
   
-  logger.beginSerial();
   RadioManager::initRadios();
   logger.bindRadios();
 
   // Register your hardware sinks (do this once in setup!)
   // telemetryRouter.registerSink(&bluetoothSink); //TO-DO: FLESH IT OUT 
-  if (SysConfig.WIFI_ACTIVE) {telemetryRouter.registerSink(&wifiSink);}
+  if (SysConfig.WIFI_ACTIVE) {
+    wifiSink.begin(); // Start the global sink we defined at the top
+    telemetryRouter.registerSink(&wifiSink); // Wire it into the router!
+  }
   
   //telemetryRouter.registerSink(&usbSink); // Only if you want binary over USB
   //telemetryRouter.registerSink(&debugHexSink); // Only if you want hexadecimal output
@@ -156,7 +164,8 @@ void setup() {
 
   unsigned long waitStart = millis();
   while (millis() - waitStart < SystemConfig::TELNET_WAIT_TIME_MS) {
-      logger.handleClient(); 
+      // Let the SINK handle the background connection during boot!
+      wifiSink.update(); 
       delay(50);
   }
   

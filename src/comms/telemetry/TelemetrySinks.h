@@ -23,25 +23,65 @@ public:
 };
 
 // 2. The Wi-Fi WebSocket Implementation
+// class WebSocketSink : public ITelemetrySink {
+// private:
+//     WebSocketsServer& ws;
+//     volatile int& clientCount;
+//     volatile unsigned long& lastConnectTime;
+
+// public:
+//     // We pass references so the sink can read the Logger's internal state!
+//     WebSocketSink(WebSocketsServer& webSocketRef, volatile int& activeClients, volatile unsigned long& connectTime) 
+//         : ws(webSocketRef), clientCount(activeClients), lastConnectTime(connectTime) {}
+
+//     void sendBinary(const uint8_t* buffer, size_t length) override {
+//         // We cast to (uint8_t*) to satisfy the WebSockets library's strict type requirements
+//         // Using broadcastBIN for zero-overhead binary streaming
+//         ws.broadcastBIN(buffer, length);
+//     }
+
+//     bool isReady() override {
+//         // The 1-second pause firewall is handled securely inside the sink!
+//         return (WiFi.status() == WL_CONNECTED && clientCount > 0 && (millis() - lastConnectTime > 1000));
+//     }
+// };
+
+// 2. The Wi-Fi WebSocket Implementation
 class WebSocketSink : public ITelemetrySink {
 private:
-    WebSocketsServer& ws;
-    volatile int& clientCount;
-    volatile unsigned long& lastConnectTime;
+    WebSocketsServer ws; // IT OWNS THE SERVER NOW!
+    volatile int clientCount = 0;
+    volatile unsigned long lastConnectTime = 0;
 
 public:
-    // We pass references so the sink can read the Logger's internal state!
-    WebSocketSink(WebSocketsServer& webSocketRef, volatile int& activeClients, volatile unsigned long& connectTime) 
-        : ws(webSocketRef), clientCount(activeClients), lastConnectTime(connectTime) {}
+    WebSocketSink(int port) : ws(port) {}
+
+    void begin() {
+        ws.begin();
+        // The lambda securely manages connection events internally
+        ws.onEvent([this](uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
+            switch(type) {
+                case WStype_DISCONNECTED:
+                    if (this->clientCount > 0) this->clientCount--;
+                    break;
+                case WStype_CONNECTED:
+                    this->clientCount++;
+                    this->lastConnectTime = millis();
+                    break;
+            }
+        });
+    }
+
+    // THIS REPLACES logger.handleClient()!
+    void update() override {
+        ws.loop(); 
+    }
 
     void sendBinary(const uint8_t* buffer, size_t length) override {
-        // We cast to (uint8_t*) to satisfy the WebSockets library's strict type requirements
-        // Using broadcastBIN for zero-overhead binary streaming
-        ws.broadcastBIN(buffer, length);
+        ws.broadcastBIN((uint8_t*)buffer, length);
     }
 
     bool isReady() override {
-        // The 1-second pause firewall is handled securely inside the sink!
         return (WiFi.status() == WL_CONNECTED && clientCount > 0 && (millis() - lastConnectTime > 1000));
     }
 };

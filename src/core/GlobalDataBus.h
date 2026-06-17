@@ -81,6 +81,11 @@ struct CognitiveState {
     RobotMood robotMood = Moods::HAPPY; // Default mood
 };
 
+// FOR THE serial.println() telemetry mirror
+struct SystemLogMessage {
+    char text[128] = {0}; // Fixed size in RAM, no memory leaks!
+};
+
 // The Master Wrapper
 struct GlobalDataBank {
     PhysicsState physics;
@@ -90,6 +95,8 @@ struct GlobalDataBank {
     PerceptionMetrics perception; // <-- The new tuning mirror in the telemetry
     CognitiveState cognition; // <-- Mode and Mood
     ControlDebugState controlDebug; // <-- For PID Target and error
+    SystemLogMessage systemLog;
+    bool hasNewLog = false; // pulse true-->false when a serial.println() message is mirrored
 };
 
 // =========================================================================

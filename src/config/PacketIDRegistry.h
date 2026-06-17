@@ -29,10 +29,7 @@ namespace Comms {
         NETWORK_LINK        = 132,  // Wi-Fi RSSI (int8_t), BLE RSSI (int8_t)
         EVENT_STATE         = 135,  // Semantic latches, Dizzy bars, Frustration levels
         PERCEPTION_METRICS  = 136,  // Real-time math derivatives for tuning (latches + energies)
-        TRANSIENT_ALERTS    = 140   // Flushes the instantaneous error/alert queue
-
-        // Timers and Event Latches
-
+        TRANSIENT_ALERTS    = 140   // Human readable text logs (serial.println() mirror)
     };
 
     // =========================================================================

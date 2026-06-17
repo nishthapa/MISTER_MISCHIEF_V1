@@ -13,7 +13,8 @@ namespace Comms {
 
         // A reusable buffer (64 bytes is plenty for our structs)
         // Prevents any dynamic memory allocation (no heap fragmentation!)
-        uint8_t packetBuffer[64]; 
+        // CRITICAL FIX: Increased from 64 to 150 to safely hold 128-byte text logs + packet headers!
+        uint8_t packetBuffer[150]; // Increased for text logs!
 
     public:
         TelemetryStreamer() {}
@@ -23,6 +24,13 @@ namespace Comms {
             if (sinkCount < MAX_SINKS) {
                 activeSinks[sinkCount] = sink;
                 sinkCount++;
+            }
+        }
+
+        // NEW: Let the Streamer run the background loops for all sinks
+        void pollSinks() {
+            for (uint8_t i = 0; i < sinkCount; i++) {
+                activeSinks[i]->update();
             }
         }
 
@@ -36,6 +44,24 @@ namespace Comms {
             for (uint8_t i = 0; i < sinkCount; i++) {
                 // isReady() checks natively if the hardware is connected (e.g. BLE has a client)
                 if (activeSinks[i]->isReady()) { 
+                    activeSinks[i]->sendBinary(packetBuffer, packetSize);
+                }
+            }
+        }
+
+        void broadcastString(MsgId id, const char* text) {
+            uint8_t len = strlen(text);
+            if (len == 0) return;
+            
+            // Hard cap the length just in case, preventing buffer overflows!
+            if (len > 128) len = 128;
+
+            // Build the packet instantly
+            size_t packetSize = BinaryPacketBuilder::buildStringPacket(id, text, len, packetBuffer);
+
+            // Route it to all connected hardware
+            for (uint8_t i = 0; i < sinkCount; i++) {
+                if (activeSinks[i]->isReady()) {
                     activeSinks[i]->sendBinary(packetBuffer, packetSize);
                 }
             }

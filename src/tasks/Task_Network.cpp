@@ -20,10 +20,20 @@ void NetworkTask(void *pvParameters) {
             if (ctx->cli) ctx->cli->processChar(Serial.read());
         }
 
+        // =======================================================
+        // 🚨 CRITICAL FIX: logger.handleClient() IS GONE! 🚨
+        // The logger is now a passive memory courier. It has no 
+        // network privileges and cannot crash the heap!
+        // =======================================================
         // 2. Handle incoming WebSocket handshakes 
-        logger.handleClient();
+        // logger.handleClient();
 
-        // 3. BROADCAST BINARY TELEMETRY
+        // 2. RUN THE NETWORK HEARTBEATS (This runs ws.loop() safely!)
+        if (ctx->router) {
+            ctx->router->pollSinks();
+        }
+
+        // 3. BROADCAST CONTINUOUS BINARY TELEMETRY
         unsigned long currentTime = millis();
         
         if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
@@ -73,8 +83,30 @@ void NetworkTask(void *pvParameters) {
                      
             // logger.println(debugMsg);
         }
+
+        // ==========================================
+        // 3. CHECK FOR NEW TEXT LOGS (TRANSIENT ALERTS)
+        // ==========================================
+        bool shouldBroadcastLog = false;
+        char localLogBuffer[128] = {0};
+        
+        portENTER_CRITICAL(&globalDataBusLock);
+        // If RemoteLogger dropped a message onto the bus...
+        if (CurrentRobotData.hasNewLog) {
+            shouldBroadcastLog = true;
+            // Safely copy it out
+            strncpy(localLogBuffer, CurrentRobotData.systemLog.text, 127); 
+            CurrentRobotData.hasNewLog = false; // Lower the flag
+        }
+        portEXIT_CRITICAL(&globalDataBusLock);
+
+        if (shouldBroadcastLog && ctx->router) {
+            // Uses your custom ID 140!
+            // This safely calculates the string length and ONLY sends the required bytes!
+            ctx->router->broadcastString(Comms::MsgId::TRANSIENT_ALERTS, localLogBuffer);
+        }
         
         // Give the network stack breathing room
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(SystemConfig::MAIN_LOOP_TICK_RATE_MS));
     }
 }

@@ -11,5 +11,8 @@ public:
     virtual void sendBinary(const uint8_t* buffer, size_t length) = 0;
     
     // Keeps the hardware-level health check (e.g., is Bluetooth paired?)
-    virtual bool isReady() = 0; 
+    virtual bool isReady() = 0;
+
+    // NEW: Allow sinks to perform background tasks (like ws.loop())!
+    virtual void update() {}
 };
