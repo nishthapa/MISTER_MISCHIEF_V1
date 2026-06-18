@@ -22,7 +22,7 @@ namespace SystemConfig {
     // SWAP FOR WIFI NETWORKING STABILITY
     constexpr UBaseType_t SENSOR_TASK_CORE_AFFINITY = 1;  // <--- Networking & Sonar belongs on APP CPU!
     constexpr UBaseType_t CONTROL_LOOP_TASK_CORE_AFFINITY = 1; // <--- Physics & Math runs on PRO CPU!
-    constexpr UBaseType_t NETWORK_TASK_CORE_AFFINITY = 1; // <--- Keep the Websocket server on PRO CPU for stability!
+    constexpr UBaseType_t NETWORK_TASK_CORE_AFFINITY = 0; // <--- Keep the Websocket server on PRO CPU for stability!
     
     // --- Loop Rates ---
     constexpr unsigned long MAIN_LOOP_TICK_RATE_MS = 10;  // 10ms = 100Hz (The Physics Engine metronome)

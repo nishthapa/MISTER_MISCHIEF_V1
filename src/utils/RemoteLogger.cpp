@@ -18,7 +18,7 @@ void RemoteLogger::bindRadios() {
         Serial.println("=== TELEMETRY ROUTER ONLINE ===");
         Serial.println("[USB] ONLINE");
         Serial.print("[WIFI] ");
-        if (currentMode & SysConfig.DEBUG_WIFI) Serial.println("ROUTED VIA TELEMETRY STREAMER");
+        if (currentMode & SysConfig.DEBUG_WIFI & SysConfig.WIFI_ACTIVE) Serial.println("ROUTED VIA TELEMETRY STREAMER");
         else Serial.println("OFF / UNAVAILABLE");
         Serial.println("===============================\n");
     }

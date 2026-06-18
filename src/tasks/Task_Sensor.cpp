@@ -80,8 +80,12 @@ void SensorTask(void *pvParameters) {
         if (currentTime - lastSonarTime >= 50) { 
             lastSonarTime = currentTime;
             if (ctx->sonar) {
+                // 1. Wait for the physical sound wave OUTSIDE the spinlock
+                float currentDistance = ctx->sonar->getDistanceCM(); 
+
+                // 2. Lock the bus only for the microsecond it takes to save the variable
                 portENTER_CRITICAL(&globalDataBusLock); 
-                CurrentRobotData.sensors.distanceCM = ctx->sonar->getDistanceCM();
+                CurrentRobotData.sensors.distanceCM = currentDistance;
                 portEXIT_CRITICAL(&globalDataBusLock);
             }
         }

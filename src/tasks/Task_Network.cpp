@@ -16,6 +16,10 @@ void NetworkTask(void *pvParameters) {
     NetworkContext* ctx = static_cast<NetworkContext*>(pvParameters);
     unsigned long lastTelemetryTime = 0;
 
+    // STATE VARIABLES FOR WIFI RSSI
+    unsigned long lastRSSITime = 0;      
+    int8_t currentWifiRSSI = -127;
+
     for (;;) {
         // 1. Read CLI input securely
         while (Serial.available()) {
@@ -37,17 +41,28 @@ void NetworkTask(void *pvParameters) {
 
         // 3. BROADCAST CONTINUOUS BINARY TELEMETRY
         unsigned long currentTime = millis();
+
+        // ==========================================
+        // 🚨 MEASURE LIVE SIGNAL STRENGTH (RSSI)
+        // EVERY 2 SECONDS
+        // ==========================================
+        if (currentTime - lastRSSITime >= 2000) {
+            lastRSSITime = currentTime;
+            if (WiFi.status() == WL_CONNECTED) {
+                currentWifiRSSI = WiFi.RSSI(); // Safe, infrequent hardware poll
+            } else {
+                currentWifiRSSI = -127;
+            }
+        }
         
         if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
             lastTelemetryTime = currentTime;
 
-            // ==========================================
-            // 🚨 MEASURE LIVE SIGNAL STRENGTH (RSSI)
-            // ==========================================
-            int8_t currentWifiRSSI = -127;
-            if (WiFi.status() == WL_CONNECTED) {
-                currentWifiRSSI = WiFi.RSSI(); // Poll the hardware driver
-            }
+            
+            // int8_t currentWifiRSSI = -127;
+            // if (WiFi.status() == WL_CONNECTED) {
+            //     currentWifiRSSI = WiFi.RSSI(); // Poll the hardware driver
+            // }
 
             portENTER_CRITICAL(&globalDataBusLock);
             CurrentRobotData.networkLink.wifiRSSI = currentWifiRSSI;
@@ -112,7 +127,8 @@ void NetworkTask(void *pvParameters) {
         if (CurrentRobotData.hasNewLog) {
             shouldBroadcastLog = true;
             // Safely copy it out
-            strncpy(localLogBuffer, CurrentRobotData.systemLog.text, 127); 
+            strncpy(localLogBuffer, CurrentRobotData.systemLog.text, 127);
+            localLogBuffer[127] = '\0'; // Guarantee termination 
             CurrentRobotData.hasNewLog = false; // Lower the flag
         }
         portEXIT_CRITICAL(&globalDataBusLock);
