@@ -12,7 +12,7 @@ struct FusedAngles {
     // --- THE FUTURE-PROOF COMPASS DATA ---
     bool hasCompass;       // Tells the robot if it can trust the absolute heading
     float compassHeading;  // Absolute Magnetic North (0 to 360 degrees)
-};
+}__attribute__((packed));
 
 // The Contract: Every IMU must implement these functions
 class I_IMU {

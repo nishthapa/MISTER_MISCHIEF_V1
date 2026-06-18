@@ -14,27 +14,27 @@ struct PhysicsState {
     FusedAngles imuAngles = {0.0f, 0.0f, 0.0f, 0.0f, false, 0}; // Safe zeroes      // MsgId 101: Attitude & G-Force
     int16_t leftMotorPWM = 0;       // MsgId 104: Actuators (Left Track Current Power)
     int16_t rightMotorPWM = 0;      // MsgId 104: Actuators (Right Track Current Power)
-};
+}__attribute__((packed));
 
 struct SensorState {
     float distanceCM = -1.0f;           // MsgId 110: Sonar Distance
     uint16_t batteryVoltageMV = 0;  // MsgId 111: Future INA226 Voltage Expansion
     int16_t currentDrawMA = 0;      // MsgId 111: Future INA226 Current Expansion
-};
+}__attribute__((packed));
 
 struct SystemHealthState {
     uint32_t loopTimeUs = 0;        // MsgId 130: Main physics loop speed
     uint32_t freeHeap = 0;          // MsgId 130: RAM available
     uint16_t hardwareBitmask = 0;   // MsgId 130: Alive components (Uses Comms::HealthBit)
-    int8_t wifiRSSI = 0;            // MsgId 132: Wi-Fi Signal Strength
-    int8_t bleRSSI = 0;             // MsgId 132: Bluetooth Signal Strength
-};
+    //int8_t wifiRSSI = 0;            // MsgId 132: Wi-Fi Signal Strength // Moved to NetworkLinkState
+    //int8_t bleRSSI = 0;             // MsgId 132: Bluetooth Signal Strength // Moved to NetworkLinkState
+}__attribute__((packed));
 
 // CONTROL DEBUG (PID & Target tracking)
 struct ControlDebugState {
     float targetHeading = 0.0f; 
     float headingError = 0.0f;  
-};
+}__attribute__((packed));
 
 // NEW: Unified Event State
 struct EventState {
@@ -63,7 +63,7 @@ struct EventState {
     bool isLowering = false;
     bool hasLanded = false;
     bool isDizzy = false;
-};
+}__attribute__((packed));
 
 // FOR TELEMETRY (Intermediate Math & Tuning Metrics)
 struct PerceptionMetrics {
@@ -73,24 +73,24 @@ struct PerceptionMetrics {
     float rawPitchEnergy = 0.0f;
     float rawRollEnergy = 0.0f;
     float currentGForce = 0.0f;
-};
+}__attribute__((packed));
 
 // COGNITIVE STATE (MODE & MOOD)
 struct CognitiveState {
     SystemMode systemMode = SystemMode::BOOTING;
     RobotMood robotMood = Moods::HAPPY; // Default mood
-};
+}__attribute__((packed));
 
 // FOR THE serial.println() telemetry mirror
 struct SystemLogMessage {
     char text[128] = {0}; // Fixed size in RAM, no memory leaks!
-};
+}__attribute__((packed));
 
 // FOR MAINTAINING WIFI/BT RSSI
 struct NetworkLinkState {
     int8_t wifiRSSI = -127; // -127 dBm is the standard "Dead Signal" value
     int8_t bleRSSI = -127; 
-};
+}__attribute__((packed));
 
 // The Master Wrapper
 struct GlobalDataBank {
@@ -118,7 +118,13 @@ struct HardwareCommandBus {
     bool requestMotorTest = false;
     uint8_t diagnosticAnswer = 0; // <--- 0 = waiting, 1-5 = user answer
     bool requestAutotune = false; // <--- NEW: Flag for Autotune
-    bool reloadPIDTunings = false; // <--- NEW: Safety flag or PID tuning changes
+
+    // --- NEW: The Live-Tuning Pipeline ---
+    bool reloadPIDTunings = false; 
+    float incomingP = 0.0f;
+    float incomingI = 0.0f;
+    float incomingD = 0.0f;
+    uint8_t targetPIDController = 0; // 0 = None, 1 = Point Turn, 2 = Arc Turn, 3 = Distance
 };
 
 struct TeleopCommandBus {
@@ -126,17 +132,8 @@ struct TeleopCommandBus {
     float joyY = 0.0f;       // -1.0f (Reverse) to 1.0f (Forward)
     bool usePIDDrive = false; // Toggles between RAW motor mixing and PID Heading Hold
     bool isConnected = false; // Failsafe: Stops robot if BLE drops
+    bool emergencyKillSwitch = false; // <--- NEW: Software instant-stop
 };
-
-// The global lock object
-// extern portMUX_TYPE globalDataBusLock; // TODO: Flesh it out for atomic reads/writes
-
-// =========================================================================
-// GLOBAL CROSS-CORE INSTANCES
-// =========================================================================
-// extern volatile GlobalDataBank CurrentRobotData;
-// extern volatile HardwareCommandBus HardwareCommands;
-// extern volatile TeleopCommandBus TeleopCommands;
 
 // =========================================================================
 // GLOBAL CROSS-CORE INSTANCES (attemp at implementing spinlocks
