@@ -21,6 +21,27 @@ void ControlLoopTask(void *pvParameters) {
     static bool wasBleConnected = false;
 
     for (;;) {
+        // ==========================================
+        // 🚨 OTA GRACEFUL SHUTDOWN CHECK 🚨
+        // ==========================================
+        bool isOTAActive = false;
+        portENTER_CRITICAL(&globalDataBusLock);
+        isOTAActive = CurrentRobotData.otaUpdateStarted;
+        portEXIT_CRITICAL(&globalDataBusLock);
+
+        if (isOTAActive) {
+            // 1. HARD STOP the motors instantly if an OTA update is started!
+            // Bypass the math engine and slam the hardware brakes directly
+            if (ctx->motorDriver) {
+                ctx->motorDriver->stop(); 
+            }
+            
+            logger.println("[PHYSICS] OTA Detected. Motors HALTED. Task Suspended.");
+            
+            // 2. Put this FreeRTOS task to sleep permanently (until reboot)
+            vTaskSuspend(NULL); 
+        }
+
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
 
         // --- THE TELEOPERATION OVERRIDE WATCHDOG ---

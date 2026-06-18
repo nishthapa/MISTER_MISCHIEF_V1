@@ -1,6 +1,7 @@
 #include "tasks/Task_Sensor.h"
 #include "core/GlobalDataBus.h"
 #include "config/SystemConfig.h"
+#include "utils/RemoteLogger.h"
 
 // ==========================================
 // TASK 1: THE GATHERER (CORE 1 - APP CPU)
@@ -11,6 +12,19 @@ void SensorTask(void *pvParameters) {
     unsigned long lastSonarTime = 0;
 
     for (;;) {
+        // ==========================================
+        // 🚨 OTA GRACEFUL SHUTDOWN CHECK 🚨
+        // ==========================================
+        bool isOTAActive = false;
+        portENTER_CRITICAL(&globalDataBusLock);
+        isOTAActive = CurrentRobotData.otaUpdateStarted;
+        portEXIT_CRITICAL(&globalDataBusLock);
+
+        if (isOTAActive) {
+            logger.println("[SENSOR] OTA Detected. I2C Bus Released. Task Suspended.");
+            vTaskSuspend(NULL); 
+        }
+
         // ==========================================
         // 0. SAFELY EXECUTE HARDWARE COMMANDS
         // ==========================================

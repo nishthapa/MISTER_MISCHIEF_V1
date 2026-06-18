@@ -2,6 +2,7 @@
 #include "core/GlobalDataBus.h"
 #include "config/SystemConfig.h"
 #include "utils/RemoteLogger.h"
+#include "utils/OTAManager.h" // for OTA flashing
 
 extern RemoteLogger logger;
 
@@ -85,7 +86,7 @@ void NetworkTask(void *pvParameters) {
         }
 
         // ==========================================
-        // 3. CHECK FOR NEW TEXT LOGS (TRANSIENT ALERTS)
+        // 4. CHECK FOR NEW TEXT LOGS (TRANSIENT ALERTS)
         // ==========================================
         bool shouldBroadcastLog = false;
         char localLogBuffer[128] = {0};
@@ -105,6 +106,11 @@ void NetworkTask(void *pvParameters) {
             // This safely calculates the string length and ONLY sends the required bytes!
             ctx->router->broadcastString(Comms::MsgId::TRANSIENT_ALERTS, localLogBuffer);
         }
+
+        // ==========================================
+        // 5. HANDLE OTA UPDATES
+        // ==========================================
+        OTAManager::handle();
         
         // Give the network stack breathing room
         vTaskDelay(pdMS_TO_TICKS(SystemConfig::MAIN_LOOP_TICK_RATE_MS));

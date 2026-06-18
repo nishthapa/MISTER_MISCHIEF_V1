@@ -97,6 +97,7 @@ struct GlobalDataBank {
     ControlDebugState controlDebug; // <-- For PID Target and error
     SystemLogMessage systemLog;
     bool hasNewLog = false; // pulse true-->false when a serial.println() message is mirrored
+    bool otaUpdateStarted = false; // NEW: OTA Graceful Shutdown Flag
 };
 
 // =========================================================================

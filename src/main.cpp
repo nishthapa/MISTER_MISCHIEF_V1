@@ -28,6 +28,7 @@
 #include "tasks/Task_ControlLoop.h"
 #include "tasks/Task_Sensor.h"
 #include "tasks/Task_Network.h"
+#include "utils/OTAManager.h"
 
 // 1. Declare the context struct globally so it doesn't get destroyed after setup()
 ControlLoopContext controlCtx;
@@ -211,6 +212,9 @@ void setup() {
   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info){
     logger.print("\n[WIFI-EVENT] SUCCESS! Robot is ONLINE at IP: ");
     logger.println(WiFi.localIP().toString());
+
+    // START LISTENING FOR OTA FIRMWARE UPDATES!
+    OTAManager::begin();
   }, ARDUINO_EVENT_WIFI_STA_GOT_IP);
 
   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info){
