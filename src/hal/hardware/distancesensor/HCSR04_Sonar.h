@@ -10,7 +10,7 @@ private:
     int trigPin;
     int echoPin;
     NewPing* sonar; 
-    MedianFilter<5> filter;
+    MedianFilter<3> filter;
 
     float lastAcceptedRaw = 0.0f;
     int outlierStreak = 0;

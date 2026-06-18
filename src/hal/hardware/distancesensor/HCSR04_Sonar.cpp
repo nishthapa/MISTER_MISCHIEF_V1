@@ -81,15 +81,17 @@ float HCSR04_Sonar::getDistanceCM() {
     // 4. Feed the clean data to the Median Filter to kill SPIKES
     float medianDistance = filter.addSample(rawDistance);
     
+    // disabled EMA filter to avoid sonar phase lag
     // 5. Feed the Median result into the EMA Filter to kill FUZZ
-    if (emaDistance < 0.0f) {
-        // If it's the very first boot ping, sync the cache to reality!
-        emaDistance = medianDistance;
-    } else {
-        // EMA Math: Blend the new reading with the historical average
-        // (Assuming EMA_ALPHA is defined in your header, usually ~0.2f to 0.4f)
-        emaDistance = (EMA_ALPHA * medianDistance) + ((1.0f - EMA_ALPHA) * emaDistance);
-    }
+    // if (emaDistance < 0.0f) {
+    //     // If it's the very first boot ping, sync the cache to reality!
+    //     emaDistance = medianDistance;
+    // } else {
+    //     // EMA Math: Blend the new reading with the historical average
+    //     // (Assuming EMA_ALPHA is defined in your header, usually ~0.2f to 0.4f)
+    //     emaDistance = (EMA_ALPHA * medianDistance) + ((1.0f - EMA_ALPHA) * emaDistance);
+    // }
 
-    return emaDistance; 
+    //return emaDistance;
+    return medianDistance;
 }
