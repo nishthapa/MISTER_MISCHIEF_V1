@@ -43,6 +43,7 @@ void Mode_ObstacleAvoidance::update(const RobotMood& currentMood, const GlobalDa
         case SWEEP_RIGHT:
             {
                 // 1. WHICH WAY ARE WE SWEEPING?
+                // To-do: implement sweep speed tuning in Mode_Autotune
                 float sweepPWM = 65.0f; // Slow, deliberate scan speed // To-do: Move to NVS config storage
                 // Expanded to 95 degrees to ensure we see parallel escape routes!
                 float targetOffset = (currentState == SWEEP_LEFT) ? -95.0f : 95.0f; // To-do: Move to SystemConfig
