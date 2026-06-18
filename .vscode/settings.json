@@ -1,0 +1,4 @@
+{
+    "cortex-debug.showDisassembly": "never",
+    "debug.showDisassembly": "never"
+}
