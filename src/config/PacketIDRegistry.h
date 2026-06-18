@@ -43,7 +43,8 @@ namespace Comms {
         MAINTAIN_DISTANCE   = 4,
         COMPASS_LOCK        = 5,
         DIZZY               = 6,
-        AUTO_TUNE           = 7
+        AUTO_TUNE           = 7,
+        DIAGNOSTICS         = 8
     };
 
     // =========================================================================
@@ -63,14 +64,35 @@ namespace Comms {
     // Used to pack the state of all components into a single 16-bit field
     // =========================================================================
     namespace HealthBit {
-        constexpr uint16_t IMU_OK           = (1 << 0);  // MPU6050 alive and calibrating/running
-        constexpr uint16_t SONAR_OK         = (1 << 1);  // HCSR04 sending and receiving echoes
-        constexpr uint16_t I2C_BUS_OK       = (1 << 2);  // Main I2C bus clear of lockups
-        constexpr uint16_t SPI_BUS_OK       = (1 << 3);  // Auxiliary SPI bus stable
-        constexpr uint16_t MOTOR_DRIVER_OK  = (1 << 4);  // XY160D driver pins/timers responding
-        constexpr uint16_t POWER_MONITOR_OK = (1 << 5);  // Battery/INA226 communications healthy
-        constexpr uint16_t BLE_CONNECTED    = (1 << 6);  // Active central device connected
-        constexpr uint16_t FREE_RTOS_ALIVE  = (1 << 7);  // Watchdog happy, tasks executing within deadline
+        // FREERTOS STATUS 
+        constexpr uint16_t FREE_RTOS_ALIVE      = (1 << 0);  // Watchdog happy, tasks executing within deadline
+        
+        // SENSOR BUSES
+        constexpr uint16_t I2C_BUS_OK           = (1 << 1);  // Main I2C bus clear of lockups
+        constexpr uint16_t SPI_BUS_OK           = (1 << 2);  // Auxiliary SPI bus stable
+
+        // SENSOR HEALTH
+        constexpr uint16_t IMU_OK               = (1 << 3);  // IMU alive and calibrating/running
+        constexpr uint16_t MAG_OK               = (1 << 4);  // Magnetometer ok/available
+        constexpr uint16_t BARO_OK              = (1 << 5);  // Barometer ok/available
+        constexpr uint16_t SONAR_OK             = (1 << 6);  // HCSR04 sending and receiving echoes
+        constexpr uint16_t GPS_OK               = (1 << 7);  // GPS ok/available
+        // constexpr uint16_t TOF_OK               = (1 << 8);  // Time of Flight available/ok
+        constexpr uint16_t CLIFF_IR_OK          = (1 << 8);  // Infrared cliff sensor(s) available/ok
+        constexpr uint16_t LIDAR_OK             = (1 << 9); // LIDAR available/ok
+       
+        // OTHER HARDWARE HEALTH
+        constexpr uint16_t MOTOR_DRIVER_OK      = (1 << 10);  // XY160D driver pins/timers responding
+        constexpr uint16_t POWER_MONITOR_OK     = (1 << 11);  // Battery/INA226 communications healthy
+
+        // SELF RIGHTING BITS // These dont belong here!
+        // constexpr uint16_t ROBOT_FLIPPED        = (1 << 13);  // Indicator or whether robot is flipped or on its sides
+        constexpr uint16_t ANTIFLIP_SERVO_OK    = (1 << 12);  // Servo to self right if the robot flips available/ok
+        
+        // NETWORK STATES
+        constexpr uint16_t WIFI_CONNECTED       = (1 << 13);  // <--- NEW: Wi-Fi connected to router
+        constexpr uint16_t BLE_CONNECTED        = (1 << 14);  // Active central device connected
+        constexpr uint16_t USB_CONNECTED        = (1 << 15);  // USB connected
     }
 
     // =========================================================================
@@ -81,14 +103,14 @@ namespace Comms {
         NONE                    = 0,
         
         // Bus & Hardware Blips
-        I2C_TIMEOUT             = 10,  // I2C bus temporarily dropped a packet
-        I2C_NACK                = 11,  // Device didn't acknowledge address
-        SPI_CRC_ERROR           = 20,  // SPI corrupted data detected
-        SPI_TIMEOUT             = 21,  // SPI bus timed out during transmission
+        //I2C_TIMEOUT             = 10,  // I2C bus temporarily dropped a packet
+        //I2C_NACK                = 11,  // Device didn't acknowledge address
+        //SPI_CRC_ERROR           = 20,  // SPI corrupted data detected
+        //SPI_TIMEOUT             = 21,  // SPI bus timed out during transmission
         
         // Sensor Anomalies
-        IMU_DATA_STALE          = 30,  // FIFO buffer didn't update in time
-        IMU_FIFO_OVERFLOW       = 31,  // MPU6050 internal memory overflowed
+        //IMU_DATA_STALE          = 30,  // FIFO buffer didn't update in time
+        //IMU_FIFO_OVERFLOW       = 31,  // MPU6050 internal memory overflowed
         SONAR_TIMEOUT           = 40,  // Echo pin never returned high
         SONAR_OUT_OF_BOUNDS     = 41,  // Distance jumped drastically outside physical limits
         
@@ -102,9 +124,9 @@ namespace Comms {
         CURRENT_SPIKE_LIMIT     = 62,  // Hard overcurrent protection tripped
         
         // Connectivity & Link Safeguards
-        WIFI_DISCONNECTED       = 70,  // Unexpected drop from the Wi-Fi router
-        BLE_CLIENT_DROPPED      = 71,  // Android app disconnected abruptly
-        LINK_QUALITY_CRITICAL   = 72,  // RSSI dropped below safe control threshold (e.g., -90dBm)
+        // WIFI_DISCONNECTED       = 70,  // Unexpected drop from the Wi-Fi router
+        // BLE_CLIENT_DROPPED      = 71,  // Android app disconnected abruptly
+        // LINK_QUALITY_CRITICAL   = 72,  // RSSI dropped below safe control threshold (e.g., -90dBm)
 
         // Software OS Health
         TELEMETRY_QUEUE_FULL    = 80,  // Network buffers filling up faster than link can stream

@@ -84,7 +84,10 @@ void Mode_AutoTune::update(const RobotMood& currentMood, const GlobalDataBank& r
                 
                 // THE FIX: Drop a flag on the Command Bus!
                 // SensorTask on Core 1 will see this and physically calibrate the IMU.
-                HardwareCommands.requestGyroCalibration = true; 
+                // 🔒 SAFELY Drop a flag on the Command Bus for it!
+                portENTER_CRITICAL(&hardwareCmdLock);
+                HardwareCommands.requestGyroCalibration = true;
+                portEXIT_CRITICAL(&hardwareCmdLock);
                 
                 startYaw = currentYaw; // Snapshot the exact starting heading
                 

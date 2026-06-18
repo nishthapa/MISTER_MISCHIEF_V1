@@ -213,6 +213,11 @@ void setup() {
     logger.print("\n[WIFI-EVENT] SUCCESS! Robot is ONLINE at IP: ");
     logger.println(WiFi.localIP().toString());
 
+    // Flip the WiFi connected Health Bit ON
+    portENTER_CRITICAL(&globalDataBusLock);
+    CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::WIFI_CONNECTED;
+    portEXIT_CRITICAL(&globalDataBusLock);
+
     // START LISTENING FOR OTA FIRMWARE UPDATES!
     OTAManager::begin();
   }, ARDUINO_EVENT_WIFI_STA_GOT_IP);
@@ -223,6 +228,11 @@ void setup() {
       // broadcast over a dead interface and crash the memory!
       Serial.println("\n[WIFI-EVENT] Disconnected from AP.");
       //logger.println("\n[WIFI-EVENT] Disconnected from AP.");
+      
+      // Flip the WiFi connected Health Bit OFF
+      portENTER_CRITICAL(&globalDataBusLock);
+      CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::WIFI_CONNECTED;
+      portEXIT_CRITICAL(&globalDataBusLock);
   }, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   
   // Pack needed contexts for the new isolated ColtrolLoopTask

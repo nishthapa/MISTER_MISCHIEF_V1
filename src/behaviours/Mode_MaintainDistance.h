@@ -8,6 +8,7 @@ class Mode_MaintainDistance : public IRobotMode {
 private:
     KinematicsEngine* kinematics; // NO SONAR! Handled by the RobotData now
     PIDController* pid;
+    float lockedHeading; // <--- NEW: Stores the heading to keep the robot straight!
 
 public:
     Mode_MaintainDistance(KinematicsEngine* k, PIDController* p);

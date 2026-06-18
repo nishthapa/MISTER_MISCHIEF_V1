@@ -3,6 +3,7 @@
 #include "config/SystemConfig.h"
 #include "utils/RemoteLogger.h"
 #include "utils/OTAManager.h" // for OTA flashing
+#include <Wifi.h>
 
 extern RemoteLogger logger;
 
@@ -40,9 +41,21 @@ void NetworkTask(void *pvParameters) {
         if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
             lastTelemetryTime = currentTime;
 
+            // ==========================================
+            // 🚨 MEASURE LIVE SIGNAL STRENGTH (RSSI)
+            // ==========================================
+            int8_t currentWifiRSSI = -127;
+            if (WiFi.status() == WL_CONNECTED) {
+                currentWifiRSSI = WiFi.RSSI(); // Poll the hardware driver
+            }
+
+            portENTER_CRITICAL(&globalDataBusLock);
+            CurrentRobotData.networkLink.wifiRSSI = currentWifiRSSI;
+            // CurrentRobotData.networkLink.bleRSSI = ... (Add this later when Android app is built!)
+            portEXIT_CRITICAL(&globalDataBusLock);
+
             // --- THE SNAPSHOT SPINLOCK ---
             GlobalDataBank snapshot; 
-            
             portENTER_CRITICAL(&globalDataBusLock);
             snapshot = CurrentRobotData; 
             portEXIT_CRITICAL(&globalDataBusLock);
@@ -69,6 +82,9 @@ void NetworkTask(void *pvParameters) {
 
                 // Blast Perception data (raw energies)
                 ctx->router->broadcast(Comms::MsgId::PERCEPTION_METRICS, snapshot.perception);
+
+                // Blast Network Link (Signal strength)
+                ctx->router->broadcast(Comms::MsgId::NETWORK_LINK, snapshot.networkLink);
             }
 
             //experimental: just to view in serial monitor for now

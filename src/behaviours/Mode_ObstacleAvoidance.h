@@ -15,7 +15,7 @@ private:
     KinematicsEngine* kinematics; // NO SONAR OR IMU POINTERS! Handled by the RobotData now
 
     // The streamlined Cockroach dance
-    enum SequenceState { BACKING_UP, RADAR_SWEEP, CALCULATING, ALIGNING, ESCAPE, FINISHED };
+    enum SequenceState { BACKING_UP, SWEEP_LEFT, SWEEP_RIGHT, CALCULATING, ALIGNING, ESCAPE, FINISHED };
     SequenceState currentState;
     unsigned long stateStartTime;
     unsigned long lastPingTime;

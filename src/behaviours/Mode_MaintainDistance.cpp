@@ -11,7 +11,11 @@ Mode_MaintainDistance::Mode_MaintainDistance(KinematicsEngine* k, PIDController*
 void Mode_MaintainDistance::onEnter(const GlobalDataBank& robotData) {
     logger.println("Mister Mischief is maintaining distance!");
 
-    // WIPE THE PID MEMORY! 
+    // 1. SNAPSHOT THE HEADING!
+    // The exact moment the mode starts, memorize the forward direction.
+    lockedHeading = robotData.physics.imuAngles.yaw;
+
+    // 2. WIPE THE PID MEMORY! 
     // This stops the massive D-term kick that was slamming him into your hand.
     pid->reset();
 }
@@ -46,10 +50,21 @@ void Mode_MaintainDistance::update(const RobotMood& currentMood, const GlobalDat
     // Apply the perfectly smoothed correction to the tracks continuously
     float finalSpeed = lastCorrection * currentMood.speedMultiplier;
 
-    // Check if the distance sensor is okay
+    // Check if the distance sensor is okay to drive at all
     if (robotData.health.hardwareBitmask & Comms::HealthBit::SONAR_OK) {
-        kinematics->rawDrive(-finalSpeed, -finalSpeed);
+        
+        // === THE STABILIZATION FIREWALL ===
+        if (robotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
+            // SMART DRIVE: Uses the Sonar for speed, and the IMU to drive perfectly straight!
+            // Note: We pass -finalSpeed as the baseSpeed to move forward/backward.
+            kinematics->navigateToHeading(lockedHeading, robotData.physics.imuAngles.yaw, -finalSpeed, currentMood.pidAggression);
+        } else {
+            // DUMB FALLBACK: If the IMU dies mid-game, revert to open-loop track mixing
+            kinematics->rawDrive(-finalSpeed, -finalSpeed);
+        }
     }
+
+
 }
 
 void Mode_MaintainDistance::onExit() { 

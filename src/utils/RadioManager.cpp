@@ -15,25 +15,42 @@ NimBLEServer* pServer = NULL;
 class BleServerCallbacks : public NimBLEServerCallbacks {
     // Signature updated: ble_gap_conn_desc* replaced with NimBLEConnInfo&
     void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override {
+        // Flip the BT LE connected Health Bit ON
+        portENTER_CRITICAL(&globalDataBusLock);
+        CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::BLE_CONNECTED;
+        portEXIT_CRITICAL(&globalDataBusLock);
+
+        portENTER_CRITICAL(&teleopCmdLock);
         TeleopCommands.isConnected = true;
+        
         // Do NOT print here! The heap is locked during callbacks! and Serial.print/ln is a blocking call
         // Serial.println("\n[BLE] Remote Control App Connected!");
+        portEXIT_CRITICAL(&teleopCmdLock);
+
+        
     }
 
     // Signature updated: ble_gap_conn_desc* replaced with NimBLEConnInfo& + added int reason
     void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override {
+        portENTER_CRITICAL(&teleopCmdLock);
         TeleopCommands.isConnected = false;
         
         // FAILSAFE: Zero out all kinematic commands immediately if phone disconnects!
         TeleopCommands.joyX = 0.0f;
         TeleopCommands.joyY = 0.0f;
         TeleopCommands.usePIDDrive = false;
+        portEXIT_CRITICAL(&teleopCmdLock);
         
         // Do NOT print here! The heap is locked during callbacks! and Serial.print/ln is a blocking call
         // Serial.println("\n[BLE] Remote Control Disconnected. Failsafe triggered. Restarting advertising...");
         
         // Standard BLE protocol requires manually restarting advertising after a client drops
         pServer->startAdvertising(); 
+
+        // Flip the BT LE connected Health Bit OFF
+        portENTER_CRITICAL(&globalDataBusLock);
+        CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::BLE_CONNECTED;
+        portEXIT_CRITICAL(&globalDataBusLock);
     }
 };
 
@@ -57,9 +74,12 @@ class BleCommandCallbacks : public NimBLECharacteristicCallbacks {
             bool rxPID = (payload[8] != 0);
 
             // Push directly to the cross-core memory bank for the physics thread to consume
+            // 🚨 SECURE THE CROSS-CORE MEMORY TRANSFER 🚨
+            portENTER_CRITICAL(&teleopCmdLock);
             TeleopCommands.joyX = rxX;
             TeleopCommands.joyY = rxY;
             TeleopCommands.usePIDDrive = rxPID;
+            portEXIT_CRITICAL(&teleopCmdLock);
         }
     }
 };

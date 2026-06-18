@@ -86,6 +86,12 @@ struct SystemLogMessage {
     char text[128] = {0}; // Fixed size in RAM, no memory leaks!
 };
 
+// FOR MAINTAINING WIFI/BT RSSI
+struct NetworkLinkState {
+    int8_t wifiRSSI = -127; // -127 dBm is the standard "Dead Signal" value
+    int8_t bleRSSI = -127; 
+};
+
 // The Master Wrapper
 struct GlobalDataBank {
     PhysicsState physics;
@@ -96,6 +102,7 @@ struct GlobalDataBank {
     CognitiveState cognition; // <-- Mode and Mood
     ControlDebugState controlDebug; // <-- For PID Target and error
     SystemLogMessage systemLog;
+    NetworkLinkState networkLink; // <--- NEW: Live Signal Bars FOR WIFI/BT!
     bool hasNewLog = false; // pulse true-->false when a serial.println() message is mirrored
     bool otaUpdateStarted = false; // NEW: OTA Graceful Shutdown Flag
 };
