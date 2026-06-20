@@ -233,8 +233,8 @@ namespace FactoryDefaults {
     // ==========================================
     // NETWORK AND COMMS
     // ==========================================
-    constexpr const char* WIFI_SSID = "";       
-    constexpr const char* WIFI_PASSWORD = "";
+    constexpr const char* WIFI_SSID = "Airtel_Hevnoraak";       
+    constexpr const char* WIFI_PASSWORD = "Kalimpong@321";
     constexpr bool WIFI_ACTIVE = false;         
     constexpr const char* BT_NAME = "Mister_Mischief";
     constexpr bool BT_ACTIVE = false;

@@ -223,7 +223,18 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     // Process physical data into semantic meaning
     SemanticEvents recentEvents = latchHandler.processEvents(perception, currentSysMode);
 
-    // TAKE THE LOCK
+    // Determine the next mode BEFORE taking the lock
+    IRobotMode* nextMode = determineNextMode(recentEvents);
+
+    // Handle the mode transition locally
+    if (nextMode != activeMode) {
+        if (activeMode != nullptr) activeMode->onExit();
+        previousMode = activeMode;
+        activeMode = nextMode;
+        if (activeMode != nullptr) activeMode->onEnter(robotData); 
+    }
+
+    // NOW, TAKE THE LOCK and write the final, agreed-upon reality
     portENTER_CRITICAL(&globalDataBusLock);
 
     // 1. Map the internal metrics for live telemetry Tuning (MOVED INSIDE THE LOCK)
@@ -261,23 +272,27 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     CurrentRobotData.events.isDizzy = latchHandler.getIsDizzy();
 
     // Map the Cognitive State
-    CurrentRobotData.cognition.systemMode = currentSysMode;
+    //CurrentRobotData.cognition.systemMode = currentSysMode;
+
+    // Map the Cognitive State using the NEW mode
+    CurrentRobotData.cognition.systemMode = mapModeToEnum(activeMode);
+    
     CurrentRobotData.cognition.robotMood = activeMood;
     
     // RELEASE THE LOCK
     portEXIT_CRITICAL(&globalDataBusLock);
 
     // Proceed to mode switching...
-    IRobotMode* nextMode = determineNextMode(recentEvents);
+    //IRobotMode* nextMode = determineNextMode(recentEvents);
 
     // ... Determine the next mode ...
-    if (nextMode != activeMode) {
-        if (activeMode != nullptr) activeMode->onExit();
-        previousMode = activeMode; // Mode context switch
-        activeMode = nextMode;
-        if (activeMode != nullptr) activeMode->onEnter(robotData); // <--- PASS IT HERE
-        // GLOBAL_MODE = mapModeToEnum(activeMode); // GLOBAL_MODE now directly resides in GlobalDataBus
-    }
+    // if (nextMode != activeMode) {
+    //     if (activeMode != nullptr) activeMode->onExit();
+    //     previousMode = activeMode; // Mode context switch
+    //     activeMode = nextMode;
+    //     if (activeMode != nullptr) activeMode->onEnter(robotData); // <--- PASS IT HERE
+    //     // GLOBAL_MODE = mapModeToEnum(activeMode); // GLOBAL_MODE now directly resides in GlobalDataBus
+    // }
 
     // FIX 3: Use the Command Bus to change the IMU filter, safely locked!
     portENTER_CRITICAL(&hardwareCmdLock);
