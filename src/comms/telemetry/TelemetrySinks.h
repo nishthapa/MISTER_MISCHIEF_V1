@@ -105,3 +105,20 @@ public:
 /* // 4. The Bluetooth Implementation (Uncomment when BLE is ready!)
 class BluetoothSink : public ITelemetrySink { ... }
 */
+
+// 4. The Bluetooth Low Energy Implementation
+class BluetoothSink : public ITelemetrySink {
+public:
+    void sendBinary(const uint8_t* buffer, size_t length) override {
+        RadioManager::broadcastBLE(buffer, length);
+    }
+    
+    bool isReady() override { 
+        return RadioManager::isBluetoothReady() && RadioManager::isBleConnected(); 
+    }
+    
+    void update() override {
+        // BLE runs on a native FreeRTOS background hardware thread.
+        // It requires zero software polling or loop() calls here!
+    }
+};

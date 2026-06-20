@@ -47,6 +47,9 @@ DebugHexSink debugHexSink;
 // The Sink now completely owns the port and the server!
 WebSocketSink wifiSink(SystemConfig::WEBSOCKET_PORT);
 
+// Instantiate the BLE Sink
+BluetoothSink bleSink;
+
 // ==========================================
 // SMART TELEMETRY ROUTER / STREAMER
 // ==========================================
@@ -139,6 +142,10 @@ void setup() {
   if (SysConfig.WIFI_ACTIVE) {
     wifiSink.begin(); // Start the global sink we defined at the top
     telemetryRouter.registerSink(&wifiSink); // Wire it into the router!
+  }
+
+  if (SysConfig.BT_ACTIVE) {
+    telemetryRouter.registerSink(&bleSink); // 2. Wire it into the router!
   }
   
   //telemetryRouter.registerSink(&usbSink); // Only if you want binary over USB

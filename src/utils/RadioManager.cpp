@@ -7,6 +7,7 @@
 #define CHARACTERISTIC_UUID "0000ffe1-0000-1000-8000-00805f9b34fb"
 
 NimBLEServer* pServer = NULL;
+NimBLECharacteristic* pBleCharacteristic = NULL; // NEW: Global pointer for the broadcaster
 
 // ====================================================
 // BLE CALLBACKS: NETWORK STATE & FAILSAFES
@@ -27,7 +28,8 @@ class BleServerCallbacks : public NimBLEServerCallbacks {
         // Serial.println("\n[BLE] Remote Control App Connected!");
         portEXIT_CRITICAL(&teleopCmdLock);
 
-        
+        // 🚨 Restart the beacon so the Phone App can connect while Python is streaming!
+        NimBLEDevice::startAdvertising();
     }
 
     // Signature updated: ble_gap_conn_desc* replaced with NimBLEConnInfo& + added int reason
@@ -129,6 +131,11 @@ void RadioManager::initRadios() {
         // 1. Initialize the NimBLE Hardware Radio
         NimBLEDevice::init(SysConfig.BT_NAME.c_str());
 
+        // 🚨 CRITICAL FIX: Expand the BLE packet size limit!
+        // The default is 23 bytes. Your Event struct is 35 bytes.
+        // This prevents the hardware from shredding your packets.
+        NimBLEDevice::setMTU(512);
+
         // --- ADD THESE LINES TO PRINT MAC ADDRESS ---
         if (printLogs) {
             Serial.print("[BLUETOOTH] Hardware BLE MAC Address: ");
@@ -149,13 +156,21 @@ void RadioManager::initRadios() {
         // 3. Create the Custom Service
         NimBLEService *pService = pServer->createService(SERVICE_UUID);
 
-        // 4. Create the Characteristic using the new NIMBLE_PROPERTY syntax
-        NimBLECharacteristic *pCharacteristic = pService->createCharacteristic(
+        // 🚨 ENABLE NOTIFICATIONS: Add the NOTIFY flag so the robot can talk back!
+        pBleCharacteristic = pService->createCharacteristic(
             CHARACTERISTIC_UUID,
-            NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR // WRITE_NO_RESPONSE for zero latency
+            NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR | NIMBLE_PROPERTY::NOTIFY 
         );
 
-        pCharacteristic->setCallbacks(new BleCommandCallbacks());
+        // 4. Create the Characteristic using the new NIMBLE_PROPERTY syntax
+        // NimBLECharacteristic *pCharacteristic = pService->createCharacteristic(
+        //     CHARACTERISTIC_UUID,
+        //     NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR // WRITE_NO_RESPONSE for zero latency
+        // );
+
+        // pCharacteristic->setCallbacks(new BleCommandCallbacks());
+
+        pBleCharacteristic->setCallbacks(new BleCommandCallbacks());
         
         // 5. Start the Server (This automatically starts all attached services natively)
         pServer->start();
@@ -175,41 +190,6 @@ void RadioManager::initRadios() {
         Serial.println("=================================\n");
     }
 }
-
-// --- NEW DYNAMIC COMMAND LINE CONTROLS ---
-
-// void RadioManager::connectWiFi(String ssid, String password) {
-//     bool printLogs = (SysConfig.ACTIVE_DEBUG_MODE & SysConfig.DEBUG_USB);
-//     if (ssid == "") return;
-    
-//     // Disconnect if already connected before trying new credentials
-//     if (WiFi.status() == WL_CONNECTED) {
-//         disconnectWiFi();
-//     }
-
-//     if (printLogs) {
-//         Serial.print("\n[WIFI] CLI Attempting to connect to: ");
-//         Serial.println(ssid);
-//     }
-
-//     WiFi.begin(ssid.c_str(), password.c_str());
-    
-//     int attempts = 0;
-//     while (WiFi.status() != WL_CONNECTED && attempts < 30) {
-//         delay(500);
-//         if (printLogs) Serial.print(".");
-//         attempts++;
-//     }
-    
-//     if (printLogs) {
-//         if (WiFi.status() == WL_CONNECTED) {
-//             Serial.print("\n[WIFI] ONLINE | IP: ");
-//             Serial.println(WiFi.localIP());
-//         } else {
-//             Serial.println("\n[WIFI] FAILED TO CONNECT");
-//         }
-//     }
-// }
 
 void RadioManager::connectWiFi(String ssid, String password) {
     bool printLogs = (SysConfig.ACTIVE_DEBUG_MODE & SysConfig.DEBUG_USB);
@@ -236,10 +216,16 @@ void RadioManager::connectWiFi(String ssid, String password) {
     // Task_Network instantly goes back to listening to Foxglove and the CLI.
 }
 
+
+
 // void RadioManager::disconnectWiFi() {
 //     WiFi.disconnect(true);
 //     WiFi.mode(WIFI_OFF);
 // }
+
+bool RadioManager::isWiFiReady() {
+    return SysConfig.WIFI_ACTIVE && (WiFi.status() == WL_CONNECTED);
+}
 
 void RadioManager::disconnectWiFi() {
     // 1. Soft disconnect: Drops the connection and erases credentials.
@@ -251,18 +237,29 @@ void RadioManager::disconnectWiFi() {
     WiFi.mode(WIFI_STA); 
 }
 
+// BLUETOOTH (LE)
+bool RadioManager::isBluetoothReady() {
+    return SysConfig.BT_ACTIVE;
+}
+
 void RadioManager::connectBluetooth(String name) {
     // Implementation can use NimBLE setup configurations
 }
 
+// NEW: Status Check
+bool RadioManager::isBleConnected() {
+    return (pServer != nullptr && pServer->getConnectedCount() > 0);
+}
+
+// NEW: The Bluetooth LE Telemetry Blaster
+void RadioManager::broadcastBLE(const uint8_t* data, size_t length) {
+    // Only blast if the characteristic exists, the server is up, and a client is actively listening
+    if (pBleCharacteristic != nullptr && pServer != nullptr && pServer->getConnectedCount() > 0) {
+        pBleCharacteristic->setValue(data, length);
+        pBleCharacteristic->notify(); // Blasts it to the Python Bridge!
+    }
+}
+
 void RadioManager::disconnectBluetooth() {
     NimBLEDevice::deinit();
-}
-
-bool RadioManager::isWiFiReady() {
-    return SysConfig.WIFI_ACTIVE && (WiFi.status() == WL_CONNECTED);
-}
-
-bool RadioManager::isBluetoothReady() {
-    return SysConfig.BT_ACTIVE;
 }
