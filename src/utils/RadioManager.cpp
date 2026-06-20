@@ -21,12 +21,14 @@ class BleServerCallbacks : public NimBLEServerCallbacks {
         CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::BLE_CONNECTED;
         portEXIT_CRITICAL(&globalDataBusLock);
 
-        portENTER_CRITICAL(&teleopCmdLock);
-        TeleopCommands.isConnected = true;
+        // REMOVED as Teleop should only be enabled when
+        // joystick values are receiced and not on mere BT LE connection
+        // portENTER_CRITICAL(&teleopCmdLock);
+        // TeleopCommands.isConnected = true;
         
-        // Do NOT print here! The heap is locked during callbacks! and Serial.print/ln is a blocking call
-        // Serial.println("\n[BLE] Remote Control App Connected!");
-        portEXIT_CRITICAL(&teleopCmdLock);
+        // // Do NOT print here! The heap is locked during callbacks! and Serial.print/ln is a blocking call
+        // // Serial.println("\n[BLE] Remote Control App Connected!");
+        // portEXIT_CRITICAL(&teleopCmdLock);
 
         // 🚨 Restart the beacon so the Phone App can connect while Python is streaming!
         NimBLEDevice::startAdvertising();
@@ -81,6 +83,10 @@ class BleCommandCallbacks : public NimBLECharacteristicCallbacks {
             TeleopCommands.joyX = rxX;
             TeleopCommands.joyY = rxY;
             TeleopCommands.usePIDDrive = rxPID;
+
+            // Moved from onConnect() so that The moment an app sends a joystick packet, we seize control!
+            TeleopCommands.isConnected = true;
+
             portEXIT_CRITICAL(&teleopCmdLock);
         }
     }

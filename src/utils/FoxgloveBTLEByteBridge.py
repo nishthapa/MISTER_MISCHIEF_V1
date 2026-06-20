@@ -2,10 +2,11 @@ import asyncio
 import json
 import time
 import struct
-from bleak import BleakClient, BleakScanner
+from bleak import BleakClient # Removed BleakScanner
 from foxglove_websocket.server import FoxgloveServer
 
-ROBOT_BLE_NAME = "Mister_Mischief"
+# 1. Swap the Name for the exact Hardware MAC
+ROBOT_MAC_ADDRESS = "44:1B:F6:FF:94:19" 
 CHAR_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb"
 
 # =========================================================================
@@ -43,17 +44,11 @@ class BLEBridge:
                 })
 
             while True:
-                print(f"\nScanning BLE waves for {ROBOT_BLE_NAME}...")
-                device = await BleakScanner.find_device_by_name(ROBOT_BLE_NAME, timeout=10.0)
+                print(f"\nAttempting direct connection to {ROBOT_MAC_ADDRESS}...")
                 
-                if not device:
-                    print("Robot not found. Is it powered on? Retrying...")
-                    continue
-
-                print(f"Found {ROBOT_BLE_NAME} [{device.address}]. Connecting...")
                 try:
-                    # Request maximum MTU size on connection
-                    async with BleakClient(device) as client:
+                    # 2. Directly connect using the MAC address
+                    async with BleakClient(ROBOT_MAC_ADDRESS, timeout=10.0) as client:
                         print("Connected! Negotiating MTU and subscribing to Telemetry Stream...")
                         
                         # Subscribe to the C++ NOTIFY characteristic
@@ -65,8 +60,10 @@ class BLEBridge:
                             await asyncio.sleep(1)
                             
                 except Exception as e:
-                    print(f"BLE Link Dropped: {e}")
+                    # 3. Graceful fallback if the robot is off or out of range
+                    print(f"BLE Link Dropped/Failed: {e}")
                     self.byte_buffer.clear() # Flush corrupt data on disconnect
+                    print("Retrying in 2 seconds...")
                     await asyncio.sleep(2)
 
     def ble_notification_handler(self, sender, data):
