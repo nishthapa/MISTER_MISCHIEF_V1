@@ -78,7 +78,7 @@ struct PerceptionMetrics {
 // COGNITIVE STATE (MODE & MOOD)
 struct CognitiveState {
     SystemMode systemMode = SystemMode::BOOTING;
-    RobotMood robotMood = Moods::HAPPY; // Default mood
+    MoodState robotMood = MoodState::HAPPY; // Default mood // <--- MUST be MoodState, not RobotMood!
 }__attribute__((packed));
 
 // FOR THE serial.println() telemetry mirror

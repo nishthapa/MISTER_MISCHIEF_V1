@@ -61,7 +61,7 @@ void ControlLoopTask(void *pvParameters) {
             //wasBleConnected = true;
             wasOverrideActive = true;
             //SysConfig.BRAIN_ACTIVE = false;    // Shut down autonomous decision engine
-            logger.println("[SYSTEM] BLE Connected. Manual Override Engaged.");
+            logger.println("[SYSTEM] [BLE] Manual Control Engaged.");
         } 
         //else if (!teleopSnapshot.isConnected && wasBleConnected) {
         else if (!teleopSnapshot.isOverrideActive && wasOverrideActive) {
@@ -69,7 +69,7 @@ void ControlLoopTask(void *pvParameters) {
             //wasBleConnected = false;
             wasOverrideActive = false; 
             //SysConfig.BRAIN_ACTIVE = true;     // Turn autonomous brain back on
-            logger.println("[SYSTEM] BLE Disconnected. Autonomous Brain Resumed.");
+            logger.println("[SYSTEM] [BLE] Manual Control Disengaged. Autonomous Brain Resumed.");
         }
 
         // 1. Check for Math Tuning Updates
@@ -128,6 +128,8 @@ void ControlLoopTask(void *pvParameters) {
         CurrentRobotData.physics.rightMotorPWM = finalRightPWM;
         CurrentRobotData.controlDebug.targetHeading = ctx->kinematics->getTargetHeading();
         CurrentRobotData.controlDebug.headingError = ctx->kinematics->getHeadingError();
+        // 🚨 ADD THIS LINE: Pass the physical gForce to the Perception Brain!
+        //CurrentRobotData.perception.currentGForce = physicsSnapshot.imuAngles.gForce;
         portEXIT_CRITICAL(&globalDataBusLock);
 
         // ==========================================

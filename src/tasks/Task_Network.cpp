@@ -26,13 +26,22 @@ void NetworkTask(void *pvParameters) {
             if (ctx->cli) ctx->cli->processChar(Serial.read());
         }
 
-        // =======================================================
-        // 🚨 CRITICAL FIX: logger.handleClient() IS GONE! 🚨
-        // The logger is now a passive memory courier. It has no 
-        // network privileges and cannot crash the heap!
-        // =======================================================
-        // 2. Handle incoming WebSocket handshakes 
-        // logger.handleClient();
+        // Poll the hardware radio for live signal strength
+        portENTER_CRITICAL(&globalDataBusLock);
+        if (WiFi.status() == WL_CONNECTED) {
+            CurrentRobotData.networkLink.wifiRSSI = WiFi.RSSI();
+        } else {
+            CurrentRobotData.networkLink.wifiRSSI = -127;
+        }
+        
+        // Note: NimBLE acts as a Server. Live BLE RSSI requires complex client-side callbacks,
+        // so we just set it to 0 (Perfect) if connected, and -127 (Dead) if not.
+        if (CurrentRobotData.health.hardwareBitmask & Comms::HealthBit::BLE_CONNECTED) {
+            CurrentRobotData.networkLink.bleRSSI = 0; 
+        } else {
+            CurrentRobotData.networkLink.bleRSSI = -127;
+        }
+        portEXIT_CRITICAL(&globalDataBusLock);
 
         // 2. RUN THE NETWORK HEARTBEATS (This runs ws.loop() safely!)
         if (ctx->router) {
@@ -46,14 +55,7 @@ void NetworkTask(void *pvParameters) {
         // 🚨 MEASURE LIVE SIGNAL STRENGTH (RSSI)
         // EVERY 2 SECONDS
         // ==========================================
-        if (currentTime - lastRSSITime >= 2000) {
-            lastRSSITime = currentTime;
-            if (WiFi.status() == WL_CONNECTED) {
-                currentWifiRSSI = WiFi.RSSI(); // Safe, infrequent hardware poll
-            } else {
-                currentWifiRSSI = -127;
-            }
-        }
+        
         
         if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
             lastTelemetryTime = currentTime;
@@ -63,11 +65,6 @@ void NetworkTask(void *pvParameters) {
             // if (WiFi.status() == WL_CONNECTED) {
             //     currentWifiRSSI = WiFi.RSSI(); // Poll the hardware driver
             // }
-
-            portENTER_CRITICAL(&globalDataBusLock);
-            CurrentRobotData.networkLink.wifiRSSI = currentWifiRSSI;
-            // CurrentRobotData.networkLink.bleRSSI = ... (Add this later when Android app is built!)
-            portEXIT_CRITICAL(&globalDataBusLock);
 
             // --- THE SNAPSHOT SPINLOCK ---
             GlobalDataBank snapshot; 

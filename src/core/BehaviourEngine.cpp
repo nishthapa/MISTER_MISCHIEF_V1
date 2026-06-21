@@ -32,7 +32,7 @@ void BehaviourEngine::init(bool isColdBoot) {
     // SAFELY PROJECT INITIAL STATE TO THE BUS
     portENTER_CRITICAL(&globalDataBusLock);
     CurrentRobotData.cognition.systemMode = mapModeToEnum(activeMode);
-    CurrentRobotData.cognition.robotMood = activeMood;
+    CurrentRobotData.cognition.robotMood = activeMood.id;
     portEXIT_CRITICAL(&globalDataBusLock);
     
     // FIX 1: Pass the global state to onEnter during boot!
@@ -52,7 +52,7 @@ void BehaviourEngine::changeMode(IRobotMode* newMode) {
         // SAFELY PROJECT NEW COMMANDED STATE TO THE BUS
         portENTER_CRITICAL(&globalDataBusLock);
         CurrentRobotData.cognition.systemMode = mapModeToEnum(activeMode);
-        CurrentRobotData.cognition.robotMood = activeMood;
+        CurrentRobotData.cognition.robotMood = activeMood.id;
         portEXIT_CRITICAL(&globalDataBusLock);
     } 
 }
@@ -203,7 +203,7 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
         // SAFELY PROJECT OVERRIDE STATE TO THE BUS
         portENTER_CRITICAL(&globalDataBusLock);
         CurrentRobotData.cognition.systemMode = SystemMode::MANUAL_OVERRIDE;
-        CurrentRobotData.cognition.robotMood = activeMood;
+        CurrentRobotData.cognition.robotMood = activeMood.id;
         portEXIT_CRITICAL(&globalDataBusLock);
 
         return;
@@ -213,7 +213,7 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
         // SAFELY PROJECT OVERRIDE STATE TO THE BUS
         portENTER_CRITICAL(&globalDataBusLock);
         CurrentRobotData.cognition.systemMode = SystemMode::MANUAL_OVERRIDE;
-        CurrentRobotData.cognition.robotMood = activeMood;
+        CurrentRobotData.cognition.robotMood = activeMood.id;
         portEXIT_CRITICAL(&globalDataBusLock);
 
         // FIX 2: Pass sensorState to the manual override update!
@@ -283,7 +283,9 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     // Map the Cognitive State using the NEW mode
     CurrentRobotData.cognition.systemMode = mapModeToEnum(activeMode);
     
-    CurrentRobotData.cognition.robotMood = activeMood;
+    //CurrentRobotData.cognition.robotMood = activeMood;
+    // Pass ONLY the 1-byte ID to the telemetry bus, not the whole mood struct!
+    CurrentRobotData.cognition.robotMood = activeMood.id;
     
     // RELEASE THE LOCK
     portEXIT_CRITICAL(&globalDataBusLock);
