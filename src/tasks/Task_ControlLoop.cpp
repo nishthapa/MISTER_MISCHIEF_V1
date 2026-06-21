@@ -18,11 +18,13 @@ void ControlLoopTask(void *pvParameters) {
     const TickType_t xFrequency = pdMS_TO_TICKS(SystemConfig::MAIN_LOOP_TICK_RATE_MS);
     TickType_t xLastWakeTime = xTaskGetTickCount();
 
-    static bool wasBleConnected = false;
+    //static bool wasBleConnected = false;
+    // Replace the old wasBleConnected variable with this:
+    static bool wasOverrideActive = false;
 
     for (;;) {
         // ==========================================
-        // 🚨 OTA GRACEFUL SHUTDOWN CHECK 🚨
+        // OTA GRACEFUL SHUTDOWN CHECK
         // ==========================================
         bool isOTAActive = false;
         portENTER_CRITICAL(&globalDataBusLock);
@@ -52,14 +54,21 @@ void ControlLoopTask(void *pvParameters) {
 
         // 2. Evaluate connection state
         // (No changeMode needed here as its handled by BehaviourEngine)
-        if (teleopSnapshot.isConnected && !wasBleConnected) {
-            wasBleConnected = true;
-            SysConfig.BRAIN_ACTIVE = false;    // Shut down autonomous decision engine
+        //if (teleopSnapshot.isConnected && !wasBleConnected) {
+        // teleop mode should only be triggered by the remote driving token, not just by connecting ble 
+        if (teleopSnapshot.isOverrideActive && !wasOverrideActive) {
+            // BehaviourEngine handles the mode switch, so we just log the event, dont switch SysConfig.BRAIN_ACTIVE here!
+            //wasBleConnected = true;
+            wasOverrideActive = true;
+            //SysConfig.BRAIN_ACTIVE = false;    // Shut down autonomous decision engine
             logger.println("[SYSTEM] BLE Connected. Manual Override Engaged.");
         } 
-        else if (!teleopSnapshot.isConnected && wasBleConnected) {
-            wasBleConnected = false;
-            SysConfig.BRAIN_ACTIVE = true;     // Turn autonomous brain back on
+        //else if (!teleopSnapshot.isConnected && wasBleConnected) {
+        else if (!teleopSnapshot.isOverrideActive && wasOverrideActive) {
+            // BehaviourEngine handles the mode switch, so we just log the event, dont switch SysConfig.BRAIN_ACTIVE here!
+            //wasBleConnected = false;
+            wasOverrideActive = false; 
+            //SysConfig.BRAIN_ACTIVE = true;     // Turn autonomous brain back on
             logger.println("[SYSTEM] BLE Disconnected. Autonomous Brain Resumed.");
         }
 

@@ -179,12 +179,18 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     // 1. Take a safe snapshot of the teleop bus
     TeleopCommandBus teleopSnapshot;
     portENTER_CRITICAL(&teleopCmdLock);
+
+    // Enforce the 500ms Watchdog Timer so that autonomous brain is resumed
+    // if the connection is dropped or the app stops sending control commands
+    TeleopCommands.checkFailsafe();
     teleopSnapshot = TeleopCommands;
     portEXIT_CRITICAL(&teleopCmdLock);
 
     // If the phone is connected via BLE, we immediately force the manual mode.
     // This ignores whatever Config.BRAIN_ACTIVE is set to.
-    if (teleopSnapshot.isConnected) {
+    // If an authorized client explicitly holds the token, force manual mode.
+    //if (teleopSnapshot.isConnected) {
+    if (teleopSnapshot.isOverrideActive) { // 🚨 CHANGED: isConnected -> isOverrideActive
         if (activeMode != teleopMode) { // Changed from GLOBAL_MODE check
             if (activeMode != nullptr) activeMode->onExit();
             previousMode = activeMode;

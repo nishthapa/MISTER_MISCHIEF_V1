@@ -4,10 +4,55 @@
 
 // These exact UUIDs match the ones in the Android App's BleManager.kt
 #define SERVICE_UUID        "0000ffe0-0000-1000-8000-00805f9b34fb"
-#define CHARACTERISTIC_UUID "0000ffe1-0000-1000-8000-00805f9b34fb"
+#define CHARACTERISTIC_UUID "0000ffe1-0000-1000-8000-00805f9b34fb" // High-speed driving commands
+#define TOKEN_CHAR_UUID     "0000ffe2-0000-1000-8000-00805f9b34fb" // NEW: Explicit control flag
 
 NimBLEServer* pServer = NULL;
 NimBLECharacteristic* pBleCharacteristic = NULL; // NEW: Global pointer for the broadcaster
+
+// ====================================================
+// TOKEN MANAGER (NEW CALLBACK) FOR REMOTE DRIVING
+// ====================================================
+class BleTokenCallbacks : public NimBLECharacteristicCallbacks {
+    void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo& connInfo) override {
+        NimBLEAttValue value = pCharacteristic->getValue();
+        if (value.length() == 1) {
+            uint8_t flag = value.data()[0];
+            portENTER_CRITICAL(&teleopCmdLock);
+            if (flag == 1) {
+                TeleopCommands.requestControl(TeleopMedium::BLE);
+            } else {
+                TeleopCommands.releaseControl(TeleopMedium::BLE);
+            }
+            portEXIT_CRITICAL(&teleopCmdLock);
+        }
+    }
+};
+
+// ====================================================
+// HIGH SPEED REMOTE DRIVING COMMAND PARSER
+// ====================================================
+class BleCommandCallbacks : public NimBLECharacteristicCallbacks {
+    void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo& connInfo) override {
+        NimBLEAttValue value = pCharacteristic->getValue();
+        
+        // We expect exactly 9 bytes: [Float X (4)] [Float Y (4)] [PID Bool (1)]
+        if (value.length() == 9) {
+            const uint8_t* payload = value.data();
+            float rxX, rxY;
+
+            // Extract offsets safely from data array positions
+            memcpy(&rxX, &payload[0], sizeof(float));
+            memcpy(&rxY, &payload[4], sizeof(float));
+            bool rxPID = (payload[8] != 0);
+
+            // Send command through the gateway. If BLE doesn't own the token, it is safely ignored!
+            portENTER_CRITICAL(&teleopCmdLock);
+            TeleopCommands.updateCommand(TeleopMedium::BLE, rxX, rxY, rxPID);
+            portEXIT_CRITICAL(&teleopCmdLock);
+        }
+    }
+};
 
 // ====================================================
 // BLE CALLBACKS: NETWORK STATE & FAILSAFES
@@ -21,35 +66,22 @@ class BleServerCallbacks : public NimBLEServerCallbacks {
         CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::BLE_CONNECTED;
         portEXIT_CRITICAL(&globalDataBusLock);
 
-        // REMOVED as Teleop should only be enabled when
-        // joystick values are receiced and not on mere BT LE connection
-        // portENTER_CRITICAL(&teleopCmdLock);
-        // TeleopCommands.isConnected = true;
-        
-        // // Do NOT print here! The heap is locked during callbacks! and Serial.print/ln is a blocking call
-        // // Serial.println("\n[BLE] Remote Control App Connected!");
-        // portEXIT_CRITICAL(&teleopCmdLock);
-
-        // 🚨 Restart the beacon so the Phone App can connect while Python is streaming!
+        // Restart the beacon so the Phone App can connect while Python is streaming!
         NimBLEDevice::startAdvertising();
     }
 
     // Signature updated: ble_gap_conn_desc* replaced with NimBLEConnInfo& + added int reason
     void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override {
+        // HARD FAILSAFE: If link physically breaks, revoke token immediately!
         portENTER_CRITICAL(&teleopCmdLock);
-        TeleopCommands.isConnected = false;
-        
-        // FAILSAFE: Zero out all kinematic commands immediately if phone disconnects!
-        TeleopCommands.joyX = 0.0f;
-        TeleopCommands.joyY = 0.0f;
-        TeleopCommands.usePIDDrive = false;
+        TeleopCommands.releaseControl(TeleopMedium::BLE);
         portEXIT_CRITICAL(&teleopCmdLock);
         
         // Do NOT print here! The heap is locked during callbacks! and Serial.print/ln is a blocking call
         // Serial.println("\n[BLE] Remote Control Disconnected. Failsafe triggered. Restarting advertising...");
         
         // Standard BLE protocol requires manually restarting advertising after a client drops
-        pServer->startAdvertising(); 
+        NimBLEDevice::startAdvertising();
 
         // Flip the BT LE connected Health Bit OFF
         portENTER_CRITICAL(&globalDataBusLock);
@@ -62,35 +94,35 @@ class BleServerCallbacks : public NimBLEServerCallbacks {
 // BLE CALLBACKS: HIGH SPEED COMMAND PARSER
 // ====================================================
 // 2. Corrected NimBLE Characteristic Callbacks
-class BleCommandCallbacks : public NimBLECharacteristicCallbacks {
-    // Signature updated: ble_gap_conn_desc* replaced with NimBLEConnInfo&
-    void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo& connInfo) override {
-        NimBLEAttValue value = pCharacteristic->getValue();
+// class BleCommandCallbacks : public NimBLECharacteristicCallbacks {
+//     // Signature updated: ble_gap_conn_desc* replaced with NimBLEConnInfo&
+//     void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo& connInfo) override {
+//         NimBLEAttValue value = pCharacteristic->getValue();
         
-        // We expect exactly 9 bytes: [Float X (4)] [Float Y (4)] [PID Bool (1)]
-        if (value.length() == 9) {
-            const uint8_t* payload = value.data();
+//         // We expect exactly 9 bytes: [Float X (4)] [Float Y (4)] [PID Bool (1)]
+//         if (value.length() == 9) {
+//             const uint8_t* payload = value.data();
             
-            float rxX, rxY;
-            // FIXED: Extracted offsets safely from data array positions
-            memcpy(&rxX, &payload[0], sizeof(float));
-            memcpy(&rxY, &payload[4], sizeof(float));
-            bool rxPID = (payload[8] != 0);
+//             float rxX, rxY;
+//             // FIXED: Extracted offsets safely from data array positions
+//             memcpy(&rxX, &payload[0], sizeof(float));
+//             memcpy(&rxY, &payload[4], sizeof(float));
+//             bool rxPID = (payload[8] != 0);
 
-            // Push directly to the cross-core memory bank for the physics thread to consume
-            // 🚨 SECURE THE CROSS-CORE MEMORY TRANSFER 🚨
-            portENTER_CRITICAL(&teleopCmdLock);
-            TeleopCommands.joyX = rxX;
-            TeleopCommands.joyY = rxY;
-            TeleopCommands.usePIDDrive = rxPID;
+//             // Push directly to the cross-core memory bank for the physics thread to consume
+//             // 🚨 SECURE THE CROSS-CORE MEMORY TRANSFER 🚨
+//             portENTER_CRITICAL(&teleopCmdLock);
+//             TeleopCommands.joyX = rxX;
+//             TeleopCommands.joyY = rxY;
+//             TeleopCommands.usePIDDrive = rxPID;
 
-            // Moved from onConnect() so that The moment an app sends a joystick packet, we seize control!
-            TeleopCommands.isConnected = true;
+//             // Moved from onConnect() so that The moment an app sends a joystick packet, we seize control!
+//             TeleopCommands.isConnected = true;
 
-            portEXIT_CRITICAL(&teleopCmdLock);
-        }
-    }
-};
+//             portEXIT_CRITICAL(&teleopCmdLock);
+//         }
+//     }
+// };
 
 void RadioManager::initRadios() {
     bool printLogs = (SysConfig.ACTIVE_DEBUG_MODE & SysConfig.DEBUG_USB);
@@ -162,26 +194,29 @@ void RadioManager::initRadios() {
         // 3. Create the Custom Service
         NimBLEService *pService = pServer->createService(SERVICE_UUID);
 
-        // 🚨 ENABLE NOTIFICATIONS: Add the NOTIFY flag so the robot can talk back!
+        // ---------------------------------------------------------
+        // THE HIGH-SPEED COMMAND & TELEMETRY PIPE (UUID: ffe1)
+        // ---------------------------------------------------------
         pBleCharacteristic = pService->createCharacteristic(
             CHARACTERISTIC_UUID,
             NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR | NIMBLE_PROPERTY::NOTIFY 
         );
-
-        // 4. Create the Characteristic using the new NIMBLE_PROPERTY syntax
-        // NimBLECharacteristic *pCharacteristic = pService->createCharacteristic(
-        //     CHARACTERISTIC_UUID,
-        //     NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR // WRITE_NO_RESPONSE for zero latency
-        // );
-
-        // pCharacteristic->setCallbacks(new BleCommandCallbacks());
-
         pBleCharacteristic->setCallbacks(new BleCommandCallbacks());
+
+        // ---------------------------------------------------------
+        // THE TOKEN AUTHORITY FLAG (UUID: ffe2)
+        // ---------------------------------------------------------
+        NimBLECharacteristic *pTokenChar = pService->createCharacteristic(
+            TOKEN_CHAR_UUID,
+            NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR 
+        );
+        pTokenChar->setCallbacks(new BleTokenCallbacks());
+        // ---------------------------------------------------------
         
-        // 5. Start the Server (This automatically starts all attached services natively)
+        // Start the Server (This automatically starts all attached services natively)
         pServer->start();
 
-        // 6. Configure advertising
+        // Configure advertising
         NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();
         pAdvertising->addServiceUUID(SERVICE_UUID);
         pAdvertising->start();

@@ -25,7 +25,8 @@ void Mode_Teleop::update(const RobotMood& currentMood, const GlobalDataBank& rob
     // ---------------------------------------------------------------------
 
     // 1. HARDWARE FAILSAFE: Immediate drop-dead if BLE link breaks
-    if (!teleopSnapshot.isConnected) {
+    //if (!teleopSnapshot.isConnected) {
+    if (!teleopSnapshot.isOverrideActive) { // changed from isConnected to isOverrideActive to respect the token system
         kinematics->stop();
         return;
     }

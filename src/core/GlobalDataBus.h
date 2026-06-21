@@ -127,12 +127,73 @@ struct HardwareCommandBus {
     uint8_t targetPIDController = 0; // 0 = None, 1 = Point Turn, 2 = Arc Turn, 3 = Distance
 };
 
+// struct TeleopCommandBus {
+//     float joyX = 0.0f;       // -1.0f (Left) to 1.0f (Right)
+//     float joyY = 0.0f;       // -1.0f (Reverse) to 1.0f (Forward)
+//     bool usePIDDrive = false; // Toggles between RAW motor mixing and PID Heading Hold
+//     bool isConnected = false; // Failsafe: Stops robot if BLE drops
+//     bool emergencyKillSwitch = false; // <--- NEW: Software instant-stop
+// };
+
+
+// To keep track of who is controlling
+enum class TeleopMedium : uint8_t {
+    NONE = 0,
+    BLE = 1,
+    WIFI_WS = 2,
+    INTERNET = 3
+};
+
 struct TeleopCommandBus {
-    float joyX = 0.0f;       // -1.0f (Left) to 1.0f (Right)
-    float joyY = 0.0f;       // -1.0f (Reverse) to 1.0f (Forward)
-    bool usePIDDrive = false; // Toggles between RAW motor mixing and PID Heading Hold
-    bool isConnected = false; // Failsafe: Stops robot if BLE drops
-    bool emergencyKillSwitch = false; // <--- NEW: Software instant-stop
+    float joyX = 0.0f;
+    float joyY = 0.0f;
+    bool usePIDDrive = false;
+    
+    // --- THE TOKEN AUTHORITY ---
+    bool isOverrideActive = false;
+    TeleopMedium activeMedium = TeleopMedium::NONE;
+    unsigned long lastHeartbeat = 0;
+    static constexpr unsigned long TIMEOUT_MS = 500; // 500ms Deadman Switch
+
+    // 1. Claim the Token
+    bool requestControl(TeleopMedium medium) {
+        if (activeMedium == TeleopMedium::NONE || activeMedium == medium) {
+            activeMedium = medium;
+            isOverrideActive = true;
+            lastHeartbeat = millis();
+            return true;
+        }
+        return false; // Denied: Another medium is already driving!
+    }
+
+    // 2. Voluntarily Release the Token
+    void releaseControl(TeleopMedium medium) {
+        if (activeMedium == medium) {
+            activeMedium = TeleopMedium::NONE;
+            isOverrideActive = false;
+            joyX = 0.0f; joyY = 0.0f;
+        }
+    }
+
+    // 3. Receive Driving Vectors (Requires Authorization)
+    bool updateCommand(TeleopMedium medium, float x, float y, bool pid) {
+        if (activeMedium == medium && isOverrideActive) {
+            joyX = x; joyY = y; usePIDDrive = pid;
+            lastHeartbeat = millis(); // Feed the watchdog!
+            return true;
+        }
+        return false; // Ignored: Unauthorized client tried to drive
+    }
+
+    // 4. The Deadman Switch (Watchdog)
+    void checkFailsafe() {
+        if (isOverrideActive && (millis() - lastHeartbeat > TIMEOUT_MS)) {
+            // Client timed out! Revoke control and zero the motors.
+            activeMedium = TeleopMedium::NONE;
+            isOverrideActive = false;
+            joyX = 0.0f; joyY = 0.0f;
+        }
+    }
 };
 
 // =========================================================================

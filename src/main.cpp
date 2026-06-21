@@ -195,10 +195,11 @@ void setup() {
   if (imuRetries < SystemConfig::IMU_MAX_RETRIES) {
       // Turn the IMU bit ON
       CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::IMU_OK;
-      logger.println("IMU marked as OK in Health Registry.");
+      logger.println("[IMU] check PASSED, marked as OK in Health Registry.");
   } else {
       // (Optional) Explicitly turn it OFF if it failed
       CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::IMU_OK;
+      logger.println("[IMU] check FAILED, marked as NOT-OK in Health Registry.");
   }
   
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
