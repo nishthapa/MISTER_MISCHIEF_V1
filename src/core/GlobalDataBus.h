@@ -28,12 +28,15 @@ struct SystemHealthState {
     uint16_t hardwareBitmask = 0;   // MsgId 130: Alive components (Uses Comms::HealthBit)
     //int8_t wifiRSSI = 0;            // MsgId 132: Wi-Fi Signal Strength // Moved to NetworkLinkState
     //int8_t bleRSSI = 0;             // MsgId 132: Bluetooth Signal Strength // Moved to NetworkLinkState
+    uint8_t cpu0Load = 0; // NEW: Sensor Core Utilization %
+    uint8_t cpu1Load = 0; // NEW: Physics Core Utilization %
 }__attribute__((packed));
 
 // CONTROL DEBUG (PID & Target tracking)
 struct ControlDebugState {
     float targetHeading = 0.0f; 
-    float headingError = 0.0f;  
+    float headingError = 0.0f;
+    bool pidEnabled = false;  
 }__attribute__((packed));
 
 // NEW: Unified Event State
@@ -172,6 +175,7 @@ struct TeleopCommandBus {
             activeMedium = TeleopMedium::NONE;
             isOverrideActive = false;
             joyX = 0.0f; joyY = 0.0f;
+            usePIDDrive = false;
         }
     }
 
@@ -192,6 +196,7 @@ struct TeleopCommandBus {
             activeMedium = TeleopMedium::NONE;
             isOverrideActive = false;
             joyX = 0.0f; joyY = 0.0f;
+            usePIDDrive = false;
         }
     }
 };

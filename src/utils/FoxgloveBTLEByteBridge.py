@@ -12,7 +12,7 @@ CHAR_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb"
 # =========================================================================
 # C++ STRUCT BYTE MAPPINGS (Little Endian format)
 # =========================================================================
-FMT_SYSTEM_HEALTH = "<IIH"    # 🚨 CHANGED: Shrunk to 10 bytes (Removed the two 'b's for RSSI)
+FMT_SYSTEM_HEALTH = "<IIHBB"    # 🚨 CHANGED: Added two 'B's for the CPU loads!
 FMT_NETWORK_LINK = "<bb"
 FMT_SENSOR_STATE = "<fHh"
 FMT_EVENT_STATE = "<8?5f7?"
@@ -126,8 +126,10 @@ class BLEBridge:
             elif msg_id == 130:
                 if len(payload) == struct.calcsize(FMT_SYSTEM_HEALTH):
                     data = struct.unpack(FMT_SYSTEM_HEALTH, payload)
-                    # 🚨 CHANGED: Removed the RSSI references from the dictionary
-                    doc = {"loopTimeUs": data[0], "freeHeap": data[1], "hardwareBitmask": data[2]}
+                    doc = {
+                        "loopTimeUs": data[0], "freeHeap": data[1], "hardwareBitmask": data[2],
+                        "cpu0Load": data[3], "cpu1Load": data[4]
+                    }
                     await self.server.send_message(self.channels["system_health"], timestamp_nanos, json.dumps(doc).encode("utf8"))
                 else:
                     print(f"⚠️ Size Mismatch on ID 130 (Health)! Python expects {struct.calcsize(FMT_SYSTEM_HEALTH)} bytes, ESP32 sent {len(payload)} bytes.")

@@ -250,6 +250,8 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     CurrentRobotData.perception.rawPitchEnergy = perception.rawPitchEnergy;
     CurrentRobotData.perception.rawRollEnergy = perception.rawRollEnergy;
     CurrentRobotData.perception.currentGForce = perception.currentGForce;
+    // Sync G-Force to the Physics struct as well so both streams match!
+    //CurrentRobotData.perception.currentGForce = perception.currentGForce;
     
     // Map the Triggers
     CurrentRobotData.events.hazardDetected = recentEvents.hazardDetected;

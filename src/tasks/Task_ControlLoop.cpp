@@ -23,6 +23,8 @@ void ControlLoopTask(void *pvParameters) {
     static bool wasOverrideActive = false;
 
     for (;;) {
+        // Start the CPU stopwatch at the very beginning of the loop to start counting Loop Time!
+        uint32_t loopStartUs = micros();
         // ==========================================
         // OTA GRACEFUL SHUTDOWN CHECK
         // ==========================================
@@ -44,7 +46,7 @@ void ControlLoopTask(void *pvParameters) {
             vTaskSuspend(NULL); 
         }
 
-        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        //vTaskDelayUntil(&xLastWakeTime, xFrequency);
 
         // --- THE TELEOPERATION OVERRIDE WATCHDOG ---
         TeleopCommandBus teleopSnapshot;
@@ -120,6 +122,8 @@ void ControlLoopTask(void *pvParameters) {
             ctx->kinematics->stop();
         }
 
+        
+
         // ==========================================
         // 4. SAFELY WRITE INTENT TO CENTRAL NERVOUS SYSTEM
         // ==========================================
@@ -128,8 +132,16 @@ void ControlLoopTask(void *pvParameters) {
         CurrentRobotData.physics.rightMotorPWM = finalRightPWM;
         CurrentRobotData.controlDebug.targetHeading = ctx->kinematics->getTargetHeading();
         CurrentRobotData.controlDebug.headingError = ctx->kinematics->getHeadingError();
+
+        // Explicitly broadcast the PID flag!
+        CurrentRobotData.controlDebug.pidEnabled = teleopSnapshot.usePIDDrive;
         // 🚨 ADD THIS LINE: Pass the physical gForce to the Perception Brain!
         //CurrentRobotData.perception.currentGForce = physicsSnapshot.imuAngles.gForce;
+
+        // Populate CPU speed and util metrics
+        //CurrentRobotData.health.loopTimeUs = activeTimeUs;
+        CurrentRobotData.health.freeHeap = ESP.getFreeHeap();
+        //CurrentRobotData.health.cpu1Load = (activeTimeUs * 100) / (SystemConfig::MAIN_LOOP_TICK_RATE_MS * 1000);
         portEXIT_CRITICAL(&globalDataBusLock);
 
         // ==========================================
@@ -139,5 +151,17 @@ void ControlLoopTask(void *pvParameters) {
             // THIS is the only place hardware is touched!
             ctx->motorDriver->drive(finalLeftPWM, finalRightPWM);
         }
+
+        // Calculate physics loop execution time to report to telemetry
+        uint32_t loopEndUs = micros();
+        uint32_t activeTimeUs = loopEndUs - loopStartUs;
+
+        portENTER_CRITICAL(&globalDataBusLock);
+        // Populate CPU speed and util metrics
+        CurrentRobotData.health.loopTimeUs = activeTimeUs;
+        CurrentRobotData.health.cpu1Load = (activeTimeUs * 100) / (SystemConfig::MAIN_LOOP_TICK_RATE_MS * 1000);
+        portEXIT_CRITICAL(&globalDataBusLock);
+
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }

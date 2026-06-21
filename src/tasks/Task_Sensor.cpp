@@ -9,9 +9,15 @@
 
 void SensorTask(void *pvParameters) {
     SensorContext* ctx = static_cast<SensorContext*>(pvParameters);
+
+    const TickType_t xFrequency = pdMS_TO_TICKS(SystemConfig::MAIN_LOOP_TICK_RATE_MS);
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+
     unsigned long lastSonarTime = 0;
 
     for (;;) {
+        // Start the CPU stopwatch at the very beginning of the loop to start counting Loop Time!
+        uint32_t loopStartUs = micros();
         // ==========================================
         // 🚨 OTA GRACEFUL SHUTDOWN CHECK 🚨
         // ==========================================
@@ -76,7 +82,7 @@ void SensorTask(void *pvParameters) {
         }
 
         unsigned long currentTime = millis();
-        // Poll the Sonar exactly every 50ms [cite: 105]
+        // Poll the Sonar exactly every 50ms
         if (currentTime - lastSonarTime >= 50) { 
             lastSonarTime = currentTime;
             if (ctx->sonar) {
@@ -90,6 +96,16 @@ void SensorTask(void *pvParameters) {
             }
         }
 
+        // 🚨 STOP CPU 0 STOPWATCH
+        uint32_t loopEndUs = micros();
+        uint32_t activeTimeUs = loopEndUs - loopStartUs;
+
+        // Write the CPU load to the Global Bus
+        portENTER_CRITICAL(&globalDataBusLock);
+        CurrentRobotData.health.cpu0Load = (activeTimeUs * 100) / (SystemConfig::MAIN_LOOP_TICK_RATE_MS * 1000);
+        portEXIT_CRITICAL(&globalDataBusLock);
+
         vTaskDelay(pdMS_TO_TICKS(1));
+        //vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
