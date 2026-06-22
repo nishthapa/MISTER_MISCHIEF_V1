@@ -12,8 +12,11 @@
 // =========================================================================
 struct PhysicsState {
     FusedAngles imuAngles = {0.0f, 0.0f, 0.0f, 0.0f, false, 0}; // Safe zeroes      // MsgId 101: Attitude & G-Force
+}__attribute__((packed));
+
+struct ActuatorState {
     int16_t leftMotorPWM = 0;       // MsgId 104: Actuators (Left Track Current Power)
-    int16_t rightMotorPWM = 0;      // MsgId 104: Actuators (Right Track Current Power)
+    int16_t rightMotorPWM = 0;      // MsgId 104: Actuators (Right Track Current Power) 
 }__attribute__((packed));
 
 struct SensorState {
@@ -98,6 +101,7 @@ struct NetworkLinkState {
 // The Master Wrapper
 struct GlobalDataBank {
     PhysicsState physics;
+    ActuatorState actuators; // Split!
     SensorState sensors;
     SystemHealthState health;
     EventState events; // <-- New centralized semantic events

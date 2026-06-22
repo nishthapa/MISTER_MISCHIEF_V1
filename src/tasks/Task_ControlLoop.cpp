@@ -128,8 +128,8 @@ void ControlLoopTask(void *pvParameters) {
         // 4. SAFELY WRITE INTENT TO CENTRAL NERVOUS SYSTEM
         // ==========================================
         portENTER_CRITICAL(&globalDataBusLock);
-        CurrentRobotData.physics.leftMotorPWM = finalLeftPWM;
-        CurrentRobotData.physics.rightMotorPWM = finalRightPWM;
+        CurrentRobotData.actuators.leftMotorPWM = finalLeftPWM;
+        CurrentRobotData.actuators.rightMotorPWM = finalRightPWM;
         CurrentRobotData.controlDebug.targetHeading = ctx->kinematics->getTargetHeading();
         CurrentRobotData.controlDebug.headingError = ctx->kinematics->getHeadingError();
 
@@ -137,6 +137,7 @@ void ControlLoopTask(void *pvParameters) {
         CurrentRobotData.controlDebug.pidEnabled = teleopSnapshot.usePIDDrive;
         // 🚨 ADD THIS LINE: Pass the physical gForce to the Perception Brain!
         //CurrentRobotData.perception.currentGForce = physicsSnapshot.imuAngles.gForce;
+        CurrentRobotData.perception.currentGForce = physicsSnapshot.physics.imuAngles.gForce;
 
         // Populate CPU speed and util metrics
         //CurrentRobotData.health.loopTimeUs = activeTimeUs;

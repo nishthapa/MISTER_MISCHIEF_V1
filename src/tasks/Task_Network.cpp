@@ -78,7 +78,7 @@ void NetworkTask(void *pvParameters) {
                 ctx->router->broadcast(Comms::MsgId::ATTITUDE, snapshot.physics);
 
                 // Blast Left & Right Motor PWMs
-                ctx->router->broadcast(Comms::MsgId::ACTUATORS, snapshot.physics);
+                ctx->router->broadcast(Comms::MsgId::ACTUATORS, snapshot.actuators);
 
                 // Blast System Health (Loop time, Heap, Hardware Bitmask, RSSI)
                 ctx->router->broadcast(Comms::MsgId::SYSTEM_STATUS, snapshot.health);
