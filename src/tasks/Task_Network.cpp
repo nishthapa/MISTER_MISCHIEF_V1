@@ -74,29 +74,35 @@ void NetworkTask(void *pvParameters) {
             // -----------------------------
 
             if (ctx->router) {
-                // Blast Attitude Data (Pitch, Roll, Yaw, Motors)
-                ctx->router->broadcast(Comms::MsgId::ATTITUDE, snapshot.physics);
-
-                // Blast Left & Right Motor PWMs
-                ctx->router->broadcast(Comms::MsgId::ACTUATORS, snapshot.actuators);
-
-                // Blast System Health (Loop time, Heap, Hardware Bitmask, RSSI)
-                ctx->router->broadcast(Comms::MsgId::SYSTEM_STATUS, snapshot.health);
-
                 // Blast Cognitive State (Mode & Mood)
                 ctx->router->broadcast(Comms::MsgId::ROBOT_STATE, snapshot.cognition);
+
+                // Blast Attitude Data (Pitch, Roll, Yaw, Motors)
+                ctx->router->broadcast(Comms::MsgId::ATTITUDE, snapshot.physics);
 
                 // Blast Sensors (Sonar distance)
                 ctx->router->broadcast(Comms::MsgId::DISTANCE_SONAR, snapshot.sensors);
 
+                // Blast System Health (Loop time, Heap, Hardware Bitmask, RSSI)
+                ctx->router->broadcast(Comms::MsgId::SYSTEM_STATUS, snapshot.health);
+
+                // Blast Serial.println() messages handled by RemoteLogger
+                //ctx->router->broadcast(Comms::MsgId::TRANSIENT_ALERTS, snapshot.systemLog); // shouldnt be blasted continuously!
+
+                // Blast Remote Joystick & PID enabled/disabled flag
+                ctx->router->broadcast(Comms::MsgId::CONTROL_DEBUG, snapshot.controlDebug);
+
+                // Blast Left & Right Motor PWMs
+                ctx->router->broadcast(Comms::MsgId::ACTUATORS, snapshot.actuators);
+                
                 // Blast Semantic Events (latches & Continuous Metrics
                 ctx->router->broadcast(Comms::MsgId::EVENT_STATE, snapshot.events);
 
+                                // Blast Network Link (Signal strength)
+                ctx->router->broadcast(Comms::MsgId::NETWORK_LINK, snapshot.networkLink);
+
                 // Blast Perception data (raw energies)
                 ctx->router->broadcast(Comms::MsgId::PERCEPTION_METRICS, snapshot.perception);
-
-                // Blast Network Link (Signal strength)
-                ctx->router->broadcast(Comms::MsgId::NETWORK_LINK, snapshot.networkLink);
             }
 
             //experimental: just to view in serial monitor for now

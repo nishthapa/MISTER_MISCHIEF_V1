@@ -21,7 +21,7 @@ namespace Comms {
 
         // Control Loops
         PID_ATTITUDE_DEBUG  = 120,  // Target vs Actual, P/I/D contributions for balancing
-        PID_DRIVE_DEBUG     = 121,  // Target vs Actual for tracking/driving
+        CONTROL_DEBUG       = 121,  // Target vs Actual for tracking/driving
 
         // System, State & Link
         SYSTEM_STATUS       = 130,  // Loop time (us), Free heap memory, Core temperature, HealthBitmask

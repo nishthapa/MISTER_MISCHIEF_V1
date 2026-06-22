@@ -42,7 +42,8 @@ bool MPU6500_IMU::init() {
         }
 
         // Attempt to boot the DMP firmware onto the chip using the xreef library
-        if (imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL, IMUConfig::IMU_DMP_SAMPLE_RATE_HZ) == INV_SUCCESS) {
+        //if (imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL, IMUConfig::IMU_DMP_SAMPLE_RATE_HZ) == INV_SUCCESS) {
+        if (imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL | DMP_FEATURE_SEND_RAW_ACCEL, IMUConfig::IMU_DMP_SAMPLE_RATE_HZ) == INV_SUCCESS) {
             logger.println("Hardware DMP Booted Successfully! Quaternion math offloaded.");
             usingDMP = true;
         } else {

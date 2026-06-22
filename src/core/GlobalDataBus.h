@@ -39,7 +39,9 @@ struct SystemHealthState {
 struct ControlDebugState {
     float targetHeading = 0.0f; 
     float headingError = 0.0f;
-    bool pidEnabled = false;  
+    bool pidEnabled = false;
+    float joyX = 0.0f; // <-- Add this!
+    float joyY = 0.0f; // <-- Add this!
 }__attribute__((packed));
 
 // NEW: Unified Event State

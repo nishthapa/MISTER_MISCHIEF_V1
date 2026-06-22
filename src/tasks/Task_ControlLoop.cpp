@@ -120,9 +120,7 @@ void ControlLoopTask(void *pvParameters) {
         } else {
             // IMU Failure Failsafe
             ctx->kinematics->stop();
-        }
-
-        
+        }  
 
         // ==========================================
         // 4. SAFELY WRITE INTENT TO CENTRAL NERVOUS SYSTEM
@@ -135,6 +133,9 @@ void ControlLoopTask(void *pvParameters) {
 
         // Explicitly broadcast the PID flag!
         CurrentRobotData.controlDebug.pidEnabled = teleopSnapshot.usePIDDrive;
+        CurrentRobotData.controlDebug.joyX = teleopSnapshot.joyX;
+        CurrentRobotData.controlDebug.joyY = teleopSnapshot.joyY;
+
         // 🚨 ADD THIS LINE: Pass the physical gForce to the Perception Brain!
         //CurrentRobotData.perception.currentGForce = physicsSnapshot.imuAngles.gForce;
         CurrentRobotData.perception.currentGForce = physicsSnapshot.physics.imuAngles.gForce;
