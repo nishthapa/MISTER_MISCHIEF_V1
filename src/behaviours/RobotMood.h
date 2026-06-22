@@ -4,13 +4,13 @@
 
 // 1. NEW: The 8-bit identifier for Telemetry
 enum class MoodState : uint8_t {
-    HAPPY = 0,
-    SAD = 1,
-    ANGRY = 2,
-    SCARED = 3,
-    CURIOUS = 4,
-    SLEEPY = 5,
-    GROGGY = 6
+    GROGGY      = 0,
+    HAPPY       = 1,
+    ANGRY       = 2,
+    SLEEPY      = 3,
+    SAD         = 4,
+    SCARED      = 5,
+    CURIOUS     = 6,
 };
 
 // A blueprint of how a mood affects physical movement

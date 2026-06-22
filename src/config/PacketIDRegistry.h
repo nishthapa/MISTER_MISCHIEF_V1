@@ -51,12 +51,19 @@ namespace Comms {
     // 3. ROBOT MOODS (For expressive behavioral feedback)
     // =========================================================================
     enum class RobotMood : uint8_t {
-        IDLE                = 0,
-        CURIOUS             = 1,
-        CAUTIOUS            = 2,
-        PANICKED            = 3,
-        CONFUSED            = 4,
-        AGGRESSIVE          = 5
+        // IDLE                = 0,
+        // CURIOUS             = 1,
+        // CAUTIOUS            = 2,
+        // PANICKED            = 3,
+        // CONFUSED            = 4,
+        // AGGRESSIVE          = 5
+        GROGGY              = 0,
+        HAPPY               = 1,
+        ANGRY               = 2,
+        SLEEPY              = 3,
+        SAD                 = 4,
+        SCARED              = 5,
+        CURIOUS             = 6,
     };
 
     // =========================================================================
