@@ -20,6 +20,9 @@ void SensorTask(void *pvParameters) {
     uint8_t consecutiveSonarFailures = 0;
     const uint8_t MAX_SONAR_FAILURES = 20; // Allow 20 dropped pings before declaring death
 
+    // Barometer state for deltas
+    float lastAltitude = 0.0f;
+
     for (;;) {
         // Start the CPU stopwatch at the very beginning of the loop to start counting Loop Time!
         uint32_t loopStartUs = micros();
@@ -124,6 +127,53 @@ void SensorTask(void *pvParameters) {
                 }    
             }
         }
+
+        // 3. Read Barometer
+        if (ctx->baro) {
+            float alt = ctx->baro->getAltitudeCM();
+            float pres = ctx->baro->getPressurePa();
+            float temp = ctx->baro->getTemperatureC();
+
+            portENTER_CRITICAL(&globalDataBusLock);
+            CurrentRobotData.perception.hasBaro = true;
+            portEXIT_CRITICAL(&globalDataBusLock);
+            
+            // Calculate a simple delta for lift detection. 
+            // In a real scenario, you might want to low-pass filter 'alt' first.
+            // float altDelta = alt - lastAltitude;
+            // lastAltitude = alt;
+
+            portENTER_CRITICAL(&globalDataBusLock);
+            // Update the GlobalDataBus
+            CurrentRobotData.sensors.pressurePa = pres;
+            CurrentRobotData.sensors.altitudeCM = alt * 100.0f; // Convert m to cm
+            //CurrentRobotData.sensors.altitudeDeltaCM = altDelta;
+            CurrentRobotData.sensors.temperatureC = temp;
+
+            
+            // Update perception metrics so the EventLatchHandler can use them
+            //CurrentRobotData.perception.hasBarometer = true;
+            //CurrentRobotData.perception.altitudeDelta = altDelta * 100.0f; 
+            
+            // Assuming it doesn't fail frequently, but you could add failure logic here
+            CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::BARO_OK;
+            portEXIT_CRITICAL(&globalDataBusLock);
+            
+            // Update the GlobalDataBus
+            // portENTER_CRITICAL(&globalDataBusLock);
+            // CurrentRobotData.sensors.pressurePa = pres;
+            // CurrentRobotData.sensors.altitudeCM = alt;
+            // CurrentRobotData.sensors.temperatureC = temp;
+            // portENTER_CRITICAL(&globalDataBusLock);
+
+            } else {
+            portENTER_CRITICAL(&globalDataBusLock);
+            CurrentRobotData.perception.hasBaro = false;
+            portEXIT_CRITICAL(&globalDataBusLock);
+        }
+
+
+
 
         // 🚨 STOP CPU 0 STOPWATCH
         uint32_t loopEndUs = micros();

@@ -84,7 +84,9 @@ namespace FactoryDefaults {
     constexpr float TILT_HANDLING_THRESHOLD = 22.0f;      
     
     // RANGE: 1.05f TO 1.30f // Earth is 1.0G. A gentle lift is ~1.1G. A fast yank is >1.3G.
-    constexpr float GFORCE_LIFT_UP_THRESHOLD = 1.15f;     
+    constexpr float GFORCE_LIFT_UP_THRESHOLD = 1.15f;
+    
+    constexpr float BARO_LIFT_UP_THRESHOLD = 15.0f;
     
     // RANGE: 0.70f TO 0.95f // Earth is 1.0G. A gentle lowering is ~0.85G. A fast drop is <0.7G.
     constexpr float GFORCE_LIFT_DOWN_THRESHOLD = 0.85f;   

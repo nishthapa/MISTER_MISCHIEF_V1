@@ -10,12 +10,12 @@ class DistanceSensorFactory {
 public:
     static I_DistanceSensor* createDistanceSensor() {
         
-        if (DistanceSensorConfig::SELECTED_SENSOR == DistanceSensorConfig::SENSOR_HCSR04) {
+        if (DistanceSensorConfig::SELECTED_DIST_SENSOR == DistanceSensorConfig::SENSOR_HCSR04) {
             // Allocate the Ultrasonic sensor statically
             static HCSR04_Sonar sonar(HardwarePins::PIN_SONAR_TRIG, HardwarePins::PIN_SONAR_ECHO);
             return &sonar;
         }
-        else if (DistanceSensorConfig::SELECTED_SENSOR == DistanceSensorConfig::SENSOR_VL53L0X) {
+        else if (DistanceSensorConfig::SELECTED_DIST_SENSOR == DistanceSensorConfig::SENSOR_VL53L0X) {
             // Placeholder for your future Time-of-Flight Laser Sensor!
             // static VL53L0X_Laser laser(HardwarePins::PIN_I2C_SDA, HardwarePins::PIN_I2C_SCL);
             // return &laser;

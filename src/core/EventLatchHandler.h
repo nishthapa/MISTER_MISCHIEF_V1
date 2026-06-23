@@ -17,6 +17,8 @@ struct PerceptionData {
     float rawRollEnergy;
     bool isUpright;
     bool isDriving;
+    bool hasBaro;   // <--- NEW
+    float altitudeDelta; // <--- NEW
 };
 
 // 2. SEMANTIC EVENTS (What does the physics mean over time?)

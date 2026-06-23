@@ -35,7 +35,7 @@ namespace DistanceSensorConfig {
     };
 
     // SELECT YOUR DISTANCE SENSOR HARDWARE
-    constexpr DistanceModel SELECTED_SENSOR = SENSOR_HCSR04;
+    constexpr DistanceModel SELECTED_DIST_SENSOR = SENSOR_HCSR04;
 
     // --- HC-SR04 (ULTRASONIC) Specific Tuning ---
     constexpr float SPEED_OF_SOUND_CM_US = 0.0343f;

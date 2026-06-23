@@ -3,6 +3,7 @@
 #include "config/PinConfig.h"         
 #include "hal/factories/MotorDriverFactory.h"
 #include "hal/factories/IMUFactory.h"
+#include "hal/factories/BarometerFactory.h"
 #include "hal/factories/DistanceSensorFactory.h"          
 #include "objectproviders/PIDControllerFactory.h" 
 #include "behaviours/Mode_NormalDriving.h"
@@ -81,6 +82,7 @@ TeleopCommandBus TeleopCommands = {};
 I_DistanceSensor* frontDistanceSensor = DistanceSensorFactory::createDistanceSensor();
 I_MotorDriver* motorDriver = MotorDriverFactory::createMotorDriver();
 I_IMU* imu = IMUFactory::createIMU();
+I_Barometer* baro = BarometerFactory::createBaro();
 
 // ==========================================
 // GLOBAL PID CONTROLLERS & KINEMATICS
@@ -191,6 +193,20 @@ void setup() {
     portEXIT_CRITICAL(&globalDataBusLock);
   }
 
+   // Initialize SONAR and set HW bitmask
+  if(baro->init()) {
+    portENTER_CRITICAL(&globalDataBusLock);
+    CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::BARO_OK;
+    CurrentRobotData.sensors.hasBaro = true;
+    portEXIT_CRITICAL(&globalDataBusLock);
+  }
+  else {
+    portENTER_CRITICAL(&globalDataBusLock);
+    CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::BARO_OK;
+    CurrentRobotData.sensors.hasBaro = false;
+    portEXIT_CRITICAL(&globalDataBusLock);
+  }
+
   // Initialize MOTOR DRIVER and set HW bitmask
   if(motorDriver->init()) {
     portENTER_CRITICAL(&globalDataBusLock);
@@ -276,6 +292,7 @@ void setup() {
   // Pack needed contexts for the new isolated SensorTask
   sensorCtx.imu = imu;
   sensorCtx.sonar = frontDistanceSensor;
+  sensorCtx.baro = baro;
 
   // Pack needed contexts for the new isolated NetworkTask
   networkCtx.cli = &cliEngine;

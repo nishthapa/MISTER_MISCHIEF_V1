@@ -41,6 +41,7 @@ private:
     bool isGroggyPhase;
     unsigned long coldBootTime;
     float lastDistance;
+    bool hasBaro;
     FusedAngles lastAngles;
 
     PerceptionData gatherPerception(const GlobalDataBank& robotData); // Removed volatile

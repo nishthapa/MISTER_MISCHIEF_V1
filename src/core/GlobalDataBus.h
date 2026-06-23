@@ -22,6 +22,11 @@ struct ActuatorState {              // MsgId 104
 
 struct SensorState {                // MsgId 110
     float distanceCM = -1.0f;       // Sonar Distance
+    bool hasBaro = false;           // Baro check
+    float pressurePa = 0.0f;        // Baro Pressure
+    float altitudeCM = 0.0f;        // Baro Altitude
+    float altitudeDeltaCM = 0.0f;   // Baro altitude change
+    float temperatureC = 0.0f;      // Baro Temperature 
     uint16_t batteryVoltageMV = 0;  // Future INA226 Voltage Expansion
     int16_t currentDrawMA = 0;      // Future INA226 Current Expansion
 }__attribute__((packed));

@@ -110,6 +110,9 @@ struct MasterSettings {
     // --- Physics & Handing ---
     float TILT_HANDLING_THRESHOLD = FactoryDefaults::TILT_HANDLING_THRESHOLD;
     float GFORCE_LIFT_UP_THRESHOLD = FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD;
+
+    float BARO_LIFT_UP_THRESHOLD = FactoryDefaults::BARO_LIFT_UP_THRESHOLD;
+
     float GFORCE_LIFT_DOWN_THRESHOLD = FactoryDefaults::GFORCE_LIFT_DOWN_THRESHOLD;
     float LIFT_ENERGY_SPIKE_THRESHOLD = FactoryDefaults::LIFT_ENERGY_SPIKE_THRESHOLD;
     float UPRIGHT_ANGLE_TOLERANCE = FactoryDefaults::UPRIGHT_ANGLE_TOLERANCE;
@@ -271,6 +274,9 @@ class ConfigurationManager {
         // --- Physics & Handing ---
         currentSettings.TILT_HANDLING_THRESHOLD = preferences.getFloat("TLT_HNDL_THRS", FactoryDefaults::TILT_HANDLING_THRESHOLD);
         currentSettings.GFORCE_LIFT_UP_THRESHOLD = preferences.getFloat("GF_LFT_UP_THRS", FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD);
+
+        currentSettings.BARO_LIFT_UP_THRESHOLD = preferences.getFloat("BR_LFT_UP_THRS", FactoryDefaults::BARO_LIFT_UP_THRESHOLD);
+
         currentSettings.GFORCE_LIFT_DOWN_THRESHOLD = preferences.getFloat("GF_LFT_DN_THRS", FactoryDefaults::GFORCE_LIFT_DOWN_THRESHOLD);
         currentSettings.LIFT_ENERGY_SPIKE_THRESHOLD = preferences.getFloat("LFT_E_SPK_THRS", FactoryDefaults::LIFT_ENERGY_SPIKE_THRESHOLD);
         currentSettings.UPRIGHT_ANGLE_TOLERANCE = preferences.getFloat("UPRT_ANGL_TOL", FactoryDefaults::UPRIGHT_ANGLE_TOLERANCE);
@@ -405,6 +411,9 @@ class ConfigurationManager {
 
         preferences.putFloat("TLT_HNDL_THRS", currentSettings.TILT_HANDLING_THRESHOLD);
         preferences.putFloat("GF_LFT_UP_THRS", currentSettings.GFORCE_LIFT_UP_THRESHOLD);
+
+        preferences.putFloat("BR_LFT_UP_THRS", currentSettings.BARO_LIFT_UP_THRESHOLD);
+
         preferences.putFloat("GF_LFT_DN_THRS", currentSettings.GFORCE_LIFT_DOWN_THRESHOLD);
         preferences.putFloat("LFT_E_SPK_THRS", currentSettings.LIFT_ENERGY_SPIKE_THRESHOLD);
         preferences.putFloat("UPRT_ANGL_TOL", currentSettings.UPRIGHT_ANGLE_TOLERANCE);
@@ -552,6 +561,9 @@ class ConfigurationManager {
 
         else if (varName == "TILT_HANDLING_THRESHOLD") { currentSettings.TILT_HANDLING_THRESHOLD = FactoryDefaults::TILT_HANDLING_THRESHOLD; }
         else if (varName == "GFORCE_LIFT_UP_THRESHOLD") { currentSettings.GFORCE_LIFT_UP_THRESHOLD = FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD; }
+
+        else if (varName == "BARO_LIFT_UP_THRESHOLD") { currentSettings.BARO_LIFT_UP_THRESHOLD = FactoryDefaults::BARO_LIFT_UP_THRESHOLD; }
+        
         else if (varName == "GFORCE_LIFT_DOWN_THRESHOLD") { currentSettings.GFORCE_LIFT_DOWN_THRESHOLD = FactoryDefaults::GFORCE_LIFT_DOWN_THRESHOLD; }
         else if (varName == "LIFT_ENERGY_SPIKE_THRESHOLD") { currentSettings.LIFT_ENERGY_SPIKE_THRESHOLD = FactoryDefaults::LIFT_ENERGY_SPIKE_THRESHOLD; }
         else if (varName == "UPRIGHT_ANGLE_TOLERANCE") { currentSettings.UPRIGHT_ANGLE_TOLERANCE = FactoryDefaults::UPRIGHT_ANGLE_TOLERANCE; }

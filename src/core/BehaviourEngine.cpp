@@ -107,6 +107,9 @@ PerceptionData BehaviourEngine::gatherPerception(const GlobalDataBank& robotData
         lastAngles.pitch = robotData.physics.imuAngles.pitch;
         lastAngles.roll = robotData.physics.imuAngles.roll;
         lastAngles.gForce = robotData.physics.imuAngles.gForce;
+
+        //p.hasBaro = robotData.sensors.hasBaro;
+
     } else {
         // Safe fallbacks if IMU is dead or disconnected
         p.currentGForce = 1.0f; // 1G is normal resting gravity
@@ -121,7 +124,7 @@ PerceptionData BehaviourEngine::gatherPerception(const GlobalDataBank& robotData
 
         p.isUpright = true; // Assume upright if we can't measure
     }
-    
+    hasBaro = p.hasBaro;
     lastDistance = p.currentDistance;
     return p;
 }
@@ -289,6 +292,8 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     //CurrentRobotData.cognition.robotMood = activeMood;
     // Pass ONLY the 1-byte ID to the telemetry bus, not the whole mood struct!
     CurrentRobotData.cognition.robotMood = activeMood.id;
+
+    //CurrentRobotData.sensors.hasBaro = p.hasBaro;
     
     // RELEASE THE LOCK
     portEXIT_CRITICAL(&globalDataBusLock);
