@@ -237,7 +237,7 @@ namespace FactoryDefaults {
     constexpr const char* WIFI_PASSWORD = "Kalimpong@321";
     constexpr bool WIFI_ACTIVE = false;         
     constexpr const char* BT_NAME = "Mister_Mischief";
-    constexpr bool BT_ACTIVE = false;
+    constexpr bool BT_ACTIVE = true;
 
     // ==========================================
     // DEBUG AND TELEMETRY
