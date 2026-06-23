@@ -24,6 +24,6 @@ public:
     HCSR04_Sonar(int trig, int echo);
     ~HCSR04_Sonar(); // We need a destructor to clean up the pointer!
 
-    void init() override;
+    bool init() override;
     float getDistanceCM() override;
 };

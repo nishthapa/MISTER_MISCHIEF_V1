@@ -14,10 +14,12 @@ HCSR04_Sonar::~HCSR04_Sonar() {
     }
 }
 
-void HCSR04_Sonar::init() {
+bool HCSR04_Sonar::init() {
     // SAFELY allocate memory now that FreeRTOS is booted!
     sonar = new NewPing(trigPin, echoPin, (int)DistanceSensorConfig::SONAR_MAX_DIST);
     emaDistance = -1.0f;
+    if(sonar) {return true;}
+    else {return true;}
 }
 
 float HCSR04_Sonar::getDistanceCM() {

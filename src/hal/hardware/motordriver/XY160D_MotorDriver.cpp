@@ -18,7 +18,7 @@ XY160D_MotorDriver::XY160D_MotorDriver(int ena, int lf, int lr, int rf, int rr, 
     enbPin = enb;
 }
 
-void XY160D_MotorDriver::init() {
+bool XY160D_MotorDriver::init() {
     // --- 1. ENABLE THE MASTER H-BRIDGES ---
     pinMode(enaPin, OUTPUT);
     pinMode(enbPin, OUTPUT);
@@ -40,7 +40,9 @@ void XY160D_MotorDriver::init() {
     ledcAttachPin(rightRevPin, ChannelRegistry::CH_MOTOR_RIGHT_REV);
     
     // Ensure motors are dead silent and locked on boot
-    stop(); 
+    stop();
+
+    return true; // To-do keep a successful init check here so the HW bitmask for Motor Driver can be set
 }
 
 void XY160D_MotorDriver::setLeftSpeed(float speed) {

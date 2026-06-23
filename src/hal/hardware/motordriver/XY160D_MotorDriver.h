@@ -12,7 +12,7 @@ public:
     XY160D_MotorDriver(int ena, int lf, int lr, int rf, int rr, int enb);
 
     // Notice we removed the accidental semicolon before override!
-    void init() override;
+    bool init() override;
 
     void setLeftSpeed(float speed);
     void setRightSpeed(float speed);

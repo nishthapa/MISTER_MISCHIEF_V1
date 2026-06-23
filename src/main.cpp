@@ -179,34 +179,52 @@ void setup() {
   
   delay(SystemConfig::HARDWARE_WAKE_DELAY_MS);
 
-  frontDistanceSensor->init();
-  motorDriver->init();
+  // Initialize SONAR and set HW bitmask
+  if(frontDistanceSensor->init()) {
+    portENTER_CRITICAL(&globalDataBusLock);
+    CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::SONAR_OK;
+    portEXIT_CRITICAL(&globalDataBusLock);
+  }
+  else {
+    portENTER_CRITICAL(&globalDataBusLock);
+    CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::SONAR_OK;
+    portEXIT_CRITICAL(&globalDataBusLock);
+  }
 
-  logger.println("Waking up the IMU...");
-//   int imuRetries = 0;
-//   while (!imu->init() && imuRetries < SystemConfig::IMU_MAX_RETRIES) {
-//       logger.println("IMU failed to initialize. Rebooting I2C bus...");
-//       delay(SystemConfig::IMU_RETRY_DELAY_MS); 
-//       imuRetries++;
-//   }
+  // Initialize MOTOR DRIVER and set HW bitmask
+  if(motorDriver->init()) {
+    portENTER_CRITICAL(&globalDataBusLock);
+    CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::MOTOR_DRIVER_OK;
+    portEXIT_CRITICAL(&globalDataBusLock);
+  }
+  else {
+    portENTER_CRITICAL(&globalDataBusLock);
+    CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::MOTOR_DRIVER_OK;
+    portEXIT_CRITICAL(&globalDataBusLock);
+  }
   
-  // Set the global state by flipping the IMU bit in GlobalDataBank
-  // ADD THIS:
+  logger.println("Waking up the IMU...");
+  // Set the global state for IMU and MAG by flipping the IMU bit in GlobalDataBank
   if (imuRetries < SystemConfig::IMU_MAX_RETRIES) {
-        portENTER_CRITICAL(&globalDataBusLock);
-        // Turn the IMU bit ON (Set to 1)
-        CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::IMU_OK;
-        portEXIT_CRITICAL(&globalDataBusLock);
-        
-        logger.println("[IMU] check PASSED, marked as OK in Health Registry.");
-    } else {
-        portENTER_CRITICAL(&globalDataBusLock);
-        // Explicitly turn the IMU bit OFF (Set to 0) using bitwise AND NOT
-        CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::IMU_OK;
-        portEXIT_CRITICAL(&globalDataBusLock);
-        
-        logger.println("[IMU] check FAILED, marked as NOT-OK in Health Registry.");
+      portENTER_CRITICAL(&globalDataBusLock);
+      // Turn the IMU bit ON (Set to 1)
+      CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::IMU_OK;
+      portEXIT_CRITICAL(&globalDataBusLock);
+      logger.println("[IMU] check PASSED, marked as OK in Health Registry.");
+  } else {
+      portENTER_CRITICAL(&globalDataBusLock);
+      // Explicitly turn the IMU bit OFF (Set to 0) using bitwise AND NOT
+      CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::IMU_OK;
+      portEXIT_CRITICAL(&globalDataBusLock);
+      logger.println("[IMU] check FAILED, marked as NOT-OK in Health Registry.");
     }
+
+  // Set the compass flag based on whether HAS_COMPASS is true or not
+  if(IMUConfig::HAS_COMPASS) {
+    CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::MAG_OK;
+  } else {
+    CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::MAG_OK;
+  }
   
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   bool isColdBoot = (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED);
@@ -265,9 +283,22 @@ void setup() {
   networkCtx.brain = &brain;
 
   // === THE NEW 3-TASK ISOLATED ARCHITECTURE ===
-  xTaskCreatePinnedToCore(SensorTask, "SensorTask", SystemConfig::TASK_STACK_SENSOR, &sensorCtx, SystemConfig::SENSOR_TASK_PRIORITY, &SensorTaskHandle, SystemConfig::SENSOR_TASK_CORE_AFFINITY);
-  xTaskCreatePinnedToCore(ControlLoopTask, "ControlLoopTask", SystemConfig::TASK_STACK_PHYSICS, &controlCtx, SystemConfig::CONTROL_LOOP_TASK_PRIORITY, &ControlLoopTaskHandle, SystemConfig::CONTROL_LOOP_TASK_CORE_AFFINITY);
-  xTaskCreatePinnedToCore(NetworkTask, "NetworkTask", SystemConfig::TASK_STACK_NETWORK, &networkCtx, SystemConfig::NETWORK_TASK_PRIORITY, &NetworkTaskHandle, SystemConfig::NETWORK_TASK_CORE_AFFINITY); 
+  BaseType_t sTask = xTaskCreatePinnedToCore(SensorTask, "SensorTask", SystemConfig::TASK_STACK_SENSOR, &sensorCtx, SystemConfig::SENSOR_TASK_PRIORITY, &SensorTaskHandle, SystemConfig::SENSOR_TASK_CORE_AFFINITY);
+  BaseType_t cTask = xTaskCreatePinnedToCore(ControlLoopTask, "ControlLoopTask", SystemConfig::TASK_STACK_PHYSICS, &controlCtx, SystemConfig::CONTROL_LOOP_TASK_PRIORITY, &ControlLoopTaskHandle, SystemConfig::CONTROL_LOOP_TASK_CORE_AFFINITY);
+  BaseType_t nTask = xTaskCreatePinnedToCore(NetworkTask, "NetworkTask", SystemConfig::TASK_STACK_NETWORK, &networkCtx, SystemConfig::NETWORK_TASK_PRIORITY, &NetworkTaskHandle, SystemConfig::NETWORK_TASK_CORE_AFFINITY); 
+
+  if (sTask == pdPASS && cTask == pdPASS && nTask == pdPASS) {
+      portENTER_CRITICAL(&globalDataBusLock);
+      CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::FREE_RTOS_ALIVE;
+      portEXIT_CRITICAL(&globalDataBusLock);
+      logger.println("[OS] FreeRTOS tasks initialized successfully.");
+  } else {
+      logger.println("[OS] CRITICAL ERROR: FreeRTOS tasks initialization failed!");
+  }
+
+  //logger.println("==================================================");
+  logger.println("FREERTOS SCHEDULER INITIATED");
+  //logger.println("==================================================");
 }
 
 void loop() { vTaskDelete(NULL); }
