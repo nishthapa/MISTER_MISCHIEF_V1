@@ -14,29 +14,27 @@ struct PhysicsState {
     FusedAngles imuAngles = {0.0f, 0.0f, 0.0f, 0.0f, false, 0}; // Safe zeroes      // MsgId 101: Attitude & G-Force
 }__attribute__((packed));
 
-struct ActuatorState {
-    int16_t leftMotorPWM = 0;       // MsgId 104: Actuators (Left Track Current Power)
-    int16_t rightMotorPWM = 0;      // MsgId 104: Actuators (Right Track Current Power) 
+struct ActuatorState {              // MsgId 104
+    int16_t leftMotorPWM = 0;       // Actuators (Left Track Current Power)
+    int16_t rightMotorPWM = 0;      // Actuators (Right Track Current Power) 
 }__attribute__((packed));
 
-struct SensorState {
-    float distanceCM = -1.0f;           // MsgId 110: Sonar Distance
-    uint16_t batteryVoltageMV = 0;  // MsgId 111: Future INA226 Voltage Expansion
-    int16_t currentDrawMA = 0;      // MsgId 111: Future INA226 Current Expansion
+struct SensorState {                // MsgId 110
+    float distanceCM = -1.0f;       // Sonar Distance
+    uint16_t batteryVoltageMV = 0;  // Future INA226 Voltage Expansion
+    int16_t currentDrawMA = 0;      // Future INA226 Current Expansion
 }__attribute__((packed));
 
-struct SystemHealthState {
-    uint32_t loopTimeUs = 0;        // MsgId 130: Main physics loop speed
-    uint32_t freeHeap = 0;          // MsgId 130: RAM available
-    uint16_t hardwareBitmask = 0;   // MsgId 130: Alive components (Uses Comms::HealthBit)
-    //int8_t wifiRSSI = 0;            // MsgId 132: Wi-Fi Signal Strength // Moved to NetworkLinkState
-    //int8_t bleRSSI = 0;             // MsgId 132: Bluetooth Signal Strength // Moved to NetworkLinkState
-    uint8_t cpu0Load = 0; // NEW: Sensor Core Utilization %
-    uint8_t cpu1Load = 0; // NEW: Physics Core Utilization %
+struct SystemHealthState {          // MsgId 130
+    uint32_t loopTimeUs = 0;        // Main physics loop speed
+    uint32_t freeHeap = 0;          // RAM available
+    uint16_t hardwareBitmask = 0;   // Alive components (Uses Comms::HealthBit)
+    uint8_t cpu0Load = 0;           // Sensor Core Utilization %
+    uint8_t cpu1Load = 0;           // Physics Core Utilization %
 }__attribute__((packed));
 
 // CONTROL DEBUG (PID & Target tracking)
-struct ControlDebugState {
+struct ControlDebugState {          // MsgId 121
     float targetHeading = 0.0f; 
     float headingError = 0.0f;
     bool pidEnabled = false;
@@ -44,9 +42,7 @@ struct ControlDebugState {
     float joyY = 0.0f; // <-- Add this!
 }__attribute__((packed));
 
-// NEW: Unified Event State
-struct EventState {
-    // 1. Semantic Events (The final triggers)
+struct EventState {                 // MsgId 135: Semantic Events (The final triggers)
     bool hazardDetected = false;       
     bool teaseConfirmed = false;       
     bool targetVanished = false;       
@@ -73,8 +69,7 @@ struct EventState {
     bool isDizzy = false;
 }__attribute__((packed));
 
-// FOR TELEMETRY (Intermediate Math & Tuning Metrics)
-struct PerceptionMetrics {
+struct PerceptionMetrics {          // MsgId 136: Intermediate Math & Tuning Metrics
     float distanceDelta = 0.0f;
     float totalRawEnergy = 0.0f;
     float rawYawEnergy = 0.0f;
@@ -84,19 +79,17 @@ struct PerceptionMetrics {
 }__attribute__((packed));
 
 // COGNITIVE STATE (MODE & MOOD)
-struct CognitiveState {
+struct CognitiveState {             // MsgId 131
     SystemMode systemMode = SystemMode::BOOTING;
     MoodState robotMood = MoodState::HAPPY; // Default mood // <--- MUST be MoodState, not RobotMood!
 }__attribute__((packed));
 
-// FOR THE serial.println() telemetry mirror
-struct SystemLogMessage {
+struct SystemLogMessage {           // MsgId 140: serial.println() telemetry mirro
     char text[128] = {0}; // Fixed size in RAM, no memory leaks!
 }__attribute__((packed));
 
-// FOR MAINTAINING WIFI/BT RSSI
-struct NetworkLinkState {
-    int8_t wifiRSSI = -127; // -127 dBm is the standard "Dead Signal" value
+struct NetworkLinkState {           // MsgId 132: WIFI/BT RSSI
+    int8_t wifiRSSI = -127;         // -127 dBm is the standard "Dead Signal" value
     int8_t bleRSSI = -127; 
 }__attribute__((packed));
 

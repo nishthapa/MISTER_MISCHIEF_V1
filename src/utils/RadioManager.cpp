@@ -90,40 +90,6 @@ class BleServerCallbacks : public NimBLEServerCallbacks {
     }
 };
 
-// ====================================================
-// BLE CALLBACKS: HIGH SPEED COMMAND PARSER
-// ====================================================
-// 2. Corrected NimBLE Characteristic Callbacks
-// class BleCommandCallbacks : public NimBLECharacteristicCallbacks {
-//     // Signature updated: ble_gap_conn_desc* replaced with NimBLEConnInfo&
-//     void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo& connInfo) override {
-//         NimBLEAttValue value = pCharacteristic->getValue();
-        
-//         // We expect exactly 9 bytes: [Float X (4)] [Float Y (4)] [PID Bool (1)]
-//         if (value.length() == 9) {
-//             const uint8_t* payload = value.data();
-            
-//             float rxX, rxY;
-//             // FIXED: Extracted offsets safely from data array positions
-//             memcpy(&rxX, &payload[0], sizeof(float));
-//             memcpy(&rxY, &payload[4], sizeof(float));
-//             bool rxPID = (payload[8] != 0);
-
-//             // Push directly to the cross-core memory bank for the physics thread to consume
-//             // 🚨 SECURE THE CROSS-CORE MEMORY TRANSFER 🚨
-//             portENTER_CRITICAL(&teleopCmdLock);
-//             TeleopCommands.joyX = rxX;
-//             TeleopCommands.joyY = rxY;
-//             TeleopCommands.usePIDDrive = rxPID;
-
-//             // Moved from onConnect() so that The moment an app sends a joystick packet, we seize control!
-//             TeleopCommands.isConnected = true;
-
-//             portEXIT_CRITICAL(&teleopCmdLock);
-//         }
-//     }
-// };
-
 void RadioManager::initRadios() {
     bool printLogs = (SysConfig.ACTIVE_DEBUG_MODE & SysConfig.DEBUG_USB);
 

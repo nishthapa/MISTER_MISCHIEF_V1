@@ -193,14 +193,20 @@ void setup() {
   // Set the global state by flipping the IMU bit in GlobalDataBank
   // ADD THIS:
   if (imuRetries < SystemConfig::IMU_MAX_RETRIES) {
-      // Turn the IMU bit ON
-      CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::IMU_OK;
-      logger.println("[IMU] check PASSED, marked as OK in Health Registry.");
-  } else {
-      // (Optional) Explicitly turn it OFF if it failed
-      CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::IMU_OK;
-      logger.println("[IMU] check FAILED, marked as NOT-OK in Health Registry.");
-  }
+        portENTER_CRITICAL(&globalDataBusLock);
+        // Turn the IMU bit ON (Set to 1)
+        CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::IMU_OK;
+        portEXIT_CRITICAL(&globalDataBusLock);
+        
+        logger.println("[IMU] check PASSED, marked as OK in Health Registry.");
+    } else {
+        portENTER_CRITICAL(&globalDataBusLock);
+        // Explicitly turn the IMU bit OFF (Set to 0) using bitwise AND NOT
+        CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::IMU_OK;
+        portEXIT_CRITICAL(&globalDataBusLock);
+        
+        logger.println("[IMU] check FAILED, marked as NOT-OK in Health Registry.");
+    }
   
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   bool isColdBoot = (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED);

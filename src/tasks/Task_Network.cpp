@@ -27,21 +27,31 @@ void NetworkTask(void *pvParameters) {
         }
 
         // Poll the hardware radio for live signal strength
-        portENTER_CRITICAL(&globalDataBusLock);
+        //portENTER_CRITICAL(&globalDataBusLock);
         if (WiFi.status() == WL_CONNECTED) {
-            CurrentRobotData.networkLink.wifiRSSI = WiFi.RSSI();
+            portENTER_CRITICAL(&globalDataBusLock);
+            CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::WIFI_CONNECTED;
+            //CurrentRobotData.networkLink.wifiRSSI = WiFi.RSSI();
+            portEXIT_CRITICAL(&globalDataBusLock);
         } else {
+            portENTER_CRITICAL(&globalDataBusLock);
+            CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::WIFI_CONNECTED;
             CurrentRobotData.networkLink.wifiRSSI = -127;
+            portEXIT_CRITICAL(&globalDataBusLock);
         }
         
         // Note: NimBLE acts as a Server. Live BLE RSSI requires complex client-side callbacks,
         // so we just set it to 0 (Perfect) if connected, and -127 (Dead) if not.
         if (CurrentRobotData.health.hardwareBitmask & Comms::HealthBit::BLE_CONNECTED) {
+            portENTER_CRITICAL(&globalDataBusLock);
             CurrentRobotData.networkLink.bleRSSI = 0; 
+            portEXIT_CRITICAL(&globalDataBusLock);
         } else {
+            portENTER_CRITICAL(&globalDataBusLock);
             CurrentRobotData.networkLink.bleRSSI = -127;
+            portEXIT_CRITICAL(&globalDataBusLock);
         }
-        portEXIT_CRITICAL(&globalDataBusLock);
+        //portEXIT_CRITICAL(&globalDataBusLock);
 
         // 2. RUN THE NETWORK HEARTBEATS (This runs ws.loop() safely!)
         if (ctx->router) {
@@ -59,13 +69,7 @@ void NetworkTask(void *pvParameters) {
         
         if (currentTime - lastTelemetryTime >= SystemConfig::TELEMETRY_PING_DELAY_MS) {
             lastTelemetryTime = currentTime;
-
             
-            // int8_t currentWifiRSSI = -127;
-            // if (WiFi.status() == WL_CONNECTED) {
-            //     currentWifiRSSI = WiFi.RSSI(); // Poll the hardware driver
-            // }
-
             // --- THE SNAPSHOT SPINLOCK ---
             GlobalDataBank snapshot; 
             portENTER_CRITICAL(&globalDataBusLock);
