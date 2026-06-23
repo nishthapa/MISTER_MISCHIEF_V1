@@ -271,6 +271,7 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     CurrentRobotData.events.frustrationLevel = latchHandler.getFrustrationLevel();
 
     // Map the Human Interaction triggers / latches using the getters
+    //CurrentRobotData.actuators.isDriving = latchHandler.getIsDriving(); // Flesh it out
     CurrentRobotData.events.isHandTeasing = latchHandler.getIsHandTeasing();
     CurrentRobotData.events.isHandVanishing = latchHandler.getIsHandVanishing();
     CurrentRobotData.events.isHandling = latchHandler.getIsHandling();

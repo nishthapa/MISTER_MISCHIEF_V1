@@ -16,6 +16,7 @@ struct PerceptionData {
     float rawPitchEnergy;
     float rawRollEnergy;
     bool isUpright;
+    bool isDriving;
 };
 
 // 2. SEMANTIC EVENTS (What does the physics mean over time?)
@@ -45,6 +46,7 @@ private:
     unsigned long settlingStartTime;
 
     // Latches
+    bool isDriving;
     bool isHandTeasing;
     bool isHandVanishing;
     bool isHandling;
@@ -70,6 +72,7 @@ public:
     float getSmoothedTotalEnergy() const { return smoothedTotalEnergy; }
     float getFrustrationLevel() const { return frustrationLevel; }
     
+    bool getIsDriving() const {return isDriving; }
     bool getIsHandTeasing() const { return isHandTeasing; }
     bool getIsHandVanishing() const { return isHandVanishing; }
     bool getIsHandling() const { return isHandling; }

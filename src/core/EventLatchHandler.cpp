@@ -6,7 +6,7 @@ EventLatchHandler::EventLatchHandler() { reset(); }
 void EventLatchHandler::reset() {
     dizzyBarYaw = 0.0f; dizzyBarPitch = 0.0f; dizzyBarRoll = 0.0f;
     smoothedTotalEnergy = 0.0f; frustrationLevel = 0.0f;
-    isHandTeasing = false; isHandVanishing = false; isHandling = false;
+    isDriving = false; isHandTeasing = false; isHandVanishing = false; isHandling = false;
     hasExperiencedLift = false; isLowering = false; hasLanded = false; isDizzy = false;
     pickupTimerActive = false; settlingTimerActive = false;
 }
@@ -59,17 +59,34 @@ SemanticEvents EventLatchHandler::processEvents(const PerceptionData& p, SystemM
 
     // 4. HANDLING & COMPASS LOCK LOGIC
     if (!p.isUpright) { if (hasExperiencedLift) isHandling = true; }
-    if (p.isUpright && smoothedTotalEnergy < SysConfig.PERFECTLY_STILL_ENERGY) isHandling = false;
+    //if (p.isUpright && smoothedTotalEnergy < SysConfig.PERFECTLY_STILL_ENERGY) isHandling = false;
+
+    if (p.isUpright && (smoothedTotalEnergy < SysConfig.PERFECTLY_STILL_ENERGY || p.isDriving)) {
+        isHandling = false;
+        hasExperiencedLift = false;
+    }
+
+    // if (currentMode != SystemMode::MODE_COMPASS_LOCK) {
+    //     if (isHandling && p.totalRawEnergy < SysConfig.STEADY_HOLD_ENERGY_MAX) {
+    //         if (!pickupTimerActive) { pickupTimerActive = true; pickupStartTime = millis(); } 
+    //         else if (millis() - pickupStartTime >= SysConfig.COMPASS_LOCK_ENTRY_SETTLE_MS) {
+    //             pickupTimerActive = false; settlingTimerActive = false; isLowering = false; hasLanded = false; 
+    //             events.readyForCompassLock = true;
+    //         }
+    //     } else { pickupTimerActive = false; }
+    // } else {
 
     if (currentMode != SystemMode::MODE_COMPASS_LOCK) {
-        if (isHandling && p.totalRawEnergy < SysConfig.STEADY_HOLD_ENERGY_MAX) {
+        // Only enter compass lock if we are actually being handled, held steady, AND NOT DRIVING
+        if (isHandling && !p.isDriving && p.totalRawEnergy < SysConfig.STEADY_HOLD_ENERGY_MAX) {
             if (!pickupTimerActive) { pickupTimerActive = true; pickupStartTime = millis(); } 
             else if (millis() - pickupStartTime >= SysConfig.COMPASS_LOCK_ENTRY_SETTLE_MS) {
-                pickupTimerActive = false; settlingTimerActive = false; isLowering = false; hasLanded = false; 
-                events.readyForCompassLock = true;
-            }
-        } else { pickupTimerActive = false; }
-    } else {
+                    pickupTimerActive = false; settlingTimerActive = false; isLowering = false; hasLanded = false; 
+                    events.readyForCompassLock = true;
+                }
+            } else { pickupTimerActive = false; }
+        } else {
+
         if (p.currentGForce < SysConfig.GFORCE_LIFT_DOWN_THRESHOLD) { isLowering = true; hasLanded = false; settlingTimerActive = false; }
         if (isLowering && (p.currentGForce > SysConfig.GFORCE_LIFT_UP_THRESHOLD || p.totalRawEnergy > SysConfig.STEADY_HOLD_ENERGY_MAX)) { hasLanded = true; isLowering = false; }
         if (hasLanded || (!isHandling && smoothedTotalEnergy < SysConfig.PERFECTLY_STILL_ENERGY)) {
@@ -82,6 +99,5 @@ SemanticEvents EventLatchHandler::processEvents(const PerceptionData& p, SystemM
             } else { settlingTimerActive = false; }
         } else { settlingTimerActive = false; }
     }
-
     return events;
 }

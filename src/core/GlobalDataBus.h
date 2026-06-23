@@ -17,6 +17,7 @@ struct PhysicsState {
 struct ActuatorState {              // MsgId 104
     int16_t leftMotorPWM = 0;       // Actuators (Left Track Current Power)
     int16_t rightMotorPWM = 0;      // Actuators (Right Track Current Power) 
+    bool isDriving = false;
 }__attribute__((packed));
 
 struct SensorState {                // MsgId 110
@@ -60,6 +61,7 @@ struct EventState {                 // MsgId 135: Semantic Events (The final tri
     float frustrationLevel = 0.0f;
     
     // 3. Internal Latches
+    //bool isDriving = false;
     bool isHandTeasing = false;
     bool isHandVanishing = false;
     bool isHandling = false;

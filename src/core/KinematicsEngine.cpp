@@ -8,15 +8,6 @@ KinematicsEngine::KinematicsEngine(PIDController* pointPID, PIDController* arcPI
     arcTurnPID = arcPID;
 }
 
-// 2. Implement the telemetry reporter
-// void KinematicsEngine::reportTelemetry(float left, float right) {
-//     //portENTER_CRITICAL(&globalDataBusLock); // TODO: We might want to add a critical section
-//     // Cast float PWM to int16_t for the telemetry bus
-//     CurrentRobotData.physics.leftMotorPWM = static_cast<int16_t>(left);
-//     CurrentRobotData.physics.rightMotorPWM = static_cast<int16_t>(right);
-//     //portEXIT_CRITICAL(&globalDataBusLock);  // TODO: end the critical section
-// }
-
 void KinematicsEngine::reloadPIDTunings() {
     // 1. Unified sync of the Point Turn PID
     pointTurnPID->setTunings(
@@ -73,6 +64,11 @@ void KinematicsEngine::navigateToHeading(float targetYaw, float currentYaw, floa
     outHeadingError = error;
     outLeftPWM = static_cast<int16_t>(leftPWM);
     outRightPWM = static_cast<int16_t>(rightPWM);
+    if (outLeftPWM || outRightPWM) {
+        isDriving = true;
+    } else {
+        isDriving = false;
+    }
 }
 
 // 3. Raw Drive Updated
@@ -81,6 +77,11 @@ void KinematicsEngine::rawDrive(float leftSpeed, float rightSpeed) {
     outHeadingError = 0.0f;
     outLeftPWM = static_cast<int16_t>(leftSpeed);
     outRightPWM = static_cast<int16_t>(rightSpeed);
+    if (outLeftPWM || outRightPWM) {
+        isDriving = true;
+    } else {
+        isDriving = false;
+    }
 }
 
 // 4. Stop Updated
@@ -89,4 +90,5 @@ void KinematicsEngine::stop() {
     outHeadingError = 0.0f;
     outLeftPWM = 0;
     outRightPWM = 0;
+    isDriving = false;
 }

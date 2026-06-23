@@ -11,6 +11,7 @@ private:
     // NEW: Memory to hold the final mathematical answers
     int16_t outLeftPWM = 0;
     int16_t outRightPWM = 0;
+    bool isDriving = false;
     float outTargetHeading = 0.0f;
     float outHeadingError = 0.0f;
 
@@ -28,6 +29,7 @@ public:
     // NEW: Getters for the Task to pull the answers
     int16_t getLeftPWM() const { return outLeftPWM; }
     int16_t getRightPWM() const { return outRightPWM; }
+    bool getIsDriving() const {return isDriving; }
     float getTargetHeading() const { return outTargetHeading; }
     float getHeadingError() const { return outHeadingError; }
 };

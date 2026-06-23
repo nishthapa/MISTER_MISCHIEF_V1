@@ -108,6 +108,7 @@ void ControlLoopTask(void *pvParameters) {
         // ==========================================
         int16_t finalLeftPWM = 0;
         int16_t finalRightPWM = 0;
+        bool isDriving = false;
 
         if (physicsSnapshot.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
             // This runs the state machine. The active mode will internally 
@@ -117,6 +118,15 @@ void ControlLoopTask(void *pvParameters) {
             // Pull the answers from the math engine
             finalLeftPWM = ctx->kinematics->getLeftPWM();
             finalRightPWM = ctx->kinematics->getRightPWM();
+
+            isDriving = ctx->kinematics->getIsDriving();
+                            // OR
+            // if (finalLeftPWM || finalRightPWM) {
+            //     isDriving = true;
+            // } else {
+            //     isDriving = false;
+            // }
+
         } else {
             // IMU Failure Failsafe
             ctx->kinematics->stop();
@@ -128,6 +138,7 @@ void ControlLoopTask(void *pvParameters) {
         portENTER_CRITICAL(&globalDataBusLock);
         CurrentRobotData.actuators.leftMotorPWM = finalLeftPWM;
         CurrentRobotData.actuators.rightMotorPWM = finalRightPWM;
+        CurrentRobotData.actuators.isDriving = isDriving;
         CurrentRobotData.controlDebug.targetHeading = ctx->kinematics->getTargetHeading();
         CurrentRobotData.controlDebug.headingError = ctx->kinematics->getHeadingError();
 
