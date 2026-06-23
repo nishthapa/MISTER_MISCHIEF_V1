@@ -256,15 +256,15 @@ void setup() {
 
   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info){
     // USE RAW SERIAL HERE! 
-      // Do not use logger.println, otherwise it will attempt a WebSocket 
-      // broadcast over a dead interface and crash the memory!
-      Serial.println("\n[WIFI-EVENT] Disconnected from AP.");
-      //logger.println("\n[WIFI-EVENT] Disconnected from AP.");
+    // Do not use logger.println, otherwise it will attempt a WebSocket 
+    // broadcast over a dead interface and crash the memory!
+    Serial.println("\n[WIFI-EVENT] Disconnected from AP.");
+    //logger.println("\n[WIFI-EVENT] Disconnected from AP.");
       
-      // Flip the WiFi connected Health Bit OFF
-      portENTER_CRITICAL(&globalDataBusLock);
-      CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::WIFI_CONNECTED;
-      portEXIT_CRITICAL(&globalDataBusLock);
+    // Flip the WiFi connected Health Bit OFF
+    portENTER_CRITICAL(&globalDataBusLock);
+    CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::WIFI_CONNECTED;
+    portEXIT_CRITICAL(&globalDataBusLock);
   }, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   
   // Pack needed contexts for the new isolated ColtrolLoopTask
@@ -297,7 +297,7 @@ void setup() {
   }
 
   //logger.println("==================================================");
-  logger.println("FREERTOS SCHEDULER INITIATED");
+  //logger.println("FREERTOS SCHEDULER INITIATED");
   //logger.println("==================================================");
 }
 

@@ -22,6 +22,36 @@ bool HCSR04_Sonar::init() {
     else {return true;}
 }
 
+// bool HCSR04_Sonar::init() {
+//     pinMode(trigPin, OUTPUT);
+//     pinMode(echoPin, INPUT);
+
+//     // ==========================================
+//     // SMART HARDWARE CHECK: The Dummy Ping
+//     // ==========================================
+//     digitalWrite(trigPin, LOW);
+//     delayMicroseconds(2);
+//     digitalWrite(trigPin, HIGH);
+//     delayMicroseconds(10);
+//     digitalWrite(trigPin, LOW);
+
+//     // Wait for the ECHO pin to go HIGH. 
+//     // If it is completely disconnected, it will remain floating or LOW.
+//     unsigned long waitStart = micros();
+//     bool responded = false;
+    
+//     while (micros() - waitStart < 15000) { // 15ms absolute max timeout
+//         if (digitalRead(echoPin) == HIGH) {
+//             responded = true;
+//             break;
+//         }
+//     }
+
+//     // If it didn't respond, the hardware is missing!
+//     return responded;
+// }
+
+
 float HCSR04_Sonar::getDistanceCM() {
     // 1. ACOUSTIC LOCKOUT CACHE (The 40ms Rule)
     // We still need this to prevent the physical sound waves from colliding in the room!

@@ -1,6 +1,7 @@
 #include "tasks/Task_Sensor.h"
 #include "core/GlobalDataBus.h"
 #include "config/SystemConfig.h"
+#include "config/SensorConfig.h"
 #include "utils/RemoteLogger.h"
 
 // ==========================================
@@ -14,6 +15,10 @@ void SensorTask(void *pvParameters) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
 
     unsigned long lastSonarTime = 0;
+
+    // --- NEW: SONAR Health Monitoring State ---
+    uint8_t consecutiveSonarFailures = 0;
+    const uint8_t MAX_SONAR_FAILURES = 20; // Allow 20 dropped pings before declaring death
 
     for (;;) {
         // Start the CPU stopwatch at the very beginning of the loop to start counting Loop Time!
@@ -96,6 +101,27 @@ void SensorTask(void *pvParameters) {
                 portENTER_CRITICAL(&globalDataBusLock); 
                 CurrentRobotData.sensors.distanceCM = currentDistance;
                 portEXIT_CRITICAL(&globalDataBusLock);
+
+                // --- NEW: Continuous Sonar Health Check ---
+                //if (currentDistance < 0.0f) {
+                if (currentDistance >= DistanceSensorConfig::SONAR_MAX_DIST) {
+                    // Ping timed out (unplugged or blocked)
+                    if (consecutiveSonarFailures < MAX_SONAR_FAILURES) {
+                        consecutiveSonarFailures++;
+                    }
+                    // If it's been dead for 5 consecutive loops, drop the OK bit
+                    if (consecutiveSonarFailures >= MAX_SONAR_FAILURES) {
+                        portENTER_CRITICAL(&globalDataBusLock);
+                        CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::SONAR_OK;
+                        portEXIT_CRITICAL(&globalDataBusLock);
+                    }
+                } else {
+                    // Ping succeeded! Reset the failure counter and assert the OK bit
+                    consecutiveSonarFailures = 0;
+                    portENTER_CRITICAL(&globalDataBusLock);
+                    CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::SONAR_OK;
+                    portEXIT_CRITICAL(&globalDataBusLock);
+                }    
             }
         }
 
