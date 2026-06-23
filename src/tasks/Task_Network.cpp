@@ -21,6 +21,16 @@ void NetworkTask(void *pvParameters) {
     int8_t currentWifiRSSI = -127;
 
     for (;;) {
+        if (Serial) {
+            portENTER_CRITICAL(&globalDataBusLock);
+            CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::USB_CONNECTED;
+            portEXIT_CRITICAL(&globalDataBusLock);
+        } else {
+            portENTER_CRITICAL(&globalDataBusLock);
+            CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::USB_CONNECTED;
+            portEXIT_CRITICAL(&globalDataBusLock);
+        }
+        
         // 1. Read CLI input securely
         while (Serial.available()) {
             if (ctx->cli) ctx->cli->processChar(Serial.read());
@@ -102,7 +112,7 @@ void NetworkTask(void *pvParameters) {
                 // Blast Semantic Events (latches & Continuous Metrics
                 ctx->router->broadcast(Comms::MsgId::EVENT_STATE, snapshot.events);
 
-                                // Blast Network Link (Signal strength)
+                // Blast Network Link (Signal strength)
                 ctx->router->broadcast(Comms::MsgId::NETWORK_LINK, snapshot.networkLink);
 
                 // Blast Perception data (raw energies)

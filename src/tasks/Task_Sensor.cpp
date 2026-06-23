@@ -28,6 +28,9 @@ void SensorTask(void *pvParameters) {
 
         if (isOTAActive) {
             logger.println("[SENSOR] OTA Detected. I2C Bus Released. Task Suspended.");
+            portENTER_CRITICAL(&globalDataBusLock);
+            CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::I2C_BUS_OK;
+            portEXIT_CRITICAL(&globalDataBusLock);
             vTaskSuspend(NULL); 
         }
 
