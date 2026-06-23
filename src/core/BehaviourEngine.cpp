@@ -73,6 +73,14 @@ SystemMode BehaviourEngine::mapModeToEnum(IRobotMode* mode) {
 PerceptionData BehaviourEngine::gatherPerception(const GlobalDataBank& robotData) {
     PerceptionData p;
 
+    // --- NEW: BAROMETER & DRIVING INTENT ---
+    p.hasBarometer = robotData.sensors.hasBaro;
+    p.isDriving = robotData.actuators.isDriving;
+
+    static float lastAltitudeCM = 0.0f;
+    p.altitudeDelta = robotData.sensors.altitudeCM - lastAltitudeCM;
+    lastAltitudeCM = robotData.sensors.altitudeCM;
+
     // --- HARDWARE SAFETY CHECKS (Bitmask Verification) ---
     
     // 1. Sonar Safety Check
@@ -84,7 +92,6 @@ PerceptionData BehaviourEngine::gatherPerception(const GlobalDataBank& robotData
     }
     
     p.currentGForce = robotData.physics.imuAngles.gForce;
-
     p.distanceDelta = (p.currentDistance != lastDistance && lastDistance > 0.0f) ? (p.currentDistance - lastDistance) : 0.0f;
 
     auto getShortestAngleDelta = [](float current, float previous) {
@@ -124,7 +131,6 @@ PerceptionData BehaviourEngine::gatherPerception(const GlobalDataBank& robotData
 
         p.isUpright = true; // Assume upright if we can't measure
     }
-    hasBaro = p.hasBaro;
     lastDistance = p.currentDistance;
     return p;
 }

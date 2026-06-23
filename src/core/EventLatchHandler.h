@@ -17,7 +17,7 @@ struct PerceptionData {
     float rawRollEnergy;
     bool isUpright;
     bool isDriving;
-    bool hasBaro;   // <--- NEW
+    bool hasBarometer;   // <--- NEW
     float altitudeDelta; // <--- NEW
 };
 

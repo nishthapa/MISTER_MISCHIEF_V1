@@ -134,46 +134,28 @@ void SensorTask(void *pvParameters) {
             float pres = ctx->baro->getPressurePa();
             float temp = ctx->baro->getTemperatureC();
 
-            portENTER_CRITICAL(&globalDataBusLock);
-            CurrentRobotData.perception.hasBaro = true;
-            portEXIT_CRITICAL(&globalDataBusLock);
-            
-            // Calculate a simple delta for lift detection. 
-            // In a real scenario, you might want to low-pass filter 'alt' first.
-            // float altDelta = alt - lastAltitude;
-            // lastAltitude = alt;
+            // --- CALCULATE DELTA LOCALLY ---
+            float altitudeDelta = alt - lastAltitude;
+            lastAltitude = alt;
 
+            // Safely write all barometer data to the SENSORS struct on the global bus
             portENTER_CRITICAL(&globalDataBusLock);
-            // Update the GlobalDataBus
+            CurrentRobotData.sensors.hasBaro = true;
             CurrentRobotData.sensors.pressurePa = pres;
-            CurrentRobotData.sensors.altitudeCM = alt * 100.0f; // Convert m to cm
-            //CurrentRobotData.sensors.altitudeDeltaCM = altDelta;
+            CurrentRobotData.sensors.altitudeCM = alt; // Convert m to cm
+            CurrentRobotData.sensors.altitudeDeltaCM = altitudeDelta;
             CurrentRobotData.sensors.temperatureC = temp;
-
             
-            // Update perception metrics so the EventLatchHandler can use them
-            //CurrentRobotData.perception.hasBarometer = true;
-            //CurrentRobotData.perception.altitudeDelta = altDelta * 100.0f; 
-            
-            // Assuming it doesn't fail frequently, but you could add failure logic here
             CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::BARO_OK;
             portEXIT_CRITICAL(&globalDataBusLock);
             
-            // Update the GlobalDataBus
-            // portENTER_CRITICAL(&globalDataBusLock);
-            // CurrentRobotData.sensors.pressurePa = pres;
-            // CurrentRobotData.sensors.altitudeCM = alt;
-            // CurrentRobotData.sensors.temperatureC = temp;
-            // portENTER_CRITICAL(&globalDataBusLock);
-
-            } else {
+        } else {
+            // Safely mark the barometer as missing in the SENSORS struct
             portENTER_CRITICAL(&globalDataBusLock);
-            CurrentRobotData.perception.hasBaro = false;
+            CurrentRobotData.sensors.hasBaro = false;
+            CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::BARO_OK;
             portEXIT_CRITICAL(&globalDataBusLock);
         }
-
-
-
 
         // 🚨 STOP CPU 0 STOPWATCH
         uint32_t loopEndUs = micros();
