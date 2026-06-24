@@ -1,6 +1,7 @@
 #include "hal/hardware/imu/MPU6050_IMU.h"
 #include "utils/RemoteLogger.h"
-#include "config/SensorConfig.h" 
+#include "config/SensorConfig.h"
+#include "config/I2CRegistry.h"
 #include "config/ConfigurationManager.h"
 #include <Wire.h>
 
@@ -161,7 +162,8 @@ bool MPU6050_IMU::init() {
 float MPU6050_IMU::getTemperature() {
     Wire.beginTransmission(deviceAddr);
     // Wire.write(I2CRegistry::I2C_MPU6050_REG_TEMP_OUT_H); // TEMP_OUT_H register
-    Wire.write(0x41); // TEMP_OUT_H register // Using hardcoded value to avoid dependency on I2CRegistry in this low-level file
+    //Wire.write(0x41); // TEMP_OUT_H register // Using hardcoded value to avoid dependency on I2CRegistry in this low-level file
+    Wire.write(I2CRegistry::I2C_MPU6050_REG_TEMP_OUT_H);
     Wire.endTransmission(false);
     Wire.requestFrom((uint8_t)deviceAddr, (uint8_t)2, (uint8_t)true);
     

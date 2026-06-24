@@ -93,6 +93,7 @@ void SensorTask(void *pvParameters) {
         }
 
         unsigned long currentTime = millis();
+
         // Poll the Sonar exactly every 50ms
         if (currentTime - lastSonarTime >= 50) { 
             lastSonarTime = currentTime;
@@ -128,34 +129,70 @@ void SensorTask(void *pvParameters) {
             }
         }
 
-        // 3. Read Barometer
-        if (ctx->baro) {
-            float alt = ctx->baro->getAltitudeCM();
-            float pres = ctx->baro->getPressurePa();
-            float temp = ctx->baro->getTemperatureC();
+        // 3. Read Barometer (Also limited to 50ms / 20Hz!)
+        static unsigned long lastBaroTime = 0;
+        if (currentTime - lastBaroTime >= 50) {
+            lastBaroTime = currentTime;
 
-            // --- CALCULATE DELTA LOCALLY ---
-            float altitudeDelta = alt - lastAltitude;
-            lastAltitude = alt;
+            if (ctx->baro) {
+                // Do the heavy I2C lifting ONCE
+                ctx->baro->update(); 
 
-            // Safely write all barometer data to the SENSORS struct on the global bus
-            portENTER_CRITICAL(&globalDataBusLock);
-            CurrentRobotData.sensors.hasBaro = true;
-            CurrentRobotData.sensors.pressurePa = pres;
-            CurrentRobotData.sensors.altitudeCM = alt; // Convert m to cm
-            CurrentRobotData.sensors.altitudeDeltaCM = altitudeDelta;
-            CurrentRobotData.sensors.temperatureC = temp;
-            
-            CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::BARO_OK;
-            portEXIT_CRITICAL(&globalDataBusLock);
-            
-        } else {
-            // Safely mark the barometer as missing in the SENSORS struct
-            portENTER_CRITICAL(&globalDataBusLock);
-            CurrentRobotData.sensors.hasBaro = false;
-            CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::BARO_OK;
-            portEXIT_CRITICAL(&globalDataBusLock);
+                // Instantly pull from local memory
+                float alt = ctx->baro->getAltitudeCM();
+                float pres = ctx->baro->getPressurePa();
+                float temp = ctx->baro->getTemperatureC();
+
+                // --- CALCULATE DELTA LOCALLY ---
+                float altitudeDelta = alt - lastAltitude;
+                lastAltitude = alt;
+
+                // Safely write all barometer data to the SENSORS struct
+                portENTER_CRITICAL(&globalDataBusLock);
+                CurrentRobotData.sensors.hasBaro = true;
+                CurrentRobotData.sensors.pressurePa = pres;
+                CurrentRobotData.sensors.altitudeCM = alt; 
+                CurrentRobotData.sensors.altitudeDeltaCM = altitudeDelta;
+                CurrentRobotData.sensors.temperatureC = temp;
+                CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::BARO_OK;
+                portEXIT_CRITICAL(&globalDataBusLock);
+                
+            } else {
+                portENTER_CRITICAL(&globalDataBusLock);
+                CurrentRobotData.sensors.hasBaro = false;
+                CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::BARO_OK;
+                portEXIT_CRITICAL(&globalDataBusLock);
+            }
         }
+
+        // 3. Read Barometer
+        // if (ctx->baro) {
+        //     float alt = ctx->baro->getAltitudeCM();
+        //     float pres = ctx->baro->getPressurePa();
+        //     float temp = ctx->baro->getTemperatureC();
+
+        //     // --- CALCULATE DELTA LOCALLY ---
+        //     float altitudeDelta = alt - lastAltitude;
+        //     lastAltitude = alt;
+
+        //     // Safely write all barometer data to the SENSORS struct on the global bus
+        //     portENTER_CRITICAL(&globalDataBusLock);
+        //     CurrentRobotData.sensors.hasBaro = true;
+        //     CurrentRobotData.sensors.pressurePa = pres;
+        //     CurrentRobotData.sensors.altitudeCM = alt; // Convert m to cm
+        //     CurrentRobotData.sensors.altitudeDeltaCM = altitudeDelta;
+        //     CurrentRobotData.sensors.temperatureC = temp;
+            
+        //     CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::BARO_OK;
+        //     portEXIT_CRITICAL(&globalDataBusLock);
+            
+        // } else {
+        //     // Safely mark the barometer as missing in the SENSORS struct
+        //     portENTER_CRITICAL(&globalDataBusLock);
+        //     CurrentRobotData.sensors.hasBaro = false;
+        //     CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::BARO_OK;
+        //     portEXIT_CRITICAL(&globalDataBusLock);
+        // }
 
         // 🚨 STOP CPU 0 STOPWATCH
         uint32_t loopEndUs = micros();

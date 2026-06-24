@@ -9,6 +9,12 @@ void RemoteLogger::beginSerial() {
     currentMode = SysConfig.ACTIVE_DEBUG_MODE;
     if (currentMode & SysConfig.DEBUG_USB) {
         Serial.begin(SysConfig.SERIAL_BAUD_RATE);
+
+        // --- NEW: THE MAGIC FIX ---
+        // Tell the Native USB CDC driver to never block the CPU if the PC stops reading.
+        // If the transmit buffer is full, immediately discard the log instead of crashing!
+        Serial.setTxTimeoutMs(0);
+        
         delay(3000);
     }
 }
@@ -24,8 +30,24 @@ void RemoteLogger::bindRadios() {
     }
 }
 
+// void RemoteLogger::print(const char* message) {
+//     if ((currentMode & SysConfig.DEBUG_USB) && Serial) Serial.print(message);
+//     if (currentMode & SysConfig.DEBUG_WIFI) {
+//         portENTER_CRITICAL(&globalDataBusLock);
+//         strncpy(CurrentRobotData.systemLog.text, message, 127);
+//         CurrentRobotData.systemLog.text[127] = '\0';
+//         CurrentRobotData.hasNewLog = true;
+//         portEXIT_CRITICAL(&globalDataBusLock);
+//     }
+// }
+
 void RemoteLogger::print(const char* message) {
-    if ((currentMode & SysConfig.DEBUG_USB) && Serial) Serial.print(message);
+    // 1. Safe USB Print
+    if ((currentMode & SysConfig.DEBUG_USB) && Serial) {
+        Serial.print(message);
+    }
+    
+    // 2. Safe other medium Print
     if (currentMode & SysConfig.DEBUG_WIFI) {
         portENTER_CRITICAL(&globalDataBusLock);
         strncpy(CurrentRobotData.systemLog.text, message, 127);
@@ -35,8 +57,25 @@ void RemoteLogger::print(const char* message) {
     }
 }
 
+// void RemoteLogger::println(const char* message) {
+//     if ((currentMode & SysConfig.DEBUG_USB) && Serial) Serial.println(message);
+//     if (currentMode & SysConfig.DEBUG_WIFI) {
+//         portENTER_CRITICAL(&globalDataBusLock);
+//         strncpy(CurrentRobotData.systemLog.text, message, 126);
+//         CurrentRobotData.systemLog.text[126] = '\0'; 
+//         strcat(CurrentRobotData.systemLog.text, "\n");
+//         CurrentRobotData.hasNewLog = true;
+//         portEXIT_CRITICAL(&globalDataBusLock);
+//     }
+// }
+
 void RemoteLogger::println(const char* message) {
-    if ((currentMode & SysConfig.DEBUG_USB) && Serial) Serial.println(message);
+    // 1. Safe USB Print
+    if ((currentMode & SysConfig.DEBUG_USB) && Serial) {
+        Serial.println(message);
+    }
+    
+    // 2. Safe other medium Print
     if (currentMode & SysConfig.DEBUG_WIFI) {
         portENTER_CRITICAL(&globalDataBusLock);
         strncpy(CurrentRobotData.systemLog.text, message, 126);
@@ -46,7 +85,6 @@ void RemoteLogger::println(const char* message) {
         portEXIT_CRITICAL(&globalDataBusLock);
     }
 }
-
 void RemoteLogger::printf(const char* format, ...) {
     if (currentMode == 0) return;
     char buffer[128];
