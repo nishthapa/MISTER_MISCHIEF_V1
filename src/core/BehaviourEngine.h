@@ -5,8 +5,8 @@
 #include "behaviours/IRobotMode.h"
 #include "behaviours/RobotMood.h"
 #include "core/RobotState.h"
-#include "core/EventLatchHandler.h" // <--- The new Handler!
-#include "core/GlobalDataBus.h" // <--- The new Global Sensor State!
+#include "core/GlobalDataBus.h" 
+#include "core/interfaces/IBehaviourDecider.h"
 
 class Mode_ObstacleAvoidance;
 class Mode_NormalDriving;
@@ -14,14 +14,13 @@ class Mode_CompassLock;
 class Mode_MaintainDistance;
 class Mode_Dizzy;
 class Mode_DeepSleep;
-class Mode_Teleop; // <--- Forward declaration of the new Teleop mode
+class Mode_Teleop; 
 class Mode_Diagnostics;
 class Mode_AutoTune;
 
 class BehaviourEngine {
 private:
-    I_IMU* imu;
-    I_DistanceSensor* sonar;
+    IBehaviourDecider* decider;
 
     Mode_ObstacleAvoidance* obstacleMode;
     Mode_NormalDriving* normalMode;
@@ -29,34 +28,29 @@ private:
     Mode_MaintainDistance* distanceMode;
     Mode_Dizzy* dizzyMode;
     Mode_DeepSleep* sleepMode;
-    Mode_Teleop* teleopMode; // <--- ADD THIS
+    Mode_Teleop* teleopMode; 
     Mode_Diagnostics* diagnosticMode;
     Mode_AutoTune* autotuneMode;
+    
     IRobotMode* activeMode;
     IRobotMode* previousMode;
     RobotMood activeMood;
-
-    EventLatchHandler latchHandler; // <--- Replaces 20 earlier variables!
     
     bool isGroggyPhase;
     unsigned long coldBootTime;
-    float lastDistance;
-    bool hasBaro;
-    FusedAngles lastAngles;
 
-    PerceptionData gatherPerception(const GlobalDataBank& robotData); // Removed volatile
-    IRobotMode* determineNextMode(const SemanticEvents& events);
     SystemMode mapModeToEnum(IRobotMode* mode);
+    IRobotMode* getModeFromEnum(SystemMode modeEnum);
 
 public:
-    BehaviourEngine(Mode_ObstacleAvoidance* obs, Mode_NormalDriving* norm, 
+    BehaviourEngine(IBehaviourDecider* decisionEngine,
+                    Mode_ObstacleAvoidance* obs, Mode_NormalDriving* norm, 
                     Mode_CompassLock* comp, Mode_MaintainDistance* dist, 
                     Mode_Dizzy* diz, Mode_DeepSleep* sleep, Mode_Teleop* teleop,
                     Mode_Diagnostics* diag, Mode_AutoTune* autot);
 
     void init(bool isColdBoot);
-    //void update(const volatile GlobalDataBank& robotData);
-    void update(const GlobalDataBank& robotData); // Removed 'volatile'
+    void update(const GlobalDataBank& robotData);
     void changeMode(IRobotMode* newMode);
     
     const char* getActiveModeName() const;

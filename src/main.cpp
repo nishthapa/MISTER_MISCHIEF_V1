@@ -30,6 +30,7 @@
 #include "tasks/Task_Sensor.h"
 #include "tasks/Task_Network.h"
 #include "utils/OTAManager.h"
+#include "core/deciders/HeuristicDecider.h"
 
 // 1. Declare the context struct globally so it doesn't get destroyed after setup()
 ControlLoopContext controlCtx;
@@ -106,12 +107,17 @@ Mode_AutoTune autotuneMode(&kinematicsEngine); // Removed 'imu'
 Mode_Teleop teleopMode(&kinematicsEngine);
 Mode_Diagnostics diagnosticMode(&kinematicsEngine);
 
+// Instantiate the new Heuristic (AI) Decider, feeding it the modes it needs
+HeuristicDecider heuristicBrain(&obstacleMode);
+
 
 // ==========================================
 // MODE SWITCHER (The Brain)
 // ==========================================
 // Note: It still takes the hardware pointers right now, but we will remove them in the next step!
-BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode, &teleopMode, &diagnosticMode, &autotuneMode); // Added teleopMode to the constructor
+//BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode, &teleopMode, &diagnosticMode, &autotuneMode); // Added teleopMode to the constructor
+// 2. Feed the Decider into the Engine
+BehaviourEngine brain(&heuristicBrain, &obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode, &teleopMode, &diagnosticMode, &autotuneMode);
 CommandProcessor cliEngine;
 
 // ==========================================
