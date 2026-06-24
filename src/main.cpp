@@ -15,6 +15,7 @@
 #include "behaviours/Mode_AutoTune.h"
 #include "behaviours/Mode_Teleop.h"
 #include "behaviours/Mode_Diagnostics.h"
+#include "behaviours/Mode_BrainDead.h"
 #include "core/BehaviourEngine.h"
 #include "core/KinematicsEngine.h"
 #include "utils/RadioManager.h"
@@ -106,6 +107,7 @@ Mode_DeepSleep sleepMode(&kinematicsEngine); // standardized dependency injectio
 Mode_AutoTune autotuneMode(&kinematicsEngine); // Removed 'imu'
 Mode_Teleop teleopMode(&kinematicsEngine);
 Mode_Diagnostics diagnosticMode(&kinematicsEngine);
+Mode_BrainDead brainDeadMode(&kinematicsEngine); // when SysConfig.BRAIN_ACTIVE = false ("set BRAIN_ACTIVE off" command)
 
 // Instantiate the new Heuristic (AI) Decider, feeding it the modes it needs
 HeuristicDecider heuristicBrain(&obstacleMode);
@@ -117,7 +119,9 @@ HeuristicDecider heuristicBrain(&obstacleMode);
 // Note: It still takes the hardware pointers right now, but we will remove them in the next step!
 //BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode, &teleopMode, &diagnosticMode, &autotuneMode); // Added teleopMode to the constructor
 // 2. Feed the Decider into the Engine
-BehaviourEngine brain(&heuristicBrain, &obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode, &teleopMode, &diagnosticMode, &autotuneMode);
+BehaviourEngine brain(&heuristicBrain, &obstacleMode, &normalMode, &compassMode, &distanceMode,
+  &dizzyMode, &sleepMode, &teleopMode, &diagnosticMode, &autotuneMode, &brainDeadMode);
+  
 CommandProcessor cliEngine;
 
 // ==========================================

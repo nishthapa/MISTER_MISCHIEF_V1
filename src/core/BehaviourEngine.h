@@ -17,6 +17,7 @@ class Mode_DeepSleep;
 class Mode_Teleop; 
 class Mode_Diagnostics;
 class Mode_AutoTune;
+class Mode_BrainDead;
 
 class BehaviourEngine {
 private:
@@ -31,6 +32,7 @@ private:
     Mode_Teleop* teleopMode; 
     Mode_Diagnostics* diagnosticMode;
     Mode_AutoTune* autotuneMode;
+    Mode_BrainDead* brainDeadMode;
     
     IRobotMode* activeMode;
     IRobotMode* previousMode;
@@ -47,7 +49,8 @@ public:
                     Mode_ObstacleAvoidance* obs, Mode_NormalDriving* norm, 
                     Mode_CompassLock* comp, Mode_MaintainDistance* dist, 
                     Mode_Dizzy* diz, Mode_DeepSleep* sleep, Mode_Teleop* teleop,
-                    Mode_Diagnostics* diag, Mode_AutoTune* autot);
+                    Mode_Diagnostics* diag, Mode_AutoTune* autot,
+                    Mode_BrainDead* deadMode);
 
     void init(bool isColdBoot);
     void update(const GlobalDataBank& robotData);

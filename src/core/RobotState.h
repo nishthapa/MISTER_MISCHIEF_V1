@@ -8,14 +8,15 @@ enum class SystemMode : uint8_t {
     MANUAL_OVERRIDE = 1,
 
     // --- BEHAVIOURAL MODES ---
-    MODE_NORMAL_DRIVING = 2,
-    MODE_OBSTACLE_AVOIDANCE = 3,
-    MODE_MAINTAIN_DISTANCE = 4,
-    MODE_COMPASS_LOCK = 5,
-    MODE_DIZZY = 6,
-    MODE_DEEP_SLEEP = 7,
-    MODE_AUTOTUNE = 8,
-    MODE_DIAGNOSTICS = 9
+    MODE_NORMAL_DRIVING         = 2,
+    MODE_OBSTACLE_AVOIDANCE     = 3,
+    MODE_MAINTAIN_DISTANCE      = 4,
+    MODE_COMPASS_LOCK           = 5,
+    MODE_DIZZY                  = 6,
+    MODE_DEEP_SLEEP             = 7,
+    MODE_AUTOTUNE               = 8,
+    MODE_DIAGNOSTICS            = 9,
+    MODE_BRAIN_DEAD             = 10
 };
 
 // The global runtime variable
