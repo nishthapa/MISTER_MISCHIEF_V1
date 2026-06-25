@@ -72,7 +72,11 @@ PerceptionData HeuristicDecider::gatherPerception(const GlobalDataBank& robotDat
     p.isDriving = robotData.actuators.isDriving;
 
     static float lastAltitudeCM = 0.0f;
-    p.altitudeDelta = robotData.sensors.altitudeCM - lastAltitudeCM;
+    //p.altitudeDelta = robotData.sensors.altitudeCM - lastAltitudeCM;
+
+    // now working with raw pascal delta for better delta characterization
+    p.pressureDelta = robotData.sensors.pressureDeltaPa;
+
     lastAltitudeCM = robotData.sensors.altitudeCM;
 
     // 1. Sonar Safety Check

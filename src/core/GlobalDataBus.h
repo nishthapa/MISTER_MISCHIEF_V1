@@ -25,7 +25,8 @@ struct SensorState {                // MsgId 110
     bool hasBaro = false;           // Baro check
     float pressurePa = 0.0f;        // Baro Pressure
     float altitudeCM = 0.0f;        // Baro Altitude
-    float altitudeDeltaCM = 0.0f;   // Baro altitude change
+    //float altitudeDeltaCM = 0.0f; // Baro altitude change
+    float pressureDeltaPa = 0.0f;   // Replaced altitudeDeltaCM for better sensor data characterization 
     float temperatureC = 0.0f;      // Baro Temperature 
     uint16_t batteryVoltageMV = 0;  // Future INA226 Voltage Expansion
     int16_t currentDrawMA = 0;      // Future INA226 Current Expansion
@@ -48,32 +49,82 @@ struct ControlDebugState {          // MsgId 121
     float joyY = 0.0f; // <-- Add this!
 }__attribute__((packed));
 
-struct EventState {                 // MsgId 135: Semantic Events (The final triggers)
-    bool hazardDetected = false;       
-    bool teaseConfirmed = false;       
-    bool targetVanished = false;       
-    bool dizzyTriggered = false;       
-    bool dizzyFinished = false;        
-    bool readyForCompassLock = false;  
-    bool safelyLanded = false;         
-    bool frustrationPeaked = false;    
+// struct EventState {                 // MsgId 135: Semantic Events (The final triggers)
+//     bool hazardDetected = false;       
+//     bool teaseConfirmed = false;       
+//     bool targetVanished = false;       
+//     bool dizzyTriggered = false;       
+//     bool dizzyFinished = false;        
+//     bool readyForCompassLock = false;  
+//     bool safelyLanded = false;         
+//     bool frustrationPeaked = false;    
 
-    // 2. Internal Metrics & States (Continuous variables from the handler)
+//     // 2. Internal Metrics & States (Continuous variables from the handler)
+//     float dizzyBarYaw = 0.0f;
+//     float dizzyBarPitch = 0.0f;
+//     float dizzyBarRoll = 0.0f;
+//     float smoothedTotalEnergy = 0.0f;
+//     float frustrationLevel = 0.0f;
+    
+//     // 3. Internal Latches
+//     //bool isDriving = false;
+//     bool isHandTeasing = false;
+//     bool isHandVanishing = false;
+//     bool isHandling = false;
+//     bool hasExperiencedLift = false;
+//     bool isLowering = false;
+//     bool hasLanded = false;
+//     bool isDizzy = false;
+// }__attribute__((packed));
+
+struct EventState {                 // MsgId 135: Semantic Events
+    // ==========================================================
+    // 1. THE AI PERCEPTION LATCHES (The Physical Truth)
+    // ==========================================================
+    bool isHandling = false;        
+    bool isFreeFalling = false;     
+    
+    // --- The Complete Orientation Set ---
+    bool isUpright = true;          // Tracks on the floor
+    bool isUpsideDown = false;      // Completely flipped over (Resting on top)
+    bool isTippedLeft = false;      // Resting on left side
+    bool isTippedRight = false;     // Resting on right side
+    bool isNoseUp = false;          // Pitch > 70 deg (Stuck pointing at ceiling)
+    bool isNoseDown = false;        // Pitch < -70 deg (Faceplant / Pointing at floor)
+    
+    bool isAbsolutelyStill = false; 
+    bool isStuck = false;           
+    bool hazardDetected = false;    
+    bool isBeingTeased = false;     
+    bool isBeingPushed = false;     
+    bool isDizzy = false;           
+
+    // ==========================================================
+    // 2. MOOD & BEHAVIOUR TRIGGERS
+    // ==========================================================
+    bool frustrationPeaked = false; 
+
+    // ==========================================================
+    // 3. LEGACY HEURISTIC METRICS 
+    // (Keep these until the HeuristicDecider is fully deleted)
+    // ==========================================================
     float dizzyBarYaw = 0.0f;
     float dizzyBarPitch = 0.0f;
     float dizzyBarRoll = 0.0f;
     float smoothedTotalEnergy = 0.0f;
     float frustrationLevel = 0.0f;
     
-    // 3. Internal Latches
-    //bool isDriving = false;
+    bool teaseConfirmed = false;       
+    bool targetVanished = false;       
+    bool dizzyTriggered = false;       
+    bool dizzyFinished = false;        
+    bool readyForCompassLock = false;  
+    bool safelyLanded = false;  
     bool isHandTeasing = false;
     bool isHandVanishing = false;
-    bool isHandling = false;
     bool hasExperiencedLift = false;
     bool isLowering = false;
     bool hasLanded = false;
-    bool isDizzy = false;
 }__attribute__((packed));
 
 struct PerceptionMetrics {          // MsgId 136: Intermediate Math & Tuning Metrics

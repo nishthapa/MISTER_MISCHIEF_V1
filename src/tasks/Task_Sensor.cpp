@@ -21,7 +21,10 @@ void SensorTask(void *pvParameters) {
     const uint8_t MAX_SONAR_FAILURES = 20; // Allow 20 dropped pings before declaring death
 
     // Barometer state for deltas
-    float lastAltitude = 0.0f;
+    // float lastAltitude = 0.0f;
+
+    // --- REPLACED lastAltitude WITH lastPressurePa ---
+    float lastPressurePa = 0.0f;
 
     for (;;) {
         // Start the CPU stopwatch at the very beginning of the loop to start counting Loop Time!
@@ -144,15 +147,27 @@ void SensorTask(void *pvParameters) {
                 float temp = ctx->baro->getTemperatureC();
 
                 // --- CALCULATE DELTA LOCALLY ---
-                float altitudeDelta = alt - lastAltitude;
-                lastAltitude = alt;
+                // float altitudeDelta = alt - lastAltitude;
+                // lastAltitude = alt;
+
+                // Replaced the Altitude Delta calculation with Pressure Delta
+                // Initialize baseline on the very first loop so we don't get a massive false spike
+                if (lastPressurePa == 0.0f && pres > 0.0f) {
+                    lastPressurePa = pres;
+                }
+
+                // Calculate the raw Pascal delta
+                float pressureDelta = pres - lastPressurePa;
+                lastPressurePa = pres;
 
                 // Safely write all barometer data to the SENSORS struct
                 portENTER_CRITICAL(&globalDataBusLock);
                 CurrentRobotData.sensors.hasBaro = true;
                 CurrentRobotData.sensors.pressurePa = pres;
                 CurrentRobotData.sensors.altitudeCM = alt; 
-                CurrentRobotData.sensors.altitudeDeltaCM = altitudeDelta;
+                //CurrentRobotData.sensors.altitudeDeltaCM = altitudeDelta;
+                // write the new pressure delta instead of altitude delta
+                CurrentRobotData.sensors.pressureDeltaPa = pressureDelta;
                 CurrentRobotData.sensors.temperatureC = temp;
                 CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::BARO_OK;
                 portEXIT_CRITICAL(&globalDataBusLock);

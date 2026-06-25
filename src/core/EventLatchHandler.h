@@ -18,7 +18,9 @@ struct PerceptionData {
     bool isUpright;
     bool isDriving;
     bool hasBarometer;   // <--- NEW
-    float altitudeDelta; // <--- NEW
+    //float altitudeDelta; replaced by pressureDelta
+    float pressureDelta; // <--- Changed from altitudeDelta
+
 };
 
 // 2. SEMANTIC EVENTS (What does the physics mean over time?)
