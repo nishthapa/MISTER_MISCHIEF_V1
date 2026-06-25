@@ -196,53 +196,46 @@ def process_packet(msg_id, payload):
         pass
 
 # ==========================================================
-# 🚨 THE NEW, AUTO-ALIGNING PACKET EXTRACTOR 🚨
+# 🚨 THE MSP MULTIWII PACKET DECODER 🚨
 # ==========================================================
 def notification_handler(sender, data):
     global packet_buffer
     packet_buffer.extend(data)
     
-    # We map your MsgIds directly to the expected payload size
-    EXPECTED_SIZES = {
-        101: struct.calcsize(FMT_PHYSICS),   # 20 bytes
-        104: struct.calcsize(FMT_ACTUATOR),  # 5 bytes
-        110: struct.calcsize(FMT_SENSOR)     # 25 bytes
-    }
-    
-    while len(packet_buffer) >= 4:
-        if packet_buffer[0] == 0xAA and packet_buffer[1] == 0x55:
-            length_byte = packet_buffer[2]
-            msg_id = packet_buffer[3]
+    # Minimum MSP packet is 6 bytes: '$', 'M', '>', Size, ID, Checksum
+    while len(packet_buffer) >= 6:
+        # ASCII for '$' is 36, 'M' is 77, '>' is 62
+        if packet_buffer[0] == 36 and packet_buffer[1] == 77 and packet_buffer[2] == 62:
             
-            expected_payload_size = EXPECTED_SIZES.get(msg_id)
+            payload_size = packet_buffer[3]
+            msg_id = packet_buffer[4]
+            total_packet_size = 6 + payload_size
             
-            if expected_payload_size is not None:
-                # Auto-detect if length_byte includes the MsgId or not
-                if length_byte == expected_payload_size:
-                    total_packet_size = length_byte + 5
-                    payload_end = 4 + length_byte
-                elif length_byte == expected_payload_size + 1:
-                    total_packet_size = length_byte + 4
-                    payload_end = 4 + length_byte - 1
-                else:
-                    packet_buffer.pop(0) # Bad length, resync
-                    continue
+            # Wait until the full packet (including checksum) has arrived over BLE
+            if len(packet_buffer) >= total_packet_size:
+                payload = packet_buffer[5 : 5 + payload_size]
+                
+                # --- CHECKSUM VALIDATION (Matches your C++ logic perfectly) ---
+                calc_checksum = packet_buffer[3] ^ packet_buffer[4]
+                for b in payload:
+                    calc_checksum ^= b
                     
-                if len(packet_buffer) >= total_packet_size:
-                    payload = packet_buffer[4 : payload_end]
+                received_checksum = packet_buffer[5 + payload_size]
+                
+                if calc_checksum == received_checksum:
+                    # Valid packet! Send it to the struct unpacker
                     process_packet(msg_id, payload)
-                    packet_buffer = packet_buffer[total_packet_size:]
                 else:
-                    break # Wait for more chunks over BLE
+                    # Silent drop for corrupt BLE packets (prevents AI poisoning)
+                    pass 
+                
+                # Slide the window forward
+                packet_buffer = packet_buffer[total_packet_size:]
             else:
-                # We received an unknown MsgId (like SYSTEM_STATUS = 130). 
-                # We must safely skip it so we don't clog the buffer.
-                total_packet_size = length_byte + 5
-                if len(packet_buffer) >= total_packet_size:
-                    packet_buffer = packet_buffer[total_packet_size:]
-                else:
-                    break
+                # Packet is fragmented across multiple BLE blasts. Wait for more data.
+                break 
         else:
+            # We are misaligned. Pop 1 byte to slide the search window forward.
             packet_buffer.pop(0)
 
 async def csv_writer_task():
