@@ -10,25 +10,26 @@ ROBOT_MAC_ADDRESS = "44:1B:F6:FF:94:19"
 CHAR_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb"
 
 # ALIGNED STRUCT FORMATS
-FMT_PHYSICS = "<ffff?f"
+FMT_PHYSICS = "<ffff?f"   # <--- Fixed 21-byte alignment!
 FMT_SENSOR = "<f?ffffHh"
 FMT_ACTUATOR = "<hh?"
 
 last_yaw = 0.0
 reset_requested = False 
+recording_active = False  # <--- NEW: Master Recording Switch
 
 robot_state = {
-    # --- LAYER 1 INPUTS (Real Time Sensors & Actuators) ---
+    # --- LAYER 1 INPUTS ---
     "pitch": 0.0, "roll": 0.0, "gForce": 1.0, "yawRate": 0.0, 
     "distanceCM": -1.0, "pressureDeltaPa": 0.0, "pressurePa": 0.0,
     "leftMotorPWM": 0, "rightMotorPWM": 0,
     
-    # --- LAYER 1 INPUTS (Future Expansion) ---
+    # --- LAYER 1 INPUTS (Future) ---
     "magHeading": 0.0,
     "encLeftVel": 0.0, "encRightVel": 0.0,
     "cliffFL": 0.0, "cliffFR": 0.0, "cliffBL": 0.0, "cliffBR": 0.0,
     
-    # --- LAYER 1 OUTPUTS / LAYER 2 INPUTS (The Latches) ---
+    # --- LAYER 1 OUTPUTS / LAYER 2 INPUTS ---
     "label_isUpright": 1,
     "label_isUpsideDown": 0,    
     "label_isTippedLeft": 0,
@@ -43,7 +44,7 @@ robot_state = {
     "label_isBeingTeased": 0,
     "label_isBeingPushed": 0,
 
-    # --- LAYER 2 OUTPUTS (The Final Mode Decision) ---
+    # --- LAYER 2 OUTPUTS ---
     "target_mode": 10
 }
 
@@ -54,9 +55,17 @@ def render_ui():
     sys.stdout.write("\033[H")
     mode_names = {10:"BRAIN_DEAD", 2:"NORMAL", 3:"OBSTACLE", 4:"DIST_HOLD", 5:"COMPASS", 6:"DIZZY", 11:"VERT_BAL"}
     
+    # --- NEW: Live Status Banner ---
+    if recording_active:
+        status_banner = "\033[92m[ 🔴 RECORDING LIVE - Press ENTER to Pause ]\033[0m"
+    else:
+        status_banner = "\033[91m[ ⏸️  PAUSED - Press ENTER to Start Recording ]\033[0m"
+
     ui = f"""
 ======================================================================
   MISTER MISCHIEF 2-LAYER AI DATA LABELER
+======================================================================
+  STATUS: {status_banner}
 ======================================================================
  MODES (Sticky):                  ORIENTATIONS (Sticky/Mutually Exclusive):
  [0] BrainDead  [4] Compass       [U] Upright       [I] Upside Down
@@ -64,8 +73,9 @@ def render_ui():
  [2] Obstacle   [6] Vertical      [Up] Nose Up      [Down] Nose Down
  [3] Dist Hold
 
- ACTION LATCHES:
- [SPACE] isHandling (STICKY)           [BACKSPACE] Wipe CSV & Restart
+ SYSTEM & ACTION LATCHES:
+ [ENTER] Toggle Record                 [BACKSPACE] Wipe CSV & Restart
+ [SPACE] isHandling (STICKY)           
  
  (MOMENTARY - Hold to Activate, Release to Deactivate!):
  [SHIFT] isAbsolutelyStill        [E] isBeingTeased (Sonar Game)
@@ -99,11 +109,17 @@ def set_orientation(target_label):
     robot_state[target_label] = 1
 
 def on_press(key):
-    global robot_state, reset_requested
+    global robot_state, reset_requested, recording_active
     if key in pressed_keys: return 
     pressed_keys.add(key)
     
     try:
+        # --- NEW: MASTER RECORDING TOGGLE ---
+        if key == keyboard.Key.enter:
+            recording_active = not recording_active
+            render_ui()
+            return
+
         if key == keyboard.Key.backspace:
             reset_requested = True
             return
@@ -138,6 +154,7 @@ def on_press(key):
         elif key == keyboard.Key.up: set_orientation("label_isNoseUp")
         elif key == keyboard.Key.down: set_orientation("label_isNoseDown")
         
+        # Only re-render immediately if we pressed a key that changes state
         render_ui()
     except AttributeError:
         pass
@@ -195,27 +212,19 @@ def process_packet(msg_id, payload):
     except Exception:
         pass
 
-# ==========================================================
-# 🚨 THE MSP MULTIWII PACKET DECODER 🚨
-# ==========================================================
 def notification_handler(sender, data):
     global packet_buffer
     packet_buffer.extend(data)
     
-    # Minimum MSP packet is 6 bytes: '$', 'M', '>', Size, ID, Checksum
     while len(packet_buffer) >= 6:
-        # ASCII for '$' is 36, 'M' is 77, '>' is 62
         if packet_buffer[0] == 36 and packet_buffer[1] == 77 and packet_buffer[2] == 62:
-            
             payload_size = packet_buffer[3]
             msg_id = packet_buffer[4]
             total_packet_size = 6 + payload_size
             
-            # Wait until the full packet (including checksum) has arrived over BLE
             if len(packet_buffer) >= total_packet_size:
                 payload = packet_buffer[5 : 5 + payload_size]
                 
-                # --- CHECKSUM VALIDATION (Matches your C++ logic perfectly) ---
                 calc_checksum = packet_buffer[3] ^ packet_buffer[4]
                 for b in payload:
                     calc_checksum ^= b
@@ -223,23 +232,16 @@ def notification_handler(sender, data):
                 received_checksum = packet_buffer[5 + payload_size]
                 
                 if calc_checksum == received_checksum:
-                    # Valid packet! Send it to the struct unpacker
                     process_packet(msg_id, payload)
-                else:
-                    # Silent drop for corrupt BLE packets (prevents AI poisoning)
-                    pass 
                 
-                # Slide the window forward
                 packet_buffer = packet_buffer[total_packet_size:]
             else:
-                # Packet is fragmented across multiple BLE blasts. Wait for more data.
                 break 
         else:
-            # We are misaligned. Pop 1 byte to slide the search window forward.
             packet_buffer.pop(0)
 
 async def csv_writer_task():
-    global reset_requested
+    global reset_requested, recording_active
     with open('pristine_ai_data.csv', mode='w', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=robot_state.keys())
         writer.writeheader()
@@ -247,36 +249,38 @@ async def csv_writer_task():
         os.system('cls' if os.name == 'nt' else 'clear')
         render_ui()
         
-        loop_counter = 0 # <--- NEW: The refresh throttle counter
+        loop_counter = 0 
         
         while True:
-            # --- THE RESTART LOGIC ---
             if reset_requested:
                 file.seek(0)           
                 file.truncate()        
                 writer.writeheader()   
                 reset_requested = False
+                recording_active = False # <--- Drop to PAUSE state on reset
                 sys.stdout.write("\033[H\033[2J") 
                 print("\n\n======================================================================")
                 print("  [ SYSTEM RESET ] CSV FILE SUCCESSFULLY WIPED AND RESTARTED!")
+                print("  [ STATUS ] Dropped to PAUSED Mode to allow physical reset.")
                 print("======================================================================\n")
                 await asyncio.sleep(1.5)
                 render_ui()
                 
-            writer.writerow(robot_state)
-            file.flush() 
+            # --- THE GATED WRITER ---
+            if recording_active:
+                writer.writerow(robot_state)
+                file.flush() 
             
-            # --- NEW: UI REFRESH DECOUPLING ---
-            # 10 loops * 0.01s = UI redraws every 0.1 seconds (10Hz)
+            # --- UI Refresh Throttle (10Hz) ---
             loop_counter += 1
             if loop_counter >= 10:
                 render_ui()
                 loop_counter = 0
                 
-            await asyncio.sleep(0.01) # 100Hz Data Logging
+            await asyncio.sleep(0.01)
 
 async def main():
-    async with BleakClient(ROBOT_MAC_ADDRESS) as client:
+    async with BleakClient(ROBOT_MAC_ADDRESS, timeout=30.0) as client:
         await client.start_notify(CHAR_UUID, notification_handler)
         await csv_writer_task()
 

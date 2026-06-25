@@ -87,7 +87,7 @@ void NetworkTask(void *pvParameters) {
             portEXIT_CRITICAL(&globalDataBusLock);
             // -----------------------------
 
-            if (ctx->router) {
+            if (ctx->router) { // Note: TRANSIENT_ALERTS (System.println() mirrors should be sent separately only once down below)
                 // Blast Cognitive State (Mode & Mood)
                 ctx->router->broadcast(Comms::MsgId::ROBOT_STATE, snapshot.cognition);
 
@@ -117,6 +117,9 @@ void NetworkTask(void *pvParameters) {
 
                 // Blast Perception data (raw energies)
                 ctx->router->broadcast(Comms::MsgId::PERCEPTION_METRICS, snapshot.perception);
+                
+
+
             }
 
             //experimental: just to view in serial monitor for now

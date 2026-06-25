@@ -16,8 +16,23 @@ struct PhysicsState {
 
 struct ActuatorState {              // MsgId 104
     int16_t leftMotorPWM = 0;       // Actuators (Left Track Current Power)
-    int16_t rightMotorPWM = 0;      // Actuators (Right Track Current Power) 
+    int16_t rightMotorPWM = 0;      // Actuators (Right Track Current Power)
+
     bool isDriving = false;
+
+    // Enable these later, also uncomment in Task_ControlLoop.cpp
+    // bool isDrivingStraightForward = false;
+    // bool isDrivingStraightReverse = false;
+    // bool isPointTurningLeft = false;
+    // bool isPointTurningRight = false;
+    // bool isArcTurningForwardLeft = false;
+    // bool isArcTurningForwardRight = false;
+    // bool isArcTurningReverseLeft = false;
+    // bool isArcTurningReverseRight = false;
+    // bool isOneSidedTurningForwardLeft   = false;
+    // bool isOneSidedTurningForwardRight  = false;
+    // bool isOneSidedTurningReverseLeft   = false;
+    // bool isOneSidedTurningReverseRight  = false;
 }__attribute__((packed));
 
 struct SensorState {                // MsgId 110

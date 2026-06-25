@@ -33,7 +33,7 @@ namespace SystemConfig {
     // --- Loop Rates ---
     constexpr unsigned long MAIN_LOOP_TICK_RATE_MS = 10;  // 10ms = 100Hz (The Physics Engine metronome)
     // constexpr unsigned long TELEMETRY_PING_DELAY_MS = 80; // 80ms = 12.5Hz (How fast the Mouth talks)
-    constexpr unsigned long TELEMETRY_PING_DELAY_MS = 10; // ~ Temporarily 100 Hz for gathering AI Training data in Mode_BrainDead 
+    constexpr unsigned long TELEMETRY_PING_DELAY_MS = 35; // ~ Temporarily 50 Hz for gathering AI Training data in Mode_Teleop 
 
     // ==========================================
     // BOOT SEQUENCE & HARDWARE TIMINGS
@@ -54,4 +54,6 @@ namespace SystemConfig {
     constexpr int WEBSOCKET_PORT = 81;
 
     constexpr uint32_t I2C_CLOCK_SPEED_HZ = 400000; // 400kHz I2C clock speed for faster sensor reads (if not using DMP)
+
+    constexpr uint8_t DRIVING_DIRECTION_DETERMINATION_TOLERANCE = 3; // +/- 3 DEADBAND (TOLERANCE) FOR DETECTING DRIVING DIRECTION
 }

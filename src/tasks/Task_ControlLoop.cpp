@@ -109,6 +109,14 @@ void ControlLoopTask(void *pvParameters) {
         int16_t finalLeftPWM = 0;
         int16_t finalRightPWM = 0;
         bool isDriving = false;
+        bool isDrivingStraightForward = false;
+        bool isDrivingStraightReverse = false;
+        bool isPointTurningLeft = false;
+        bool isPointTurningRight = false;
+        bool isArcTurningForwardLeft = false;
+        bool isArcTurningForwardRight = false;
+        bool isArcTurningReverseLeft = false;
+        bool isArcTurningReverseRight = false;
 
         if (physicsSnapshot.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
             // This runs the state machine. The active mode will internally 
@@ -119,7 +127,23 @@ void ControlLoopTask(void *pvParameters) {
             finalLeftPWM = ctx->kinematics->getLeftPWM();
             finalRightPWM = ctx->kinematics->getRightPWM();
 
-            isDriving = ctx->kinematics->getIsDriving();
+            // Master driving check
+            bool isDriving               = ctx->kinematics->getIsDriving();
+
+            // Straight line motion
+            bool drivingStraightForward  = ctx->kinematics->getIsDrivingStraightForward();
+            bool drivingStraightReverse  = ctx->kinematics->getIsDrivingStraightReverse();
+
+            // Point turns
+            bool pointTurningLeft        = ctx->kinematics->getIsPointTurningLeft();
+            bool pointTurningRight       = ctx->kinematics->getIsPointTurningRight();
+
+            // Arc turns
+            bool arcTurningForwardLeft   = ctx->kinematics->getIsArcTurningForwardLeft();
+            bool arcTurningForwardRight  = ctx->kinematics->getIsArcTurningForwardRight();
+            bool arcTurningReverseLeft   = ctx->kinematics->getIsArcTurningReverseLeft();
+            bool arcTurningReverseRight  = ctx->kinematics->getIsArcTurningReverseRight();
+            
                             // OR
             // if (finalLeftPWM || finalRightPWM) {
             //     isDriving = true;
@@ -138,7 +162,33 @@ void ControlLoopTask(void *pvParameters) {
         portENTER_CRITICAL(&globalDataBusLock);
         CurrentRobotData.actuators.leftMotorPWM = finalLeftPWM;
         CurrentRobotData.actuators.rightMotorPWM = finalRightPWM;
-        CurrentRobotData.actuators.isDriving = isDriving;
+
+        // Update the master driving state
+        CurrentRobotData.actuators.isDriving               = ctx->kinematics->getIsDriving();
+
+        // =====================================================================================================
+        // ENABLE THESE LATER (MAKE SURE TO UNCOMMENT THEM IN GlobalDataBus.h as well)
+        // // Update straight line tracking states
+        // CurrentRobotData.actuators.isDrivingStraightForward = ctx->kinematics->getIsDrivingStraightForward();
+        // CurrentRobotData.actuators.isDrivingStraightReverse = ctx->kinematics->getIsDrivingStraightReverse();
+
+        // // Update spinning in-place states
+        // CurrentRobotData.actuators.isPointTurningLeft       = ctx->kinematics->getIsPointTurningLeft();
+        // CurrentRobotData.actuators.isPointTurningRight      = ctx->kinematics->getIsPointTurningRight();
+
+        // // Update rolling arc turning states
+        // CurrentRobotData.actuators.isArcTurningForwardLeft  = ctx->kinematics->getIsArcTurningForwardLeft();
+        // CurrentRobotData.actuators.isArcTurningForwardRight = ctx->kinematics->getIsArcTurningForwardRight();
+        // CurrentRobotData.actuators.isArcTurningReverseLeft  = ctx->kinematics->getIsArcTurningReverseLeft();
+        // CurrentRobotData.actuators.isArcTurningReverseRight = ctx->kinematics->getIsArcTurningReverseRight();
+
+        // // Update rolling one sided turns (one track stationary while other moves)
+        // CurrentRobotData.actuators.isOneSidedTurningForwardLeft  = ctx->kinematics->getIsOneSidedTurningForwardLeft();
+        // CurrentRobotData.actuators.isOneSidedTurningForwardRight = ctx->kinematics->getIsOneSidedTurningForwardRight();
+        // CurrentRobotData.actuators.isOneSidedTurningReverseLeft  = ctx->kinematics->getIsOneSidedTurningReverseLeft();
+        // CurrentRobotData.actuators.isOneSidedTurningReverseRight = ctx->kinematics->getIsOneSidedTurningReverseRight();
+        // =====================================================================================================
+
         CurrentRobotData.controlDebug.targetHeading = ctx->kinematics->getTargetHeading();
         CurrentRobotData.controlDebug.headingError = ctx->kinematics->getHeadingError();
 
