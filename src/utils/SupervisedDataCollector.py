@@ -10,7 +10,7 @@ ROBOT_MAC_ADDRESS = "44:1B:F6:FF:94:19"
 CHAR_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb"
 
 # ALIGNED STRUCT FORMATS
-FMT_PHYSICS = "<ffff?xh" 
+FMT_PHYSICS = "<ffff?f"
 FMT_SENSOR = "<f?ffffHh"
 FMT_ACTUATOR = "<hh?"
 
@@ -247,7 +247,10 @@ async def csv_writer_task():
         os.system('cls' if os.name == 'nt' else 'clear')
         render_ui()
         
+        loop_counter = 0 # <--- NEW: The refresh throttle counter
+        
         while True:
+            # --- THE RESTART LOGIC ---
             if reset_requested:
                 file.seek(0)           
                 file.truncate()        
@@ -262,7 +265,15 @@ async def csv_writer_task():
                 
             writer.writerow(robot_state)
             file.flush() 
-            await asyncio.sleep(0.01) # 100Hz Logging
+            
+            # --- NEW: UI REFRESH DECOUPLING ---
+            # 10 loops * 0.01s = UI redraws every 0.1 seconds (10Hz)
+            loop_counter += 1
+            if loop_counter >= 10:
+                render_ui()
+                loop_counter = 0
+                
+            await asyncio.sleep(0.01) # 100Hz Data Logging
 
 async def main():
     async with BleakClient(ROBOT_MAC_ADDRESS) as client:
