@@ -12,7 +12,7 @@ CHAR_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb"
 # ALIGNED STRUCT FORMATS
 FMT_PHYSICS = "<ffff?xh" 
 FMT_SENSOR = "<f?ffffHh"
-FMT_ACTUATOR = "<hh?" # <--- NEW: int16 (leftPWM), int16 (rightPWM), bool (isDriving)
+FMT_ACTUATOR = "<hh?"
 
 last_yaw = 0.0
 reset_requested = False 
@@ -21,7 +21,7 @@ robot_state = {
     # --- LAYER 1 INPUTS (Real Time Sensors & Actuators) ---
     "pitch": 0.0, "roll": 0.0, "gForce": 1.0, "yawRate": 0.0, 
     "distanceCM": -1.0, "pressureDeltaPa": 0.0, "pressurePa": 0.0,
-    "leftMotorPWM": 0, "rightMotorPWM": 0, # <--- NEW: Crucial for 'isStuck'
+    "leftMotorPWM": 0, "rightMotorPWM": 0,
     
     # --- LAYER 1 INPUTS (Future Expansion) ---
     "magHeading": 0.0,
@@ -187,7 +187,6 @@ def process_packet(msg_id, payload):
             robot_state["pressurePa"] = round(data[2], 2)
             robot_state["pressureDeltaPa"] = round(data[4], 2) 
 
-        # --- NEW: UNPACK MOTOR PWM (MsgId 104) ---
         elif msg_id == 104 and len(payload) == struct.calcsize(FMT_ACTUATOR):
             data = struct.unpack(FMT_ACTUATOR, payload)
             robot_state["leftMotorPWM"] = data[0]
@@ -196,22 +195,55 @@ def process_packet(msg_id, payload):
     except Exception:
         pass
 
+# ==========================================================
+# 🚨 THE NEW, AUTO-ALIGNING PACKET EXTRACTOR 🚨
+# ==========================================================
 def notification_handler(sender, data):
     global packet_buffer
     packet_buffer.extend(data)
     
+    # We map your MsgIds directly to the expected payload size
+    EXPECTED_SIZES = {
+        101: struct.calcsize(FMT_PHYSICS),   # 20 bytes
+        104: struct.calcsize(FMT_ACTUATOR),  # 5 bytes
+        110: struct.calcsize(FMT_SENSOR)     # 25 bytes
+    }
+    
     while len(packet_buffer) >= 4:
         if packet_buffer[0] == 0xAA and packet_buffer[1] == 0x55:
-            length = packet_buffer[2]
-            if len(packet_buffer) >= length + 4:
-                msg_id = packet_buffer[3]
-                payload = packet_buffer[4 : 4 + length - 1] 
-                process_packet(msg_id, payload)
-                packet_buffer = packet_buffer[length + 4:] 
+            length_byte = packet_buffer[2]
+            msg_id = packet_buffer[3]
+            
+            expected_payload_size = EXPECTED_SIZES.get(msg_id)
+            
+            if expected_payload_size is not None:
+                # Auto-detect if length_byte includes the MsgId or not
+                if length_byte == expected_payload_size:
+                    total_packet_size = length_byte + 5
+                    payload_end = 4 + length_byte
+                elif length_byte == expected_payload_size + 1:
+                    total_packet_size = length_byte + 4
+                    payload_end = 4 + length_byte - 1
+                else:
+                    packet_buffer.pop(0) # Bad length, resync
+                    continue
+                    
+                if len(packet_buffer) >= total_packet_size:
+                    payload = packet_buffer[4 : payload_end]
+                    process_packet(msg_id, payload)
+                    packet_buffer = packet_buffer[total_packet_size:]
+                else:
+                    break # Wait for more chunks over BLE
             else:
-                break 
+                # We received an unknown MsgId (like SYSTEM_STATUS = 130). 
+                # We must safely skip it so we don't clog the buffer.
+                total_packet_size = length_byte + 5
+                if len(packet_buffer) >= total_packet_size:
+                    packet_buffer = packet_buffer[total_packet_size:]
+                else:
+                    break
         else:
-            packet_buffer.pop(0) 
+            packet_buffer.pop(0)
 
 async def csv_writer_task():
     global reset_requested
