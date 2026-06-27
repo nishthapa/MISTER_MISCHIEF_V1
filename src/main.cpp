@@ -31,8 +31,6 @@
 #include "tasks/Task_Sensor.h"
 #include "tasks/Task_Network.h"
 #include "utils/OTAManager.h"
-#include "core/deciders/HeuristicDecider.h"
-#include "core/deciders/AIDecider.h"
 
 // 1. Declare the context struct globally so it doesn't get destroyed after setup()
 ControlLoopContext controlCtx;
@@ -110,20 +108,6 @@ Mode_Teleop teleopMode(&kinematicsEngine);
 Mode_Diagnostics diagnosticMode(&kinematicsEngine);
 Mode_BrainDead brainDeadMode(&kinematicsEngine); // when SysConfig.BRAIN_ACTIVE = false ("set BRAIN_ACTIVE off" command)
 
-// ==========================================
-// THE DUAL-BRAIN HOT-SWAP ARCHITECTURE
-// ==========================================
-// 1. Instantiate BOTH brains in memory
-HeuristicDecider heuristicBrain(&obstacleMode); // Deterministic using Event Latches
-AIDecider aiBrain; // Using TensorFlow Lite AI // To-do: implement the actual AI
-
-// The Master Toggle (Evaluated at compile-time thanks to your constexpr)
-// Use AI or Heuristic engine for Mode/Mood switching based on the
-// USE_AI_BEHAVIOUR_ENGINE flag in SystemConfig.h
-IBehaviourDecider* activeBrain = SystemConfig::USE_AI_BEHAVIOUR_ENGINE ? 
-                                 static_cast<IBehaviourDecider*>(&aiBrain) : 
-                                 static_cast<IBehaviourDecider*>(&heuristicBrain);
-
 
 // ==========================================
 // MODE SWITCHER (The Brain)
@@ -131,7 +115,7 @@ IBehaviourDecider* activeBrain = SystemConfig::USE_AI_BEHAVIOUR_ENGINE ?
 // Note: It still takes the hardware pointers right now, but we will remove them in the next step!
 //BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode, &dizzyMode, &sleepMode, &teleopMode, &diagnosticMode, &autotuneMode); // Added teleopMode to the constructor
 // 2. Feed the Decider into the Engine
-BehaviourEngine brain(activeBrain, &obstacleMode, &normalMode, &compassMode, &distanceMode,
+BehaviourEngine brain(&obstacleMode, &normalMode, &compassMode, &distanceMode,
   &dizzyMode, &sleepMode, &teleopMode, &diagnosticMode, &autotuneMode, &brainDeadMode);
   
 CommandProcessor cliEngine;

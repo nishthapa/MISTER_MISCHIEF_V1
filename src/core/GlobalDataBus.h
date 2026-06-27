@@ -144,7 +144,8 @@ struct EventState {                 // MsgId 135: Semantic Events
 
 struct PerceptionMetrics {          // MsgId 136: Intermediate Math & Tuning Metrics
     float distanceDelta = 0.0f;
-    float totalRawEnergy = 0.0f;
+    //float totalRawEnergy = 0.0f;
+    float smoothedTotalEnergy = 0.0f;
     float rawYawEnergy = 0.0f;
     float rawPitchEnergy = 0.0f;
     float rawRollEnergy = 0.0f;

@@ -2,86 +2,60 @@
 #include <Arduino.h>
 #include "hal/interfaces/I_IMU.h"
 #include "core/RobotState.h"
+#include "core/GlobalDataBus.h" // <--- FIX 1: Now it knows what GlobalDataBank is!
 
-// 1. RAW PHYSICS (What is happening right now?)
-struct PerceptionData {
-    float currentDistance;
-    float distanceDelta;
-    float currentGForce;
-    float currentYaw;
-    float currentPitch;
-    float currentRoll;
-    float totalRawEnergy;
-    float rawYawEnergy;
-    float rawPitchEnergy;
-    float rawRollEnergy;
-    bool isUpright;
-    bool isDriving;
-    bool hasBarometer;   // <--- NEW
-    //float altitudeDelta; replaced by pressureDelta
-    float pressureDelta; // <--- Changed from altitudeDelta
-
-};
-
-// 2. SEMANTIC EVENTS (What does the physics mean over time?)
+// 1. SEMANTIC EVENTS (The Physical Truths + AI Latches)
 struct SemanticEvents {
-    bool hazardDetected;       // Immediate wall detected
-    bool teaseConfirmed;       // Hand hovered long enough to play
-    bool targetVanished;       // Hand removed safely
-    bool dizzyTriggered;       // Shaken too violently
-    bool dizzyFinished;        // Recovered from spinning
-    bool readyForCompassLock;  // Lifted and held steady
-    bool safelyLanded;         // Placed back on the ground
-    bool frustrationPeaked;    // Bored of playing the game
+    // --- DETERMINISTIC STATES (Calculated in C++) ---
+    bool isHandling = false;
+    bool isFreeFalling = false;
+    bool isAbsolutelyStill = false;
+    
+    // Orientations
+    bool isUpright = true;
+    bool isUpsideDown = false;
+    bool isTippedLeft = false;
+    bool isTippedRight = false;
+    bool isNoseUp = false;
+    bool isNoseDown = false;
+
+    // --- AI STATES (Calculated later by the Neural Network) ---
+    bool isStuck = false;           
+    bool hazardDetected = false;    
+    bool isBeingTeased = false;     
+    bool isBeingPushed = false;
+
+    float smoothedTotalEnergy = 0.0f;
 };
 
 class EventLatchHandler {
 private:
-    // Memory State
-    float dizzyBarYaw, dizzyBarPitch, dizzyBarRoll;
+    // Only the memory strictly needed for the Pre-AI filter!
     float smoothedTotalEnergy;
-    float frustrationLevel;
-    
-    // Active Timers
-    unsigned long dizzyStartTime;
-    unsigned long teaseStartTime;
-    unsigned long vanishingStartTime;
-    unsigned long pickupStartTime;
-    unsigned long settlingStartTime;
-
-    // Latches
-    bool isDriving;
-    bool isHandTeasing;
-    bool isHandVanishing;
     bool isHandling;
-    bool hasExperiencedLift;
-    bool isLowering;
-    bool hasLanded;
-    bool isDizzy;
-    
-    bool pickupTimerActive;
-    bool settlingTimerActive;
 
+    float lastDistance;
+    FusedAngles lastAngles;
+    
 public:
     EventLatchHandler();
-    void reset();
     
-    // Takes the raw physics, updates the timers, and outputs clean True/False events
-    SemanticEvents processEvents(const PerceptionData& p, SystemMode currentMode);
+    // <--- FIX 2: Signature now perfectly matches your .cpp file!
+    SemanticEvents processEvents(const GlobalDataBank& robotData);
 
     // Getters for internal metrics to populate the Global Data Bus
-    float getDizzyBarYaw() const { return dizzyBarYaw; }
-    float getDizzyBarPitch() const { return dizzyBarPitch; }
-    float getDizzyBarRoll() const { return dizzyBarRoll; }
-    float getSmoothedTotalEnergy() const { return smoothedTotalEnergy; }
-    float getFrustrationLevel() const { return frustrationLevel; }
+    // float getDizzyBarYaw() const { return dizzyBarYaw; }
+    // float getDizzyBarPitch() const { return dizzyBarPitch; }
+    // float getDizzyBarRoll() const { return dizzyBarRoll; }
+    // float getSmoothedTotalEnergy() const { return smoothedTotalEnergy; }
+    // float getFrustrationLevel() const { return frustrationLevel; }
     
-    bool getIsDriving() const {return isDriving; }
-    bool getIsHandTeasing() const { return isHandTeasing; }
-    bool getIsHandVanishing() const { return isHandVanishing; }
-    bool getIsHandling() const { return isHandling; }
-    bool getHasExperiencedLift() const { return hasExperiencedLift; }
-    bool getIsLowering() const { return isLowering; }
-    bool getHasLanded() const { return hasLanded; }
-    bool getIsDizzy() const { return isDizzy; }
+    // bool getIsDriving() const {return isDriving; }
+    // bool getIsHandTeasing() const { return isHandTeasing; }
+    // bool getIsHandVanishing() const { return isHandVanishing; }
+    // bool getIsHandling() const { return isHandling; }
+    // bool getHasExperiencedLift() const { return hasExperiencedLift; }
+    // bool getIsLowering() const { return isLowering; }
+    // bool getHasLanded() const { return hasLanded; }
+    // bool getIsDizzy() const { return isDizzy; }
 };

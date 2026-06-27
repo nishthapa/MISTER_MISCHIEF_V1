@@ -5,8 +5,8 @@
 #include "behaviours/IRobotMode.h"
 #include "behaviours/RobotMood.h"
 #include "core/RobotState.h"
-#include "core/GlobalDataBus.h" 
-#include "core/interfaces/IBehaviourDecider.h"
+#include "core/GlobalDataBus.h"
+#include "core/EventLatchHandler.h"
 
 class Mode_ObstacleAvoidance;
 class Mode_NormalDriving;
@@ -21,7 +21,6 @@ class Mode_BrainDead;
 
 class BehaviourEngine {
 private:
-    IBehaviourDecider* decider;
 
     Mode_ObstacleAvoidance* obstacleMode;
     Mode_NormalDriving* normalMode;
@@ -37,6 +36,8 @@ private:
     IRobotMode* activeMode;
     IRobotMode* previousMode;
     RobotMood activeMood;
+
+    EventLatchHandler latchHandler; // <--- Add it here
     
     bool isGroggyPhase;
     unsigned long coldBootTime;
@@ -44,9 +45,11 @@ private:
     SystemMode mapModeToEnum(IRobotMode* mode);
     IRobotMode* getModeFromEnum(SystemMode modeEnum);
 
+    // --- NEW: The AI Virtual Sensor ---
+    void runAIPerception();
+
 public:
-    BehaviourEngine(IBehaviourDecider* decisionEngine,
-                    Mode_ObstacleAvoidance* obs, Mode_NormalDriving* norm, 
+    BehaviourEngine(Mode_ObstacleAvoidance* obs, Mode_NormalDriving* norm, 
                     Mode_CompassLock* comp, Mode_MaintainDistance* dist, 
                     Mode_Dizzy* diz, Mode_DeepSleep* sleep, Mode_Teleop* teleop,
                     Mode_Diagnostics* diag, Mode_AutoTune* autot,

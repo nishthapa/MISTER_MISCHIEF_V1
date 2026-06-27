@@ -13,6 +13,7 @@ CHAR_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb"
 FMT_PHYSICS = "<ffff?f"   # <--- Fixed 21-byte alignment!
 FMT_SENSOR = "<f?ffffHh"
 FMT_ACTUATOR = "<hh?"
+FMT_PERCEPTION = "<ffffff"   # <--- ADD THIS LINE!
 
 last_yaw = 0.0
 reset_requested = False 
@@ -20,9 +21,11 @@ recording_active = False  # <--- NEW: Master Recording Switch
 
 robot_state = {
     # --- LAYER 1 INPUTS ---
-    "pitch": 0.0, "roll": 0.0, "gForce": 1.0, "yawRate": 0.0, 
-    "distanceCM": -1.0, "pressureDeltaPa": 0.0, "pressurePa": 0.0,
-    "leftMotorPWM": 0, "rightMotorPWM": 0,
+    "pitch": 0.0, "roll": 0.0, "yawRate": 0.0, 
+    "distanceCM": -1.0, "pressureDeltaPa": 0.0,
+    "isDriving": 0,
+    "gForce": 1.0,           
+    "smoothedTotalEnergy": 0.0,   # <--- Updated name!
     
     # --- LAYER 1 INPUTS (Future) ---
     "magHeading": 0.0,
@@ -83,7 +86,7 @@ def render_ui():
  [Q] isBeingPushed                [F] isFreeFalling (Zero G)
 ----------------------------------------------------------------------
  RAW HARDWARE (AI LAYER 1 INPUTS):
- L_PWM: [{robot_state['leftMotorPWM']:>4}]  R_PWM: [{robot_state['rightMotorPWM']:>4}]  Sonar: [{robot_state['distanceCM']:>6.1f} cm]
+ isDriving: [{'ON ' if robot_state['isDriving'] else 'OFF'}]  Energy: [{robot_state['smoothedTotalEnergy']:>5.2f}]  Sonar: [{robot_state['distanceCM']:>6.1f} cm]
 
  AI TARGETS (LATENTS & MODES):
  MODE:        [{mode_names.get(robot_state['target_mode'], 'UNKNOWN'):<12}] 
@@ -206,8 +209,13 @@ def process_packet(msg_id, payload):
 
         elif msg_id == 104 and len(payload) == struct.calcsize(FMT_ACTUATOR):
             data = struct.unpack(FMT_ACTUATOR, payload)
-            robot_state["leftMotorPWM"] = data[0]
-            robot_state["rightMotorPWM"] = data[1]
+            # data[0] is Left PWM (Ignore)
+            # data[1] is Right PWM (Ignore)
+            robot_state["isDriving"] = int(data[2])  # <--- SAVE THE AI FLAG!
+
+        elif msg_id == 136 and len(payload) == struct.calcsize(FMT_PERCEPTION):
+            data = struct.unpack(FMT_PERCEPTION, payload)
+            robot_state["smoothedTotalEnergy"] = round(data[1], 3) # <--- data[1] is exactly the right index
 
     except Exception:
         pass
