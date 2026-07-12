@@ -254,8 +254,8 @@ void setup() {
   brain.init(isColdBoot);
 
   // Temporary testing override
-  //SysConfig.BRAIN_ACTIVE = false;       
-  //brain.changeMode(&autotuneMode);   
+  // SysConfig.BRAIN_ACTIVE = false;       
+  // brain.changeMode(&autotuneMode);   
   
   logger.println("Mister Mischief V1 Booting...");
   delay(1000);

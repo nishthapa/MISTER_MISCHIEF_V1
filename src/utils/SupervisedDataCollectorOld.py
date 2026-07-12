@@ -38,7 +38,8 @@ robot_state = {
     "label_isTippedLeft": 0,
     "label_isTippedRight": 0,
     "label_isNoseUp": 0,        
-    "label_isNoseDown": 0,       
+    "label_isNoseDown": 0,      
+    "label_isAbsolutelyStill": 1, 
     "label_isHandling": 0,     
     "label_isFreeFalling": 0,
     "label_isStuck": 0,
@@ -73,10 +74,10 @@ def render_ui():
  [SPACE] isHandling (STICKY)           
  
  (MOMENTARY - Hold to Activate, Release to Deactivate!):
- [F] isFreeFalling (Zero G)             [E] isBeingTeased (Sonar Game)
+ [SHIFT] isAbsolutelyStill              [E] isBeingTeased (Sonar Game)
  [W] hazardDetected (Wall)              [C] isImpactDetected (crash/collision)
  [R] isStuck (Motors on, no movement)   [Q] isBeingPushed 
-
+ [F] isFreeFalling (Zero G)
 ----------------------------------------------------------------------
  RAW HARDWARE (AI LAYER 1 INPUTS):
  isDriving: [{'ON ' if robot_state['isDriving'] else 'OFF'}]  Energy: [{robot_state['smoothedTotalEnergy']:>5.2f}]  Sonar: [{robot_state['distanceCM']:>6.1f} cm]
@@ -86,6 +87,7 @@ def render_ui():
  
  ACTIONS:
  isHandling:        [{'ON ' if robot_state['label_isHandling'] else 'OFF'}]    isBeingTeased: [{ 'ON ' if robot_state['label_isBeingTeased'] else 'OFF'}]
+ #isAbsolutelyStill: [{'ON ' if robot_state['label_isAbsolutelyStill'] else 'OFF'}]    isStuck:       [{ 'ON ' if robot_state['label_isStuck'] else 'OFF'}]
  hazardDetected:    [{'ON ' if robot_state['label_hazardDetected'] else 'OFF'}]    isFreeFalling: [{ 'ON ' if robot_state['label_isFreeFalling'] else 'OFF'}]
  isBeingPushed:     [{'ON ' if robot_state['label_isBeingPushed'] else 'OFF'}]
 ======================================================================
@@ -133,7 +135,9 @@ def on_press(key):
 
         if key == keyboard.Key.space: 
             robot_state["label_isHandling"] = int(not robot_state["label_isHandling"])
-
+            robot_state["label_isAbsolutelyStill"] = 0 if robot_state["label_isHandling"] else 1
+            
+        elif key == keyboard.Key.shift: robot_state["label_isAbsolutelyStill"] = 0 
         elif key == keyboard.Key.left: set_orientation("label_isTippedLeft")
         elif key == keyboard.Key.right: set_orientation("label_isTippedRight")
         elif key == keyboard.Key.up: set_orientation("label_isNoseUp")
@@ -157,7 +161,8 @@ def on_release(key):
             elif c == 'e': robot_state["label_isBeingTeased"] = 0
             elif c == 'r': robot_state["label_isStuck"] = 0
             elif c == 'f': robot_state["label_isFreeFalling"] = 0
-
+            
+        if key == keyboard.Key.shift: robot_state["label_isAbsolutelyStill"] = 1 
         render_ui()
     except AttributeError:
         pass

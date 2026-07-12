@@ -108,6 +108,7 @@ struct EventState {                 // MsgId 135: Semantic Events
     bool isNoseDown = false;        // Pitch < -70 deg (Faceplant / Pointing at floor)
     
     bool isAbsolutelyStill = false; 
+    bool isImpactDetected = false;
     bool isStuck = false;           
     bool hazardDetected = false;    
     bool isBeingTeased = false;     
