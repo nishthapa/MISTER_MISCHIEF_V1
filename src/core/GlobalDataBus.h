@@ -94,7 +94,7 @@ struct ControlDebugState {          // MsgId 121
 
 struct EventState {                 // MsgId 135: Semantic Events
     // ==========================================================
-    // 1. THE AI PERCEPTION LATCHES (The Physical Truth)
+    // 1. PERCEPTION LATCHES (The Physical Truth)
     // ==========================================================
     bool isHandling = false;        
     bool isFreeFalling = false;     

@@ -95,174 +95,13 @@ IRobotMode* BehaviourEngine::getModeFromEnum(SystemMode modeEnum) {
     }
 }
 
-// --- The Placeholder AI Function ---
-void BehaviourEngine::runAIPerception() {
-    // Tomorrow, your TensorFlow Lite logic goes here!
-    // Example:
-    // float inputs[8] = { ... };
-    // TFLite.runInference(inputs);
-    // portENTER_CRITICAL(&globalDataBusLock);
-    // CurrentRobotData.events.isStuck = TFLite.getOutput(0);
-    // portEXIT_CRITICAL(&globalDataBusLock);
-}
-
-// void BehaviourEngine::update(const GlobalDataBank& robotData) {
-//     SystemMode currentSysMode = mapModeToEnum(activeMode);
-//     SystemMode requestedSysMode = currentSysMode;
-//     RobotMood requestedMood = activeMood;
-
-//     // ==========================================
-//     // 1. ALWAYS RUN THE PERCEPTION DECIDER 
-//     // ==========================================
-//     // By hoisting this to the top, HeuristicDecider calculates deltas and 
-//     // pushes them to the telemetry bus EVERY loop, regardless of overrides!
-//     if (decider) {
-//         decider->evaluate(robotData, currentSysMode, requestedSysMode, requestedMood);
-//     }
-
-//     // ==========================================
-//     // CHECK DYNAMIC SYSTEM OVERRIDES
-//     // ==========================================
-//     // Take a safe snapshot of the teleop bus
-//     TeleopCommandBus teleopSnapshot;
-//     portENTER_CRITICAL(&teleopCmdLock);
-
-//     // Enforce the 500ms Watchdog Timer so that autonomous brain is resumed
-//     // if the connection is dropped or the app stops sending control commands
-//     TeleopCommands.checkFailsafe();
-//     teleopSnapshot = TeleopCommands;
-//     portEXIT_CRITICAL(&teleopCmdLock);
-
-//     // If the phone is connected via BLE, and Enable Drive is set, we switch to Teleop mode.
-//     // This ignores whatever Config.BRAIN_ACTIVE is set to.
-//     // Override Priority A: Manual Teleoperation
-//     if (teleopSnapshot.isOverrideActive) { 
-//         changeMode(teleopMode); // Safer internal helper usage
-//         activeMode->update(activeMood, robotData);
-//         return; 
-//     }
-
-//     // Override Priority B: The AI/Data Collection Lobotomy where only
-//     // sensor data is collected and lateches are set/unset
-//     if (!SysConfig.BRAIN_ACTIVE) {
-//         changeMode(brainDeadMode);
-//         activeMode->update(activeMood, robotData);
-//         return; 
-//     }
-
-//     // ==========================================
-//     // AUTONOMOUS DECISION EXECUTION
-//     // ==========================================
-//     // If no overrides are active, map the Decider's request to hardware
-//     IRobotMode* nextMode = getModeFromEnum(requestedSysMode);
-
-//     if (nextMode != activeMode) {
-//         changeMode(nextMode); // changeMode() already handles onExit, onEnter, and the Bus lock safely
-//     }
-
-//     // Apply physical hardware constraints based on current mode
-//     portENTER_CRITICAL(&hardwareCmdLock);
-//     if (activeMode == normalMode || activeMode == obstacleMode) {
-//         HardwareCommands.targetFilterBeta = 0.01f;
-//     } else {
-//         HardwareCommands.targetFilterBeta = SysConfig.MADGWICK_FILTER_BETA;
-//     }
-//     portEXIT_CRITICAL(&hardwareCmdLock);
-
-//     // Pulse physical mode loop
-//     if (activeMode != nullptr) activeMode->update(activeMood, robotData);
-// }
-
-// void BehaviourEngine::update(const GlobalDataBank& robotData) {
-//     SystemMode currentSysMode = mapModeToEnum(activeMode);
-//     SystemMode requestedSysMode = currentSysMode;
-//     RobotMood requestedMood = activeMood;
-
-//     // ==========================================
-//     // 1. THE DETERMINISTIC PRE-FILTER (Math)
-//     // ==========================================
-//     SemanticEvents deterministicEvents = latchHandler.processEvents(robotData);
-
-//     // Safely publish the undeniable physical truths to the bus BEFORE the brain runs
-//     portENTER_CRITICAL(&globalDataBusLock);
-//     CurrentRobotData.events.isHandling = deterministicEvents.isHandling;
-//     CurrentRobotData.events.isFreeFalling = deterministicEvents.isFreeFalling;
-//     CurrentRobotData.events.isAbsolutelyStill = deterministicEvents.isAbsolutelyStill;
-//     CurrentRobotData.events.isUpright = deterministicEvents.isUpright;
-//     CurrentRobotData.events.isUpsideDown = deterministicEvents.isUpsideDown;
-//     CurrentRobotData.events.isTippedLeft = deterministicEvents.isTippedLeft;
-//     CurrentRobotData.events.isTippedRight = deterministicEvents.isTippedRight;
-//     CurrentRobotData.events.isNoseUp = deterministicEvents.isNoseUp;
-//     CurrentRobotData.events.isNoseDown = deterministicEvents.isNoseDown;
-//     portEXIT_CRITICAL(&globalDataBusLock);
-
-//     // ==========================================
-//     // 2. AI PERCEPTION (Neural Network)
-//     // ==========================================
-//     if (SysConfig.USE_AI_BEHAVIOUR_ENGINE) {
-//         runAIPerception();
-//     }
-    
-//     // ==========================================
-//     // CHECK DYNAMIC SYSTEM OVERRIDES
-//     // ==========================================
-//     // Take a safe snapshot of the teleop bus
-//     TeleopCommandBus teleopSnapshot;
-//     portENTER_CRITICAL(&teleopCmdLock);
-
-//     // Enforce the 500ms Watchdog Timer so that autonomous brain is resumed
-//     // if the connection is dropped or the app stops sending control commands
-//     TeleopCommands.checkFailsafe();
-//     teleopSnapshot = TeleopCommands;
-//     portEXIT_CRITICAL(&teleopCmdLock);
-
-//     // If the phone is connected via BLE, and Enable Drive is set, we switch to Teleop mode.
-//     // This ignores whatever Config.BRAIN_ACTIVE is set to.
-//     // Override Priority A: Manual Teleoperation
-//     if (teleopSnapshot.isOverrideActive) { 
-//         changeMode(teleopMode); // Safer internal helper usage
-//         activeMode->update(activeMood, robotData);
-//         return; 
-//     }
-
-//     // Override Priority B: The AI/Data Collection Lobotomy where only
-//     // sensor data is collected and lateches are set/unset
-//     if (!SysConfig.BRAIN_ACTIVE) {
-//         changeMode(brainDeadMode);
-//         activeMode->update(activeMood, robotData);
-//         return; 
-//     }
-
-//     // ==========================================
-//     // AUTONOMOUS DECISION EXECUTION
-//     // ==========================================
-//     // If no overrides are active, map the Decider's request to hardware
-//     IRobotMode* nextMode = getModeFromEnum(requestedSysMode);
-
-//     if (nextMode != activeMode) {
-//         changeMode(nextMode); // changeMode() already handles onExit, onEnter, and the Bus lock safely
-//     }
-
-//     // Apply physical hardware constraints based on current mode
-//     portENTER_CRITICAL(&hardwareCmdLock);
-//     if (activeMode == normalMode || activeMode == obstacleMode) {
-//         HardwareCommands.targetFilterBeta = 0.01f;
-//     } else {
-//         HardwareCommands.targetFilterBeta = SysConfig.MADGWICK_FILTER_BETA;
-//     }
-//     portEXIT_CRITICAL(&hardwareCmdLock);
-
-//     // Pulse physical mode loop
-//     if (activeMode != nullptr) activeMode->update(activeMood, robotData);
-// }
-
 void BehaviourEngine::update(const GlobalDataBank& robotData) {
     SystemMode currentSysMode = mapModeToEnum(activeMode);
     SystemMode requestedSysMode = currentSysMode;
     RobotMood requestedMood = activeMood;
 
     // ==========================================
-    // 1. DETERMINISTIC PERCEPTION (Math)
+    // 1. DETERMINISTIC & AI PERCEPTION (Handled entirely by LatchHandler)
     // ==========================================
     SemanticEvents deterministicEvents = latchHandler.processEvents(robotData);
     
@@ -275,20 +114,20 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     CurrentRobotData.events.isTippedRight = deterministicEvents.isTippedRight;
     CurrentRobotData.events.isNoseUp = deterministicEvents.isNoseUp;
     CurrentRobotData.events.isNoseDown = deterministicEvents.isNoseDown;
+    
+    // Push the neural network outputs directly into the global data bus
+    CurrentRobotData.events.hazardDetected = deterministicEvents.hazardDetected;
+    CurrentRobotData.events.isImpactDetected = deterministicEvents.isImpactDetected;
+
+    // NEW: Push the lift latch to the global bus
+    CurrentRobotData.events.hasExperiencedLift = deterministicEvents.hasExperiencedLift;
+    
     CurrentRobotData.perception.smoothedTotalEnergy = deterministicEvents.smoothedTotalEnergy;
     portEXIT_CRITICAL(&globalDataBusLock);
 
     // ==========================================
-    // 2. AI PERCEPTION (Neural Network)
+    // 2. THE STATE MACHINE (The "Brain")
     // ==========================================
-    if (SystemConfig::USE_AI_BEHAVIOUR_ENGINE) {
-        runAIPerception();
-    }
-
-    // ==========================================
-    // 3. THE STATE MACHINE (The "Brain")
-    // ==========================================
-    // Check hardware requests first
     portENTER_CRITICAL(&hardwareCmdLock);
     bool isDiag = HardwareCommands.requestMotorTest;
     bool isTune = HardwareCommands.requestAutotune;
@@ -297,18 +136,17 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     if (isDiag) requestedSysMode = SystemMode::MODE_DIAGNOSTICS;
     else if (isTune) requestedSysMode = SystemMode::MODE_AUTOTUNE;
     
-    // Survival modes (Cannot be easily interrupted)
     else if (currentSysMode == SystemMode::MODE_OBSTACLE_AVOIDANCE && !obstacleMode->isSequenceComplete()) {
         requestedSysMode = SystemMode::MODE_OBSTACLE_AVOIDANCE;
     }
-    // High Priority Physical Interrupts
     else if (CurrentRobotData.events.isHandling) {
-        requestedSysMode = SystemMode::MODE_COMPASS_LOCK;
+        //requestedSysMode = SystemMode::MODE_COMPASS_LOCK;
+        // Kill motors if its being handled by a human
+        requestedSysMode = SystemMode::MODE_BRAIN_DEAD;
     }
     else if (CurrentRobotData.events.isUpsideDown) {
-        requestedSysMode = SystemMode::MODE_DIZZY; // Or panic mode
+        requestedSysMode = SystemMode::MODE_DIZZY; 
     }
-    // AI Triggered Escapes
     else if (CurrentRobotData.events.isStuck || CurrentRobotData.events.hazardDetected) {
         requestedSysMode = SystemMode::MODE_OBSTACLE_AVOIDANCE;
     }
@@ -317,7 +155,7 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     }
 
     // ==========================================
-    // 4. DYNAMIC OVERRIDES (Teleop / BrainDead)
+    // 3. DYNAMIC OVERRIDES (Teleop / BrainDead)
     // ==========================================
     TeleopCommandBus teleopSnapshot;
     portENTER_CRITICAL(&teleopCmdLock);
@@ -337,7 +175,7 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     }
 
     // ==========================================
-    // 5. EXECUTE AUTONOMOUS MODE
+    // 4. EXECUTE AUTONOMOUS MODE
     // ==========================================
     IRobotMode* nextMode = getModeFromEnum(requestedSysMode);
     if (nextMode != activeMode) {

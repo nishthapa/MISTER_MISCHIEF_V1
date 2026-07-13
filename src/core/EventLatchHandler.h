@@ -4,11 +4,17 @@
 #include "core/RobotState.h"
 #include "core/GlobalDataBus.h" // <--- FIX 1: Now it knows what GlobalDataBank is!
 
+// --- THE CORRECT ESPRESSIF TFLITE HEADERS ---
+#include "tensorflow/lite/micro/all_ops_resolver.h"
+#include "tensorflow/lite/micro/micro_interpreter.h"
+// No need for schema_generated.h or version.h unless you do strict version checking.
+#include "AI_LatchSetterModel.h" // Your model file
+
 // 1. SEMANTIC EVENTS (The Physical Truths + AI Latches)
 struct SemanticEvents {
+    float smoothedTotalEnergy = 0.0f;
+
     // --- DETERMINISTIC STATES (Calculated in C++) ---
-    bool isHandling = false;
-    bool isFreeFalling = false;
     bool isAbsolutelyStill = false;
     
     // Orientations
@@ -19,13 +25,19 @@ struct SemanticEvents {
     bool isNoseUp = false;
     bool isNoseDown = false;
 
-    // --- AI STATES (Calculated later by the Neural Network) ---
     bool isStuck = false;           
-    bool hazardDetected = false;    
     bool isBeingTeased = false;     
     bool isBeingPushed = false;
 
-    float smoothedTotalEnergy = 0.0f;
+    // --- AI STATES (Calculated by the Neural Network) ---
+    bool hasExperiencedLift = false;
+    bool isHandling = false;
+    bool isFreeFalling = false;
+    bool isLowering = false;
+    bool hasLanded = false;
+    bool hazardDetected = false;
+    bool isImpactDetected = false; // Added to match your model's 4th target
+    
 };
 
 class EventLatchHandler {
@@ -36,6 +48,19 @@ private:
 
     float lastDistance;
     FusedAngles lastAngles;
+
+    // --- AI PERCEPTION MEMORY & ARENA ---
+    bool isAIInitialized = false;
+    const tflite::Model* tflModel = nullptr;
+    tflite::MicroInterpreter* interpreter = nullptr;
+    TfLiteTensor* input = nullptr;
+    TfLiteTensor* output = nullptr;
+
+    // 8KB Tensor Arena (Espressif optimized)
+    static constexpr int kTensorArenaSize = 8 * 1024;
+    uint8_t tensor_arena[kTensorArenaSize] __attribute__((aligned(4)));
+
+    void setupAI();
     
 public:
     EventLatchHandler();

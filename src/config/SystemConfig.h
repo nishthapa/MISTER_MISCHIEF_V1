@@ -6,7 +6,7 @@ namespace SystemConfig {
     // ==========================================
     // AI MODE/MOOD SWITCHING ENGINE
     // ==========================================
-    constexpr bool USE_AI_BEHAVIOUR_ENGINE = false; // Toggle for AI vs Heuristic logic
+    constexpr bool USE_AI_BEHAVIOUR_ENGINE = true; // Toggle for AI vs Heuristic logic
 
     // ==========================================
     // OS, MEMORY, & TASK SCHEDULING
