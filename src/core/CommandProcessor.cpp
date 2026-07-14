@@ -68,7 +68,8 @@ const char* autoDict[] = {
     "PID_ARC_P", "PID_ARC_I", "PID_ARC_D", "PID_ARC_LIM", "PID_ARC_ILIM", "PID_ARC_DEAD",
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
     "PID_OBSTACLE_P", "PID_OBSTACLE_I", "PID_OBSTACLE_D", "PID_OBSTACLE_LIM", "PID_OBSTACLE_ILIM", "PID_OBSTACLE_DEAD",
-    "TILT_HANDLING_THRESHOLD", "GFORCE_LIFT_UP_THRESHOLD","BARO_LIFT_UP_THRESHOLD", "GFORCE_LIFT_DOWN_THRESHOLD", "LIFT_ENERGY_SPIKE_THRESHOLD",
+    "TILT_HANDLING_THRESHOLD", "GFORCE_LIFT_UP_THRESHOLD","GFORCE_FREEFALL_THRESHOLD", "LIFT_UP_DETECTION_DELAY", "LIFT_ENERGY_SPIKE_THRESHOLD",
+    "GFORCE_LIFT_DOWN_THRESHOLD", "BARO_LIFT_UP_THRESHOLD",
     "UPRIGHT_ANGLE_TOLERANCE", "PERFECTLY_STILL_ENERGY", "STEADY_HOLD_ENERGY_MAX",
     "DIZZY_ENERGY_DEADBAND", "DIZZY_CHARGE_RATE", "DIZZY_DECAY_RATE", "DIZZY_TRIGGER_THRESHOLD",
     "ENERGY_EMA_ALPHA", "ENERGY_EMA_BETA",
@@ -97,7 +98,8 @@ const char* sysVariables[] = {
     "PID_ARC_P", "PID_ARC_I", "PID_ARC_D", "PID_ARC_LIM", "PID_ARC_ILIM", "PID_ARC_DEAD",
     "PID_DIST_P", "PID_DIST_I", "PID_DIST_D", "PID_DIST_LIM", "PID_DIST_ILIM", "PID_DIST_DEAD",
     "PID_OBSTACLE_P", "PID_OBSTACLE_I", "PID_OBSTACLE_D", "PID_OBSTACLE_LIM", "PID_OBSTACLE_ILIM", "PID_OBSTACLE_DEAD",
-    "TILT_HANDLING_THRESHOLD", "GFORCE_LIFT_UP_THRESHOLD","BARO_LIFT_UP_THRESHOLD", "GFORCE_LIFT_DOWN_THRESHOLD", "LIFT_ENERGY_SPIKE_THRESHOLD",
+    "TILT_HANDLING_THRESHOLD", "GFORCE_LIFT_UP_THRESHOLD", "GFORCE_FREEFALL_THRESHOLD", "LIFT_UP_DETECTION_DELAY",
+    "BARO_LIFT_UP_THRESHOLD", "GFORCE_LIFT_DOWN_THRESHOLD", "LIFT_ENERGY_SPIKE_THRESHOLD",
     "UPRIGHT_ANGLE_TOLERANCE", "PERFECTLY_STILL_ENERGY", "STEADY_HOLD_ENERGY_MAX",
     "DIZZY_ENERGY_DEADBAND", "DIZZY_CHARGE_RATE", "DIZZY_DECAY_RATE", "DIZZY_TRIGGER_THRESHOLD",
     "ENERGY_EMA_ALPHA", "ENERGY_EMA_BETA",
@@ -367,89 +369,6 @@ void CommandProcessor::processInput(String input) {
     }
 }
 
-/*void CommandProcessor::handleSet(String varName, String valStr) {
-    if (varName == "") {
-        logger.println("Usage: set <VARIABLE> <VALUE>");
-        return;
-    }
-
-    // --- THE EDGE CASE FIX ---
-    if (valStr == "") {
-        logger.printf("Error: Please provide a value to set for %s\n", varName.c_str());
-        return;
-    }
-
-    // ==========================================
-    // CONTEXT-AWARE STRING VALIDATION
-    // ==========================================
-    bool isStringVariable = (varName == "WIFI_SSID" || varName == "WIFI_PASSWORD" || varName == "BT_NAME");
-    
-    if (isStringVariable) {
-        // Check if it is perfectly wrapped in double quotes
-        if (valStr.startsWith("\"") && valStr.endsWith("\"") && valStr.length() >= 2) {
-            // Valid! Strip the quotes off so we don't save literal quotes to the hard drive
-            valStr = valStr.substring(1, valStr.length() - 1);
-        } else {
-            // Invalid! Block the save and educate the user.
-            logger.println("\n[ERROR] Text variables must be enclosed in double quotes!");
-            logger.printf("Example: set %s \"My Value\"\n", varName.c_str());
-            return; // Abort the command entirely
-        }
-    }
-
-    if (varName == "CRUISING_SPEED") { SysConfig.CRUISING_SPEED = valStr.toFloat(); }
-    else if (varName == "OBSTACLE_TRIGGER_CM") { SysConfig.OBSTACLE_TRIGGER_CM = valStr.toFloat(); }
-    else if (varName == "MAINTAIN_DIST_CM") { SysConfig.MAINTAIN_DIST_CM = valStr.toFloat(); }
-
-    // --- NETWORK VARS ---
-    else if (varName == "WIFI_SSID") { SysConfig.WIFI_SSID = valStr; }
-    else if (varName == "WIFI_PASSWORD") { SysConfig.WIFI_PASSWORD = valStr; }
-    else if (varName == "BT_NAME") { SysConfig.BT_NAME = valStr; }
-    else if (varName == "WIFI_ACTIVE") { 
-        valStr.toLowerCase();
-        SysConfig.WIFI_ACTIVE = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }
-    else if (varName == "BT_ACTIVE") { 
-        valStr.toLowerCase();
-        SysConfig.BT_ACTIVE = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }
- 
-    // --- SYSTEM VARS ---
-    else if (varName == "BRAIN_ACTIVE") { 
-        valStr.toLowerCase();
-        SysConfig.BRAIN_ACTIVE = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }
-    
-    // --- DEBUG VARS ---
-    else if (varName == "SERIAL_DEBUG_MASTER") { 
-        valStr.toLowerCase();
-        SysConfig.SERIAL_DEBUG_MASTER = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }
-    
-    /* FOR LATER: Granular debug controls for each subsystem!
-    else if (varName == "SERIAL_DEBUG_IMU") { 
-        valStr.toLowerCase();
-        SysConfig.SERIAL_DEBUG_IMU = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }
-    else if (varName == "SERIAL_DEBUG_SONAR") { 
-        valStr.toLowerCase();
-        SysConfig.SERIAL_DEBUG_SONAR = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }
-    else if (varName == "SERIAL_DEBUG_MOTOR_DRIVER") { 
-        valStr.toLowerCase();
-        SysConfig.SERIAL_DEBUG_MOTOR_DRIVER = (valStr == "on" || valStr == "true" || valStr == "1"); 
-    }//
-    
-    else {
-        logger.printf("Unknown variable: %s\n", varName.c_str());
-        return;
-    }
-
-    ConfigSys.save();
-    logger.printf("Successfully set %s to %s\n", varName.c_str(), valStr.c_str());
-}*/
-
-
 // ==========================================
 // THE SPECIFIC HANDLERS
 // ==========================================
@@ -599,6 +518,8 @@ void CommandProcessor::handleSet(String varName, String valStr) {
 
     else if (varName == "TILT_HANDLING_THRESHOLD") { SysConfig.TILT_HANDLING_THRESHOLD = valStr.toFloat(); }
     else if (varName == "GFORCE_LIFT_UP_THRESHOLD") { SysConfig.GFORCE_LIFT_UP_THRESHOLD = valStr.toFloat(); }
+    else if (varName == "GFORCE_FREEFALL_THRESHOLD") { SysConfig.GFORCE_FREEFALL_THRESHOLD = valStr.toFloat(); }
+    else if (varName == "LIFT_UP_DETECTION_DELAY") { SysConfig.LIFT_UP_DETECTION_DELAY = valStr.toFloat(); }
 
     else if (varName == "BARO_LIFT_UP_THRESHOLD") { SysConfig.BARO_LIFT_UP_THRESHOLD = valStr.toFloat(); }
 
@@ -1131,6 +1052,14 @@ void CommandProcessor::handleGet(String varName, String valStr) {
     else if (varName == "GFORCE_LIFT_UP_THRESHOLD") { 
         if (wantDefaultOnly) logger.printf("[GFORCE_LIFT_UP_THRESHOLD] Default: %.1f\n", FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD);
         else logger.printf("[GFORCE_LIFT_UP_THRESHOLD] Current: %.1f | Default: %.1f\n", SysConfig.GFORCE_LIFT_UP_THRESHOLD, FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD);
+    }
+    else if (varName == "GFORCE_FREEFALL_THRESHOLD") { 
+        if (wantDefaultOnly) logger.printf("[GFORCE_FREEFALL_THRESHOLD] Default: %.1f\n", FactoryDefaults::GFORCE_FREEFALL_THRESHOLD);
+        else logger.printf("[GFORCE_FREEFALL_THRESHOLD] Current: %.1f | Default: %.1f\n", SysConfig.GFORCE_FREEFALL_THRESHOLD, FactoryDefaults::GFORCE_FREEFALL_THRESHOLD);
+    }
+    else if (varName == "LIFT_UP_DETECTION_DELAY") { 
+        if (wantDefaultOnly) logger.printf("[LIFT_UP_DETECTION_DELAY] Default: %d\n", FactoryDefaults::LIFT_UP_DETECTION_DELAY);
+        else logger.printf("[LIFT_UP_DETECTION_DELAY] Current: %d | Default: %d\n", SysConfig.LIFT_UP_DETECTION_DELAY, FactoryDefaults::LIFT_UP_DETECTION_DELAY);
     }
 
     else if (varName == "BARO_LIFT_UP_THRESHOLD") { 

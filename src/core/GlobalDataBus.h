@@ -64,34 +64,6 @@ struct ControlDebugState {          // MsgId 121
     float joyY = 0.0f; // <-- Add this!
 }__attribute__((packed));
 
-// struct EventState {                 // MsgId 135: Semantic Events (The final triggers)
-//     bool hazardDetected = false;       
-//     bool teaseConfirmed = false;       
-//     bool targetVanished = false;       
-//     bool dizzyTriggered = false;       
-//     bool dizzyFinished = false;        
-//     bool readyForCompassLock = false;  
-//     bool safelyLanded = false;         
-//     bool frustrationPeaked = false;    
-
-//     // 2. Internal Metrics & States (Continuous variables from the handler)
-//     float dizzyBarYaw = 0.0f;
-//     float dizzyBarPitch = 0.0f;
-//     float dizzyBarRoll = 0.0f;
-//     float smoothedTotalEnergy = 0.0f;
-//     float frustrationLevel = 0.0f;
-    
-//     // 3. Internal Latches
-//     //bool isDriving = false;
-//     bool isHandTeasing = false;
-//     bool isHandVanishing = false;
-//     bool isHandling = false;
-//     bool hasExperiencedLift = false;
-//     bool isLowering = false;
-//     bool hasLanded = false;
-//     bool isDizzy = false;
-// }__attribute__((packed));
-
 struct EventState {                 // MsgId 135: Semantic Events
     // ==========================================================
     // 1. PERCEPTION LATCHES (The Physical Truth)
@@ -134,8 +106,7 @@ struct EventState {                 // MsgId 135: Semantic Events
     bool targetVanished = false;       
     bool dizzyTriggered = false;       
     bool dizzyFinished = false;        
-    bool readyForCompassLock = false;  
-    bool safelyLanded = false;  
+    bool readyForCompassLock = false;    
     bool isHandTeasing = false;
     bool isHandVanishing = false;
     bool hasExperiencedLift = false;
@@ -145,11 +116,10 @@ struct EventState {                 // MsgId 135: Semantic Events
 
 struct PerceptionMetrics {          // MsgId 136: Intermediate Math & Tuning Metrics
     float distanceDelta = 0.0f;
-    //float totalRawEnergy = 0.0f;
-    float smoothedTotalEnergy = 0.0f;
     float rawYawEnergy = 0.0f;
     float rawPitchEnergy = 0.0f;
     float rawRollEnergy = 0.0f;
+    float totalRawEnergy = 0.0f;
     float currentGForce = 0.0f;
 }__attribute__((packed));
 

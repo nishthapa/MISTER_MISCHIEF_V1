@@ -106,23 +106,35 @@ void BehaviourEngine::update(const GlobalDataBank& robotData) {
     SemanticEvents deterministicEvents = latchHandler.processEvents(robotData);
     
     portENTER_CRITICAL(&globalDataBusLock);
+
     CurrentRobotData.events.isHandling = deterministicEvents.isHandling;
     CurrentRobotData.events.isFreeFalling = deterministicEvents.isFreeFalling;
-    CurrentRobotData.events.isAbsolutelyStill = deterministicEvents.isAbsolutelyStill;
+
+    CurrentRobotData.events.isUpright = deterministicEvents.isUpright;
     CurrentRobotData.events.isUpsideDown = deterministicEvents.isUpsideDown;
     CurrentRobotData.events.isTippedLeft = deterministicEvents.isTippedLeft;
     CurrentRobotData.events.isTippedRight = deterministicEvents.isTippedRight;
     CurrentRobotData.events.isNoseUp = deterministicEvents.isNoseUp;
     CurrentRobotData.events.isNoseDown = deterministicEvents.isNoseDown;
-    
-    // Push the neural network outputs directly into the global data bus
-    CurrentRobotData.events.hazardDetected = deterministicEvents.hazardDetected;
-    CurrentRobotData.events.isImpactDetected = deterministicEvents.isImpactDetected;
 
-    // NEW: Push the lift latch to the global bus
+    CurrentRobotData.events.isAbsolutelyStill = deterministicEvents.isAbsolutelyStill;
+    CurrentRobotData.events.isImpactDetected = deterministicEvents.isImpactDetected;
+    CurrentRobotData.events.hazardDetected = deterministicEvents.hazardDetected;
+
     CurrentRobotData.events.hasExperiencedLift = deterministicEvents.hasExperiencedLift;
     
-    CurrentRobotData.perception.smoothedTotalEnergy = deterministicEvents.smoothedTotalEnergy;
+    CurrentRobotData.events.smoothedTotalEnergy = deterministicEvents.smoothedTotalEnergy;
+    CurrentRobotData.perception.rawYawEnergy = deterministicEvents.rawYawEnergy;
+    CurrentRobotData.perception.rawPitchEnergy = deterministicEvents.rawPitchEnergy;
+    CurrentRobotData.perception.rawRollEnergy = deterministicEvents.rawRollEnergy;
+    CurrentRobotData.perception.totalRawEnergy = deterministicEvents.totalRawEnergy;
+
+    if (deterministicEvents.TENSORFLOW_ALIVE) {
+        CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::TENSORFLOW_ALIVE;
+    } else {
+        CurrentRobotData.health.hardwareBitmask &= ~Comms::HealthBit::TENSORFLOW_ALIVE;
+    }
+
     portEXIT_CRITICAL(&globalDataBusLock);
 
     // ==========================================

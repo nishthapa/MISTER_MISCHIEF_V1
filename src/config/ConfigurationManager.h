@@ -110,6 +110,8 @@ struct MasterSettings {
     // --- Physics & Handing ---
     float TILT_HANDLING_THRESHOLD = FactoryDefaults::TILT_HANDLING_THRESHOLD;
     float GFORCE_LIFT_UP_THRESHOLD = FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD;
+    float GFORCE_FREEFALL_THRESHOLD = FactoryDefaults::GFORCE_FREEFALL_THRESHOLD;
+    int LIFT_UP_DETECTION_DELAY = FactoryDefaults::LIFT_UP_DETECTION_DELAY;
 
     float BARO_LIFT_UP_THRESHOLD = FactoryDefaults::BARO_LIFT_UP_THRESHOLD;
 
@@ -274,6 +276,8 @@ class ConfigurationManager {
         // --- Physics & Handing ---
         currentSettings.TILT_HANDLING_THRESHOLD = preferences.getFloat("TLT_HNDL_THRS", FactoryDefaults::TILT_HANDLING_THRESHOLD);
         currentSettings.GFORCE_LIFT_UP_THRESHOLD = preferences.getFloat("GF_LFT_UP_THRS", FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD);
+        currentSettings.GFORCE_FREEFALL_THRESHOLD = preferences.getFloat("GF_FRFALL_THRS", FactoryDefaults::GFORCE_FREEFALL_THRESHOLD);
+        currentSettings.LIFT_UP_DETECTION_DELAY = preferences.getInt("LFT_UP_DLY", FactoryDefaults::LIFT_UP_DETECTION_DELAY);
 
         currentSettings.BARO_LIFT_UP_THRESHOLD = preferences.getFloat("BR_LFT_UP_THRS", FactoryDefaults::BARO_LIFT_UP_THRESHOLD);
 
@@ -411,6 +415,8 @@ class ConfigurationManager {
 
         preferences.putFloat("TLT_HNDL_THRS", currentSettings.TILT_HANDLING_THRESHOLD);
         preferences.putFloat("GF_LFT_UP_THRS", currentSettings.GFORCE_LIFT_UP_THRESHOLD);
+        preferences.putFloat("GF_FRFALL_THRS", currentSettings.GFORCE_FREEFALL_THRESHOLD);
+        preferences.putFloat("LFT_UP_DLY", currentSettings.LIFT_UP_DETECTION_DELAY);
 
         preferences.putFloat("BR_LFT_UP_THRS", currentSettings.BARO_LIFT_UP_THRESHOLD);
 
@@ -561,6 +567,8 @@ class ConfigurationManager {
 
         else if (varName == "TILT_HANDLING_THRESHOLD") { currentSettings.TILT_HANDLING_THRESHOLD = FactoryDefaults::TILT_HANDLING_THRESHOLD; }
         else if (varName == "GFORCE_LIFT_UP_THRESHOLD") { currentSettings.GFORCE_LIFT_UP_THRESHOLD = FactoryDefaults::GFORCE_LIFT_UP_THRESHOLD; }
+        else if (varName == "GFORCE_FREEFALL_THRESHOLD") { currentSettings.GFORCE_FREEFALL_THRESHOLD = FactoryDefaults::GFORCE_FREEFALL_THRESHOLD; }
+        else if (varName == "LIFT_UP_DETECTION_DELAY") { currentSettings.LIFT_UP_DETECTION_DELAY = FactoryDefaults::LIFT_UP_DETECTION_DELAY; }
 
         else if (varName == "BARO_LIFT_UP_THRESHOLD") { currentSettings.BARO_LIFT_UP_THRESHOLD = FactoryDefaults::BARO_LIFT_UP_THRESHOLD; }
         

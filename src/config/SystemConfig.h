@@ -6,19 +6,17 @@ namespace SystemConfig {
     // ==========================================
     // AI MODE/MOOD SWITCHING ENGINE
     // ==========================================
-    constexpr bool USE_AI_BEHAVIOUR_ENGINE = true; // Toggle for AI vs Heuristic logic
+    constexpr bool USE_AI_LATCH_HANDLER = true; // Toggle for AI vs Heuristic logic
 
     // ==========================================
     // OS, MEMORY, & TASK SCHEDULING
     // ==========================================
 
     // --- FreeRTOS Task Configuration ---
-    //constexpr uint32_t TASK_STACK_SIZE = 8192;       // Memory allocated per core (in words)
-    //constexpr uint32_t TASK_STACK_SIZE = 32768; // 32KB per task to safely handle Websockets and JSON formatting
+
     constexpr uint32_t TASK_STACK_SENSOR    = 8192;  // 8KB for I2C and GPIO reading
     constexpr uint32_t TASK_STACK_PHYSICS   = 8192;  // 8KB for Kinematics & Brain logic
-    //constexpr uint32_t TASK_STACK_TELEMETRY = 12288;  // 12KB for the Websocket server to handle multiple clients and JSON formatting without crashing
-    // INCREASE THIS: vsnprintf with floats will overflow a 4KB stack!
+
     constexpr uint32_t TASK_STACK_NETWORK   = 10240;  // MASSIVE 10KB RAM for the Websocket server to handle multiple clients and JSON formatting without crashing
 
     constexpr UBaseType_t SENSOR_TASK_PRIORITY = 1;  // 0 Priority for sensor reading and telemetry      
@@ -32,8 +30,7 @@ namespace SystemConfig {
     
     // --- Loop Rates ---
     constexpr unsigned long MAIN_LOOP_TICK_RATE_MS = 10;  // 10ms = 100Hz (The Physics Engine metronome)
-    // constexpr unsigned long TELEMETRY_PING_DELAY_MS = 80; // 80ms = 12.5Hz (How fast the Mouth talks)
-    constexpr unsigned long TELEMETRY_PING_DELAY_MS = 35; // ~ Temporarily 50 Hz for gathering AI Training data in Mode_Teleop 
+    constexpr unsigned long TELEMETRY_PING_DELAY_MS = 35; // 30ms = 28.57Hz (How fast the Mouth talks)
 
     // ==========================================
     // BOOT SEQUENCE & HARDWARE TIMINGS

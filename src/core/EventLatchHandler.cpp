@@ -27,6 +27,7 @@ void EventLatchHandler::setupAI() {
     input = interpreter->input(0);
     output = interpreter->output(0);
     isAIInitialized = true;
+    //CurrentRobotData.health.hardwareBitmask |= Comms::HealthBit::TENSORFLOW_ALIVE;
 }
 
 SemanticEvents EventLatchHandler::processEvents(const GlobalDataBank& robotData) {
@@ -41,7 +42,7 @@ SemanticEvents EventLatchHandler::processEvents(const GlobalDataBank& robotData)
     float distanceDelta = (currentDistance != lastDistance && lastDistance > 0.0f) ? (currentDistance - lastDistance) : 0.0f;
     lastDistance = currentDistance;
 
-    float rawYawEnergy = 0.0f, rawPitchEnergy = 0.0f, rawRollEnergy = 0.0f;
+    //float rawYawEnergy = 0.0f, rawPitchEnergy = 0.0f, rawRollEnergy = 0.0f;
     float currentYawRate = 0.0f; 
     
     if (robotData.health.hardwareBitmask & Comms::HealthBit::IMU_OK) {
@@ -52,9 +53,11 @@ SemanticEvents EventLatchHandler::processEvents(const GlobalDataBank& robotData)
         };
 
         float yawDelta = getShortestAngleDelta(robotData.physics.imuAngles.yaw, lastAngles.yaw);
-        rawYawEnergy = std::abs(yawDelta) / 0.01f;
-        rawPitchEnergy = std::abs(getShortestAngleDelta(robotData.physics.imuAngles.pitch, lastAngles.pitch)) / 0.01f;
-        rawRollEnergy = std::abs(getShortestAngleDelta(robotData.physics.imuAngles.roll, lastAngles.roll)) / 0.01f;
+        float pitchDelta = getShortestAngleDelta(robotData.physics.imuAngles.pitch, lastAngles.pitch);
+        float rollDelta = getShortestAngleDelta(robotData.physics.imuAngles.roll, lastAngles.roll);
+        events.rawYawEnergy = std::abs(yawDelta) / 0.01f;
+        events.rawPitchEnergy = std::abs(pitchDelta) / 0.01f;
+        events.rawRollEnergy = std::abs(rollDelta) / 0.01f;
         
         // Convert to true degrees/sec for the NN input tensor
         float dt = SystemConfig::MAIN_LOOP_TICK_RATE_MS / 1000.0f;
@@ -65,8 +68,9 @@ SemanticEvents EventLatchHandler::processEvents(const GlobalDataBank& robotData)
         lastAngles.roll = robotData.physics.imuAngles.roll;
     }
 
-    float totalRawEnergy = rawYawEnergy + rawPitchEnergy + rawRollEnergy;
-    smoothedTotalEnergy = (SysConfig.ENERGY_EMA_ALPHA * totalRawEnergy) + (SysConfig.ENERGY_EMA_BETA * smoothedTotalEnergy);
+    // float totalRawEnergy = rawYawEnergy + rawPitchEnergy + rawRollEnergy;
+    events.totalRawEnergy = events.rawYawEnergy + events.rawPitchEnergy + events.rawRollEnergy;
+    smoothedTotalEnergy = (SysConfig.ENERGY_EMA_ALPHA * events.totalRawEnergy) + (SysConfig.ENERGY_EMA_BETA * smoothedTotalEnergy);
     events.smoothedTotalEnergy = smoothedTotalEnergy;
 
     // 2. STATIC ORIENTATIONS
@@ -74,11 +78,11 @@ SemanticEvents EventLatchHandler::processEvents(const GlobalDataBank& robotData)
     float roll = robotData.physics.imuAngles.roll;
     events.isUpright = false; 
 
-    if (std::abs(roll) > 135.0f || std::abs(pitch) > 135.0f) events.isUpsideDown = true;
-    else if (pitch > 70.0f) events.isNoseUp = true;
-    else if (pitch < -70.0f) events.isNoseDown = true;
-    else if (roll > 70.0f) events.isTippedRight = true;
-    else if (roll < -70.0f) events.isTippedLeft = true;
+    if (std::abs(roll) > 135.0f || std::abs(pitch) > 135.0f) {events.isUpsideDown = true; events.isUpright = false;}
+    else if (pitch > 70.0f) {events.isNoseUp = true; events.isUpright = false;}
+    else if (pitch < -70.0f) {events.isNoseDown = true; events.isUpright = false;}
+    else if (roll > 70.0f) {events.isTippedRight = true; events.isUpright = false;}
+    else if (roll < -70.0f) {events.isTippedLeft = true; events.isUpright = false;}
     // else if ((std::abs(pitch) < 30.0f && std::abs(roll) < 30.0f) ||
     //         (!events.isUpsideDown || !events.isNoseUp || !events.isNoseDown || !events.isTippedRight || !events.isTippedLeft)) events.isUpright = true;
 
@@ -90,23 +94,41 @@ SemanticEvents EventLatchHandler::processEvents(const GlobalDataBank& robotData)
     // THE "LIFT LATCH" (Human Pickup Detection)
     // ==========================================================
     static bool liftLatch = false;
+    // static uint16_t liftDebounceCounter = 0; // Tracks consecutive out-of-bounds ticks
     
-    // Normal driving stays near 1.0G. A human picking the robot up 
-    // causes a sudden Z-axis acceleration or temporary freefall.
-    if (robotData.physics.imuAngles.gForce < 0.65f || robotData.physics.imuAngles.gForce > 1.4f) {
-        liftLatch = true;
-    }
+    // // We want 250ms of continuous violation to confirm a human lift.
+    // // 250ms / SysConfig.MAIN_LOOP_TICK_RATE_MS (10ms) = 25 ticks.
+    // const uint16_t LIFT_DEBOUNCE_TICKS = SysConfig.LIFT_UP_DETECTION_DELAY / SystemConfig::MAIN_LOOP_TICK_RATE_MS;
     
-    // Reset the latch ONLY when the robot is placed safely back on the ground
-    if (events.isAbsolutelyStill && events.isUpright) {
-        liftLatch = false;
-    }
-    events.hasExperiencedLift = liftLatch;
+    // // Normal driving stays near 1.0G but track impacts cause high-frequency spikes.
+    // // A human picking the robot up causes a SUSTAINED Z-axis acceleration or freefall.
+    // // if (robotData.physics.imuAngles.gForce < 0.7f || robotData.physics.imuAngles.gForce > 1.4f) {
+    // if ((robotData.physics.imuAngles.gForce < SysConfig.GFORCE_LIFT_DOWN_THRESHOLD || robotData.physics.imuAngles.gForce > SysConfig.GFORCE_LIFT_UP_THRESHOLD) &&
+    //     events.totalRawEnergy > SysConfig.LIFT_ENERGY_SPIKE_THRESHOLD) {
+    //     liftDebounceCounter++;
+        
+    //     // If the vibration lasts longer than our 250ms threshold, it's a real lift!
+    //     if (liftDebounceCounter >= LIFT_DEBOUNCE_TICKS) {
+    //         liftLatch = true;
+    //     }
+    // } else {
+    //     // If the G-force returns to the normal window for even one tick, 
+    //     // it was just a motor vibration. Reset the counter!
+    //     liftDebounceCounter = 0;
+    // }
+    
+    // // Reset the latch ONLY when the robot is placed safely back on the ground
+    // if (events.isAbsolutelyStill && events.isUpright) {
+    //     liftLatch = false;
+    //     liftDebounceCounter = 0; // Clear the counter for the next lift
+    // }
+    // events.hasExperiencedLift = liftLatch;
 
     // ==========================================================
     // 3. NEURAL NETWORK LAYER (TensorFlow Lite Micro)
     // ==========================================================
-    if (isAIInitialized && interpreter && SystemConfig::USE_AI_BEHAVIOUR_ENGINE) {
+    if (isAIInitialized && interpreter && SystemConfig::USE_AI_LATCH_HANDLER) {
+        events.TENSORFLOW_ALIVE = true;
         
         // Map features exactly to the training index order
         input->data.f[0] = pitch;
@@ -114,13 +136,7 @@ SemanticEvents EventLatchHandler::processEvents(const GlobalDataBank& robotData)
         input->data.f[2] = currentYawRate;
         input->data.f[3] = currentDistance;
         input->data.f[4] = robotData.sensors.pressureDeltaPa;
-        input->data.f[5] = robotData.actuators.isDriving ? 1.0f : 0.0f;
-
-        // --- THE AI FIX ---
-        // We force the network to ignore the motor states when predicting Handling/Impacts.
-        // It must judge the physical IMU energy purely on its own merits.
-        // input->data.f[5] = 0.0f; // Force isDriving to false for the AI
-        
+        input->data.f[5] = robotData.actuators.isDriving ? 1.0f : 0.0f;  
         input->data.f[6] = robotData.physics.imuAngles.gForce;
         input->data.f[7] = smoothedTotalEnergy;
 
@@ -134,9 +150,10 @@ SemanticEvents EventLatchHandler::processEvents(const GlobalDataBank& robotData)
         events.isImpactDetected = output->data.f[3] > 0.5f;
 
     } else {
+        events.TENSORFLOW_ALIVE = false;
         // Safe deterministic fallback filter if ML is turned off
-        events.isFreeFalling = (robotData.physics.imuAngles.gForce < 0.25f);
-        if (!robotData.actuators.isDriving && totalRawEnergy > SysConfig.STEADY_HOLD_ENERGY_MAX) {
+        events.isFreeFalling = (robotData.physics.imuAngles.gForce < SysConfig.GFORCE_FREEFALL_THRESHOLD);
+        if (!robotData.actuators.isDriving && events.totalRawEnergy > SysConfig.STEADY_HOLD_ENERGY_MAX) {
             isHandling = true; 
         } else if (smoothedTotalEnergy < SysConfig.PERFECTLY_STILL_ENERGY) {
             isHandling = false; 

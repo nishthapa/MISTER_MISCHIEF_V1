@@ -12,7 +12,12 @@
 
 // 1. SEMANTIC EVENTS (The Physical Truths + AI Latches)
 struct SemanticEvents {
+    bool TENSORFLOW_ALIVE = false;
     float smoothedTotalEnergy = 0.0f;
+    float rawYawEnergy = 0.0f;
+    float rawPitchEnergy = 0.0f;
+    float rawRollEnergy = 0.0f;
+    float totalRawEnergy = 0.0f;
 
     // --- DETERMINISTIC STATES (Calculated in C++) ---
     bool isAbsolutelyStill = false;

@@ -71,8 +71,9 @@ namespace Comms {
     // Used to pack the state of all components into a single 16-bit field
     // =========================================================================
     namespace HealthBit {
-        // FREERTOS STATUS 
+        // FREERTOS TASKS
         constexpr uint16_t FREE_RTOS_ALIVE      = (1 << 0);  // Watchdog happy, tasks executing within deadline
+        
         
         // SENSOR BUSES
         constexpr uint16_t I2C_BUS_OK           = (1 << 1);  // Main I2C bus clear of lockups
@@ -86,7 +87,8 @@ namespace Comms {
         constexpr uint16_t GPS_OK               = (1 << 7);  // GPS ok/available
         // constexpr uint16_t TOF_OK               = (1 << 8);  // Time of Flight available/ok
         constexpr uint16_t CLIFF_IR_OK          = (1 << 8);  // Infrared cliff sensor(s) available/ok
-        constexpr uint16_t LIDAR_OK             = (1 << 9); // LIDAR available/ok
+        //constexpr uint16_t LIDAR_OK             = (1 << 9); // LIDAR available/ok
+        constexpr uint16_t TENSORFLOW_ALIVE     = (1 << 9);  // TensorFlow Lite Micro is running and not crashing
        
         // OTHER HARDWARE HEALTH
         constexpr uint16_t MOTOR_DRIVER_OK      = (1 << 10);  // XY160D driver pins/timers responding

@@ -77,22 +77,25 @@ namespace FactoryDefaults {
     // RANGE: 1000 TO 5000   // Wait time on a flat surface before disengaging Compass Lock
     constexpr unsigned long COMPASS_LOCK_EXIT_SETTLE_MS = 3000;
 
-
-
     // --- Handling & Lift Detection (The Pickup Sensitivity) ---
     // RANGE: 15.0f TO 35.0f // Degrees of tilt required to definitively say "a human grabbed me"
     constexpr float TILT_HANDLING_THRESHOLD = 22.0f;      
     
     // RANGE: 1.05f TO 1.30f // Earth is 1.0G. A gentle lift is ~1.1G. A fast yank is >1.3G.
-    constexpr float GFORCE_LIFT_UP_THRESHOLD = 1.15f;
+    constexpr float GFORCE_LIFT_UP_THRESHOLD = 1.4f;
+
+    constexpr float GFORCE_FREEFALL_THRESHOLD = 0.25f; // Freefall is <0.25G. A gentle drop is ~0.7G.
+
+    // RABGE: 150 to 300 // How long to see the Z-axis G force spiking to call it a lift up
+    constexpr int LIFT_UP_DETECTION_DELAY = 150;
     
     constexpr float BARO_LIFT_UP_THRESHOLD = 15.0f;
     
     // RANGE: 0.70f TO 0.95f // Earth is 1.0G. A gentle lowering is ~0.85G. A fast drop is <0.7G.
-    constexpr float GFORCE_LIFT_DOWN_THRESHOLD = 0.85f;   
+    constexpr float GFORCE_LIFT_DOWN_THRESHOLD = 0.7f;   
     
     // RANGE: 100.0f TO 400.0f // Rotational energy spike to act as a fallback if linear G-force misses the pickup
-    constexpr float LIFT_ENERGY_SPIKE_THRESHOLD = 200.0f; 
+    constexpr float LIFT_ENERGY_SPIKE_THRESHOLD = 130.0f; 
 
     // --- Floor & Table Detection ---
     // RANGE: 2.0f TO 10.0f  // Degrees of slop allowed for imperfect chassis builds or slightly slanted tables
