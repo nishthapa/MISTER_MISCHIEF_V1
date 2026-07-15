@@ -44,11 +44,11 @@
 
 //     if (!robotData.actuators.isDriving && totalRawEnergy > SysConfig.STEADY_HOLD_ENERGY_MAX) {
 //         isHandling = true; 
-//     } else if (smoothedTotalEnergy < SysConfig.PERFECTLY_STILL_ENERGY) {
+//     } else if (smoothedTotalEnergy < SysConfig.SMOOTHED_PERFECTLY_STILL_ENERGY_MAX) {
 //         isHandling = false; 
 //     }
 //     events.isHandling = isHandling;
-//     events.isAbsolutelyStill = (!robotData.actuators.isDriving && !events.isHandling && smoothedTotalEnergy < SysConfig.PERFECTLY_STILL_ENERGY);
+//     events.isAbsolutelyStill = (!robotData.actuators.isDriving && !events.isHandling && smoothedTotalEnergy < SysConfig.SMOOTHED_PERFECTLY_STILL_ENERGY_MAX);
 
 //     // 3. STATIC ORIENTATIONS
 //     float pitch = robotData.physics.imuAngles.pitch;

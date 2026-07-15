@@ -83,46 +83,62 @@ SemanticEvents EventLatchHandler::processEvents(const GlobalDataBank& robotData)
     else if (pitch < -70.0f) {events.isNoseDown = true; events.isUpright = false;}
     else if (roll > 70.0f) {events.isTippedRight = true; events.isUpright = false;}
     else if (roll < -70.0f) {events.isTippedLeft = true; events.isUpright = false;}
-    // else if ((std::abs(pitch) < 30.0f && std::abs(roll) < 30.0f) ||
-    //         (!events.isUpsideDown || !events.isNoseUp || !events.isNoseDown || !events.isTippedRight || !events.isTippedLeft)) events.isUpright = true;
 
     else events.isUpright = true; // If it isn't any of the extreme edge cases, it's upright!
 
-    events.isAbsolutelyStill = (!robotData.actuators.isDriving && !events.isHandling && smoothedTotalEnergy < SysConfig.PERFECTLY_STILL_ENERGY);
+    // isAbsolutelyStill should be independent of isHandling
+    // Break stillness INSTANTLY on a raw energy spike, bypassing the EMA lag
+    events.isAbsolutelyStill = (!robotData.actuators.isDriving &&
+                                smoothedTotalEnergy < SysConfig.SMOOTHED_PERFECTLY_STILL_ENERGY_MAX &&
+                                events.totalRawEnergy < SysConfig.RAW_PERFECTLY_STILL_ENERGY_MAX);
 
     // ==========================================================
-    // THE "LIFT LATCH" (Human Pickup Detection)
+    // THE "LIFT LATCH"
+    // (2-Stage Arming Logic for Human Pickup Detection)
     // ==========================================================
     static bool liftLatch = false;
-    // static uint16_t liftDebounceCounter = 0; // Tracks consecutive out-of-bounds ticks
+    static bool energySpikeMemory = false;
+    static uint16_t liftDebounceCounter = 0; // Tracks consecutive out-of-bounds ticks
     
-    // // We want 250ms of continuous violation to confirm a human lift.
-    // // 250ms / SysConfig.MAIN_LOOP_TICK_RATE_MS (10ms) = 25 ticks.
-    // const uint16_t LIFT_DEBOUNCE_TICKS = SysConfig.LIFT_UP_DETECTION_DELAY / SystemConfig::MAIN_LOOP_TICK_RATE_MS;
+    // We want 250ms of continuous violation to confirm a human lift.
+    // 250ms / SysConfig.MAIN_LOOP_TICK_RATE_MS (10ms) = 25 ticks.
+    const uint16_t LIFT_DEBOUNCE_TICKS = SysConfig.LIFT_UP_DETECTION_DELAY / SystemConfig::MAIN_LOOP_TICK_RATE_MS;
     
-    // // Normal driving stays near 1.0G but track impacts cause high-frequency spikes.
-    // // A human picking the robot up causes a SUSTAINED Z-axis acceleration or freefall.
-    // // if (robotData.physics.imuAngles.gForce < 0.7f || robotData.physics.imuAngles.gForce > 1.4f) {
-    // if ((robotData.physics.imuAngles.gForce < SysConfig.GFORCE_LIFT_DOWN_THRESHOLD || robotData.physics.imuAngles.gForce > SysConfig.GFORCE_LIFT_UP_THRESHOLD) &&
-    //     events.totalRawEnergy > SysConfig.LIFT_ENERGY_SPIKE_THRESHOLD) {
-    //     liftDebounceCounter++;
-        
-    //     // If the vibration lasts longer than our 250ms threshold, it's a real lift!
-    //     if (liftDebounceCounter >= LIFT_DEBOUNCE_TICKS) {
-    //         liftLatch = true;
-    //     }
-    // } else {
-    //     // If the G-force returns to the normal window for even one tick, 
-    //     // it was just a motor vibration. Reset the counter!
-    //     liftDebounceCounter = 0;
-    // }
+    // Normal driving stays near 1.0G but track impacts cause high-frequency spikes.
+    // A human picking the robot up causes a SUSTAINED Z-axis acceleration or freefall.
+    // if (robotData.physics.imuAngles.gForce < 0.7f || robotData.physics.imuAngles.gForce > 1.4f) {
+    // Check ONLY the G-Force limits to increment the counter
+    if (robotData.physics.imuAngles.gForce < SysConfig.GFORCE_LIFT_DOWN_THRESHOLD ||
+        robotData.physics.imuAngles.gForce > SysConfig.GFORCE_LIFT_UP_THRESHOLD) {
+
+        if (liftDebounceCounter < LIFT_DEBOUNCE_TICKS) liftDebounceCounter++;
+
+        // Arm the flag if the energy spikes (The Initial Yank)
+        if (events.totalRawEnergy > SysConfig.LIFT_ENERGY_SPIKE_THRESHOLD) {
+            energySpikeMemory = true;
+        }
+    } else {
+        // A human lift crosses 1.0G mid-air. Do not wipe the memory!
+        // Instead, let the counter decay gently so a true return to rest safely disarms it.
+        if (liftDebounceCounter > 0) {
+            liftDebounceCounter--;
+        }
+    }
+   
+    // If the vibration lasts longer than our 250ms threshold,
+    // & Energy has spiked at some point, it's a real lift!
+    // So Trigger the latch only if BOTH conditions are met (The Hold)
+    if (energySpikeMemory && liftDebounceCounter >= LIFT_DEBOUNCE_TICKS) {
+        liftLatch = true;
+    }
     
-    // // Reset the latch ONLY when the robot is placed safely back on the ground
-    // if (events.isAbsolutelyStill && events.isUpright) {
-    //     liftLatch = false;
-    //     liftDebounceCounter = 0; // Clear the counter for the next lift
-    // }
-    // events.hasExperiencedLift = liftLatch;
+    // Safely reset everything when placed flat on the floor
+    if (events.isAbsolutelyStill && events.isUpright) {
+        liftLatch = false;
+        energySpikeMemory = false; // Clear memory for the next lift detection arming
+        liftDebounceCounter = 0; // Clear the counter for the next lift
+    }
+    events.hasExperiencedLift = liftLatch;
 
     // ==========================================================
     // 3. NEURAL NETWORK LAYER (TensorFlow Lite Micro)
@@ -155,7 +171,7 @@ SemanticEvents EventLatchHandler::processEvents(const GlobalDataBank& robotData)
         events.isFreeFalling = (robotData.physics.imuAngles.gForce < SysConfig.GFORCE_FREEFALL_THRESHOLD);
         if (!robotData.actuators.isDriving && events.totalRawEnergy > SysConfig.STEADY_HOLD_ENERGY_MAX) {
             isHandling = true; 
-        } else if (smoothedTotalEnergy < SysConfig.PERFECTLY_STILL_ENERGY) {
+        } else if (smoothedTotalEnergy < SysConfig.SMOOTHED_PERFECTLY_STILL_ENERGY_MAX) {
             isHandling = false; 
         }
         events.isHandling = isHandling;

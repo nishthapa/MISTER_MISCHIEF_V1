@@ -43,7 +43,7 @@ bool MPU6500_IMU::init() {
 
         // Attempt to boot the DMP firmware onto the chip using the xreef library
         //if (imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL, IMUConfig::IMU_DMP_SAMPLE_RATE_HZ) == INV_SUCCESS) {
-        if (imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL | DMP_FEATURE_SEND_RAW_ACCEL, IMUConfig::IMU_DMP_SAMPLE_RATE_HZ) == INV_SUCCESS) {
+        if (imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL | DMP_FEATURE_SEND_RAW_ACCEL | DMP_FEATURE_SEND_RAW_GYRO, IMUConfig::IMU_DMP_SAMPLE_RATE_HZ) == INV_SUCCESS) {
             logger.println("Hardware DMP Booted Successfully! Quaternion math offloaded.");
             usingDMP = true;
         } else {
@@ -108,12 +108,22 @@ FusedAngles MPU6500_IMU::getAngles() {
                 float ax_g = imu.calcAccel(imu.ax);
                 float ay_g = imu.calcAccel(imu.ay);
                 float az_g = imu.calcAccel(imu.az);
+
+                float gx_dps = imu.calcGyro(imu.gx);
+                float gy_dps = imu.calcGyro(imu.gy);
+                float gz_dps = imu.calcGyro(imu.gz);
                 
                 lastKnownAngles.gForce = sqrt((ax_g * ax_g) + (ay_g * ay_g) + (az_g * az_g));
 
-                // lastKnownAngles.roll  = imu.roll  * (SysConfig.IMU_INVERT_ROLL ? -1.0f : 1.0f);
-                // lastKnownAngles.pitch = imu.pitch * (SysConfig.IMU_INVERT_PITCH ? -1.0f : 1.0f);
-                // lastKnownAngles.yaw   = imu.yaw   * (SysConfig.IMU_INVERT_YAW ? -1.0f : 1.0f);
+                // Pack the raw accelerometer data
+                lastKnownAngles.accelX = ax_g;
+                lastKnownAngles.accelY = ay_g;
+                lastKnownAngles.accelZ = az_g;
+
+                // Pack the raw gyroscope data
+                lastKnownAngles.gyroX = gx_dps;
+                lastKnownAngles.gyroY = gy_dps;
+                lastKnownAngles.gyroZ = gz_dps;
 
                 // FIX: Convert Radians to Degrees by multiplying by (180.0f / M_PI)
                 lastKnownAngles.roll  = (imu.roll  * (180.0f / M_PI)) * (SysConfig.IMU_INVERT_ROLL ? -1.0f : 1.0f);
@@ -138,6 +148,14 @@ FusedAngles MPU6500_IMU::getAngles() {
 
             float currentGForce = sqrt((ax * ax) + (ay * ay) + (az * az));
             lastKnownAngles.gForce = currentGForce;
+
+            lastKnownAngles.accelX = ax;
+            lastKnownAngles.accelY = ay;
+            lastKnownAngles.accelZ = az;
+
+            lastKnownAngles.gyroX = gx_rad * (180.0f / M_PI);
+            lastKnownAngles.gyroY = gy_rad * (180.0f / M_PI);
+            lastKnownAngles.gyroZ = gz_rad * (180.0f / M_PI);
 
             // G-Force Gatekeeper logic
             if (currentGForce > SysConfig.GFORCE_LIFT_UP_THRESHOLD || currentGForce < SysConfig.GFORCE_LIFT_DOWN_THRESHOLD) {

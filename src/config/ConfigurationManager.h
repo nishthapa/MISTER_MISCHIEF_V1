@@ -118,7 +118,8 @@ struct MasterSettings {
     float GFORCE_LIFT_DOWN_THRESHOLD = FactoryDefaults::GFORCE_LIFT_DOWN_THRESHOLD;
     float LIFT_ENERGY_SPIKE_THRESHOLD = FactoryDefaults::LIFT_ENERGY_SPIKE_THRESHOLD;
     float UPRIGHT_ANGLE_TOLERANCE = FactoryDefaults::UPRIGHT_ANGLE_TOLERANCE;
-    float PERFECTLY_STILL_ENERGY = FactoryDefaults::PERFECTLY_STILL_ENERGY;
+    float SMOOTHED_PERFECTLY_STILL_ENERGY_MAX = FactoryDefaults::SMOOTHED_PERFECTLY_STILL_ENERGY_MAX;
+    float RAW_PERFECTLY_STILL_ENERGY_MAX = FactoryDefaults::RAW_PERFECTLY_STILL_ENERGY_MAX;
     float STEADY_HOLD_ENERGY_MAX = FactoryDefaults::STEADY_HOLD_ENERGY_MAX;
 
     // --- Dizzy & Energy ---
@@ -284,7 +285,8 @@ class ConfigurationManager {
         currentSettings.GFORCE_LIFT_DOWN_THRESHOLD = preferences.getFloat("GF_LFT_DN_THRS", FactoryDefaults::GFORCE_LIFT_DOWN_THRESHOLD);
         currentSettings.LIFT_ENERGY_SPIKE_THRESHOLD = preferences.getFloat("LFT_E_SPK_THRS", FactoryDefaults::LIFT_ENERGY_SPIKE_THRESHOLD);
         currentSettings.UPRIGHT_ANGLE_TOLERANCE = preferences.getFloat("UPRT_ANGL_TOL", FactoryDefaults::UPRIGHT_ANGLE_TOLERANCE);
-        currentSettings.PERFECTLY_STILL_ENERGY = preferences.getFloat("PERF_STILL_E", FactoryDefaults::PERFECTLY_STILL_ENERGY);
+        currentSettings.SMOOTHED_PERFECTLY_STILL_ENERGY_MAX = preferences.getFloat("S_PERF_STILL_E", FactoryDefaults::SMOOTHED_PERFECTLY_STILL_ENERGY_MAX);
+        currentSettings.RAW_PERFECTLY_STILL_ENERGY_MAX = preferences.getFloat("R_PERF_STILL_E", FactoryDefaults::RAW_PERFECTLY_STILL_ENERGY_MAX);
         currentSettings.STEADY_HOLD_ENERGY_MAX = preferences.getFloat("STD_HOLD_E_MAX", FactoryDefaults::STEADY_HOLD_ENERGY_MAX);
 
         // --- Dizzy & Energy---
@@ -423,7 +425,8 @@ class ConfigurationManager {
         preferences.putFloat("GF_LFT_DN_THRS", currentSettings.GFORCE_LIFT_DOWN_THRESHOLD);
         preferences.putFloat("LFT_E_SPK_THRS", currentSettings.LIFT_ENERGY_SPIKE_THRESHOLD);
         preferences.putFloat("UPRT_ANGL_TOL", currentSettings.UPRIGHT_ANGLE_TOLERANCE);
-        preferences.putFloat("PERF_STILL_E", currentSettings.PERFECTLY_STILL_ENERGY);
+        preferences.putFloat("S_PERF_STILL_E", currentSettings.SMOOTHED_PERFECTLY_STILL_ENERGY_MAX);
+        preferences.putFloat("R_PERF_STILL_E", currentSettings.RAW_PERFECTLY_STILL_ENERGY_MAX);
         preferences.putFloat("STD_HOLD_E_MAX", currentSettings.STEADY_HOLD_ENERGY_MAX);
         preferences.putFloat("DZZY_E_DEADB", currentSettings.DIZZY_ENERGY_DEADBAND);
         preferences.putFloat("DZZY_CHG_RATE", currentSettings.DIZZY_CHARGE_RATE);
@@ -575,7 +578,8 @@ class ConfigurationManager {
         else if (varName == "GFORCE_LIFT_DOWN_THRESHOLD") { currentSettings.GFORCE_LIFT_DOWN_THRESHOLD = FactoryDefaults::GFORCE_LIFT_DOWN_THRESHOLD; }
         else if (varName == "LIFT_ENERGY_SPIKE_THRESHOLD") { currentSettings.LIFT_ENERGY_SPIKE_THRESHOLD = FactoryDefaults::LIFT_ENERGY_SPIKE_THRESHOLD; }
         else if (varName == "UPRIGHT_ANGLE_TOLERANCE") { currentSettings.UPRIGHT_ANGLE_TOLERANCE = FactoryDefaults::UPRIGHT_ANGLE_TOLERANCE; }
-        else if (varName == "PERFECTLY_STILL_ENERGY") { currentSettings.PERFECTLY_STILL_ENERGY = FactoryDefaults::PERFECTLY_STILL_ENERGY; }
+        else if (varName == "SMOOTHED_PERFECTLY_STILL_ENERGY_MAX") { currentSettings.SMOOTHED_PERFECTLY_STILL_ENERGY_MAX = FactoryDefaults::SMOOTHED_PERFECTLY_STILL_ENERGY_MAX; }
+        else if (varName == "RAW_PERFECTLY_STILL_ENERGY_MAX") { currentSettings.RAW_PERFECTLY_STILL_ENERGY_MAX = FactoryDefaults::RAW_PERFECTLY_STILL_ENERGY_MAX; }
         else if (varName == "STEADY_HOLD_ENERGY_MAX") { currentSettings.STEADY_HOLD_ENERGY_MAX = FactoryDefaults::STEADY_HOLD_ENERGY_MAX; }
         else if (varName == "DIZZY_ENERGY_DEADBAND") { currentSettings.DIZZY_ENERGY_DEADBAND = FactoryDefaults::DIZZY_ENERGY_DEADBAND; }
         else if (varName == "DIZZY_CHARGE_RATE") { currentSettings.DIZZY_CHARGE_RATE = FactoryDefaults::DIZZY_CHARGE_RATE; }

@@ -90,6 +90,15 @@ void SensorTask(void *pvParameters) {
             CurrentRobotData.physics.imuAngles.pitch = currentAngles.pitch;
             CurrentRobotData.physics.imuAngles.roll = currentAngles.roll;
             CurrentRobotData.physics.imuAngles.gForce = currentAngles.gForce;
+
+            CurrentRobotData.physics.imuAngles.accelX = currentAngles.accelX;
+            CurrentRobotData.physics.imuAngles.accelY = currentAngles.accelY;
+            CurrentRobotData.physics.imuAngles.accelZ = currentAngles.accelZ;
+
+            CurrentRobotData.physics.imuAngles.gyroX = currentAngles.gyroX;
+            CurrentRobotData.physics.imuAngles.gyroY = currentAngles.gyroY;
+            CurrentRobotData.physics.imuAngles.gyroZ = currentAngles.gyroZ;
+            
             CurrentRobotData.physics.imuAngles.hasCompass = currentAngles.hasCompass;
             CurrentRobotData.physics.imuAngles.compassHeading = currentAngles.compassHeading;
             portEXIT_CRITICAL(&globalDataBusLock);

@@ -204,6 +204,14 @@ FusedAngles MPU6050_IMU::getAngles() {
             lastKnownAngles.yaw   = ypr[ATTITUDE_YAW_INDEX] * 180 / M_PI;
             lastKnownAngles.pitch = ypr[ATTITUDE_PITCH_INDEX] * 180 / M_PI;
             lastKnownAngles.roll  = ypr[ATTITUDE_ROLL_INDEX] * 180 / M_PI;
+
+            lastKnownAngles.accelX = mpu.getAccelerationX() / IMUConfig::ACCEL_SCALE_FACTOR;
+            lastKnownAngles.accelY = mpu.getAccelerationY() / IMUConfig::ACCEL_SCALE_FACTOR;
+            lastKnownAngles.accelZ = mpu.getAccelerationZ() / IMUConfig::ACCEL_SCALE_FACTOR;
+
+            lastKnownAngles.gyroX = mpu.getRotationX() / IMUConfig::GYRO_SCALE_FACTOR;
+            lastKnownAngles.gyroY = mpu.getRotationY() / IMUConfig::GYRO_SCALE_FACTOR;
+            lastKnownAngles.gyroZ = mpu.getRotationZ() / IMUConfig::GYRO_SCALE_FACTOR;
         }
     } 
     else {
@@ -328,6 +336,14 @@ FusedAngles MPU6050_IMU::getAngles() {
         lastKnownAngles.roll  = filter->getRoll()  * (SysConfig.IMU_INVERT_ROLL ? -1.0f : 1.0f);
         lastKnownAngles.pitch = filter->getPitch() * (SysConfig.IMU_INVERT_PITCH ? -1.0f : 1.0f);
         lastKnownAngles.yaw   = filter->getYaw()   * (SysConfig.IMU_INVERT_YAW ? -1.0f : 1.0f);
+
+        lastKnownAngles.accelX = ax_cal;
+        lastKnownAngles.accelY = ay_cal;
+        lastKnownAngles.accelZ = az_cal;
+
+        lastKnownAngles.gyroX = gx_rad * (180.0f / M_PI);
+        lastKnownAngles.gyroY = gy_rad * (180.0f / M_PI);
+        lastKnownAngles.gyroZ = gz_rad * (180.0f / M_PI);
     }
     
     return lastKnownAngles;

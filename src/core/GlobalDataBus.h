@@ -10,8 +10,20 @@
 // =========================================================================
 // 1. STATE DATA (The Absolute Truth of the Robot)
 // =========================================================================
-struct PhysicsState {
-    FusedAngles imuAngles = {0.0f, 0.0f, 0.0f, 0.0f, false, 0}; // Safe zeroes      // MsgId 101: Attitude & G-Force
+struct PhysicsState {               // Safe zeroes      // MsgId 101: Attitude & G-Force
+
+    FusedAngles imuAngles = {0.0f,  // yaw
+                            0.0f,   // pitch
+                            0.0f,   // roll
+                            0.0f,   // G-force
+                            0.0f,   // accelX
+                            0.0f,   // accelY
+                            0.0f,   // accelZ
+                            0.0f,   // gyroX
+                            0.0f,   // gyroY
+                            0.0f,   // gyroZ
+                            false,  // hasCompass
+                            0};     // compass heading
 }__attribute__((packed));
 
 struct ActuatorState {              // MsgId 104

@@ -102,7 +102,10 @@ namespace FactoryDefaults {
     constexpr float UPRIGHT_ANGLE_TOLERANCE = 5.0f;       
     
     // RANGE: 35.0f TO 60.0f // MPU6050 sensor noise averages 30-45. A steady human hand averages 80-150.
-    constexpr float PERFECTLY_STILL_ENERGY = 45.0f;       
+    constexpr float SMOOTHED_PERFECTLY_STILL_ENERGY_MAX = 45.0f;
+    
+    // RANGE: 80.0f TO 150.0f // Raw IMU sensor noise averages 120. A steady human hand averages 80-150.
+    constexpr float RAW_PERFECTLY_STILL_ENERGY_MAX = 120.0f;
     
     // RANGE: 80.0f TO 200.0f // Max rotational energy allowed to be considered "held steady" on a book/hand
     constexpr float STEADY_HOLD_ENERGY_MAX = 150.0f;      
@@ -165,9 +168,9 @@ namespace FactoryDefaults {
     // ==========================================
     // UNIFIED POINT TURN PID TUNING (Stationary)
     // ==========================================
-    constexpr float PID_POINT_P = 2.0f;
-    constexpr float PID_POINT_I = 0.0f;
-    constexpr float PID_POINT_D = 0.5f;
+    constexpr float PID_POINT_P = 3.59f;
+    constexpr float PID_POINT_I = 13.70f;
+    constexpr float PID_POINT_D = 0.24f;
     constexpr float PID_POINT_LIM = 120.0f;
     constexpr float PID_POINT_ILIM = 0.0f;
     constexpr float PID_POINT_DEAD = 3.0f; // Degrees
@@ -175,9 +178,9 @@ namespace FactoryDefaults {
     // ==========================================
     // UNIFIED ARC TURN PID TUNING (Rolling)
     // ==========================================
-    constexpr float PID_ARC_P = 1.5f;
-    constexpr float PID_ARC_I = 0.0f;
-    constexpr float PID_ARC_D = 0.2f;
+    constexpr float PID_ARC_P = 2.33f;
+    constexpr float PID_ARC_I = 6.85f;
+    constexpr float PID_ARC_D = 0.19f;
     constexpr float PID_ARC_LIM = 100.0f;
     constexpr float PID_ARC_ILIM = 0.0f;
     constexpr float PID_ARC_DEAD = 2.0f; // Degrees
@@ -216,7 +219,6 @@ namespace FactoryDefaults {
     constexpr float PID_DIST_ILIM = 20.0f;
     constexpr float PID_DIST_DEAD = 2.0f; // Centimeters
 
-
 /*    
     // ==========================================
     // OBSTACLE AVOIDANCE PATH SCAN PID TUNING
@@ -228,7 +230,6 @@ namespace FactoryDefaults {
     constexpr float PID_OBSTACLE_ILIM = 0.0f;
     constexpr float PID_OBSTACLE_DEAD = 2.0f;
 */
-
 
     // ==========================================
     // SYSTEM STATE

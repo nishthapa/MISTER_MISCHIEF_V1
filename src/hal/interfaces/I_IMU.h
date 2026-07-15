@@ -5,9 +5,17 @@ struct FusedAngles {
     float yaw;             // Z-axis rotation (Relative Heading - Drifts)
     float pitch;           // Y-axis rotation (Nose up/down)
     float roll;            // X-axis rotation (Tilting left/right)
+    float gForce;
     
-    // --- THE FIX 10: THE GRAVITY DATA ---
-    float gForce;          // 1.0 is normal gravity. >1.2 means being lifted!
+    // --- Raw Linear Acceleration (Gs) ---
+    float accelX; 
+    float accelY; 
+    float accelZ;
+
+    // --- Raw Rotational Velocity (Degrees / Sec) ---
+    float gyroX;
+    float gyroY;
+    float gyroZ;
 
     // --- THE FUTURE-PROOF COMPASS DATA ---
     bool hasCompass;       // Tells the robot if it can trust the absolute heading
