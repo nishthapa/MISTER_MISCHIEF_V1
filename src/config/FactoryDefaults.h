@@ -101,11 +101,11 @@ namespace FactoryDefaults {
     // RANGE: 2.0f TO 10.0f  // Degrees of slop allowed for imperfect chassis builds or slightly slanted tables
     constexpr float UPRIGHT_ANGLE_TOLERANCE = 5.0f;       
     
-    // RANGE: 35.0f TO 60.0f // MPU6050 sensor noise averages 30-45. A steady human hand averages 80-150.
-    constexpr float SMOOTHED_PERFECTLY_STILL_ENERGY_MAX = 45.0f;
+    // RANGE: 35.0f TO 60.0f // MPU6050 sensor noise averages 0.25-0.50. A steady human hand averages 1.5.
+    constexpr float SMOOTHED_PERFECTLY_STILL_ENERGY_MAX = 0.42f;
     
-    // RANGE: 80.0f TO 150.0f // Raw IMU sensor noise averages 120. A steady human hand averages 80-150.
-    constexpr float RAW_PERFECTLY_STILL_ENERGY_MAX = 120.0f;
+    // RANGE: 0.1f TO 1.2f // Raw IMU sensor noise averages 0.5. A steady human hand averages 5.0f
+    constexpr float RAW_PERFECTLY_STILL_ENERGY_MAX = 1.22f;
     
     // RANGE: 80.0f TO 200.0f // Max rotational energy allowed to be considered "held steady" on a book/hand
     constexpr float STEADY_HOLD_ENERGY_MAX = 150.0f;      
